@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  idapt-server:
+    build: .
+    ports:
+      - "4231:3000"
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/idapt
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    # Removed the ports section to restrict access from outside of the container
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
