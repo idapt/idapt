@@ -1,61 +1,57 @@
-Usng the app requirements, make me a detailed plan with simple actionable tasks to build this app.
-
-Certainly! Here's a detailed plan with actionable tasks to build the app based on the provided requirements:
-Phase 1: Project Setup
+Phase 1: Setup and Initial Configuration
 1. Environment Setup
-Set up a development environment with Node.js, Docker, and Tauri.
-Initialize a new Next.js project.
-Set up version control with Git.
+Install Node.js and Next.js.
+Set up a new Next.js project.
+Install Tailwind CSS for styling.
 2. Docker Configuration
-Create a Dockerfile to containerize the application.
-Configure Docker Compose for local development.
-Phase 2: Core Features Development
-3. File Management System
-Add New Files
-Implement a file upload feature in the frontend.
-Create an API endpoint to handle file uploads and store them locally.
-Manage Existing Files
-Implement features to move, rename, and delete files.
-Create corresponding API endpoints for each action.
-4. File Storage and Encryption
-Implement AES 128 encryption for file storage.
-Develop a mechanism to generate a private key from a user-created password.
-Implement asymmetric encryption to derive a public key from the private key.
-Ensure files are decrypted on access.
-Search Functionality
-Implement full-text search capabilities.
-Index files for efficient search operations.
-Phase 3: User Authentication and Security
-User Authentication
-Implement a user registration system where users create a password.
-Securely store user credentials and encryption keys.
-Security Enhancements
-Ensure the app runs in a secure Docker container.
-Implement security best practices for Next.js and Tauri.
-Phase 4: Personal Assistant Interface
-Local LLM Integration
-Set up a local language model (LLM) that can access user files.
-Develop an interface for user interaction with the LLM.
-9. RAG (Retrieval-Augmented Generation) Implementation
-Implement indexing and retrieval mechanisms for the LLM to perform full-text search.
-Ensure the LLM can access and process indexed files.
-Phase 5: Testing and Deployment
+Write a Dockerfile for the backend application.
+Set up a docker-compose.yml file to manage both the MongoDB and backend containers.
+MongoDB Container: Define the MongoDB service in the docker-compose.yml file.
+Backend Container: Ensure the backend service connects to the MongoDB service defined in the same file.
+Phase 2: Frontend Development
+3. UI Design
+Design wireframes for the app interface, focusing on file management and search functionalities.
+Implement the UI using Next.js and Tailwind CSS.
+4. File Management Interface
+Create components for adding, moving, renaming, and deleting files.
+Implement a file upload feature.
+5. Search Functionality
+Design a search bar component.
+Integrate full-text search capabilities.
+Phase 3: Backend Development
+6. File Storage and Encryption
+Implement file storage in MongoDB (running in the Docker container).
+Research and implement a searchable symmetric encryption (SSE) scheme.
+Ensure files are encrypted at rest.
+7. User Authentication and Key Management
+Implement user registration and login.
+Develop a system to generate and manage private keys securely.
+Ensure private keys are not stored when the app is turned off.
+API Development
+Develop RESTful APIs for file management operations.
+Implement endpoints for search functionality.
+Phase 4: Integration and Testing
+9. Frontend-Backend Integration
+Connect the frontend with the backend APIs.
+Ensure seamless communication between the frontend and backend.
 10. Testing
-Write unit and integration tests for all features.
-Perform security testing to ensure data protection.
-Deployment
-Set up a production environment.
-Deploy the application using Docker.
-Phase 6: Documentation and Maintenance
-12. Documentation
-Document the codebase and API endpoints.
-Create user guides and setup instructions.
-Maintenance
-Set up a system for monitoring and logging.
-Plan for regular updates and feature enhancements.
-Additional Considerations
-User Experience (UX) Design
-Design a user-friendly interface for file management and interaction with the LLM.
-Performance Optimization
-Optimize the application for performance, especially the search and encryption features.
-By following these steps, you can systematically build the application while ensuring all requirements are met.
+Write unit tests for frontend components.
+Write integration tests for API endpoints.
+Conduct end-to-end testing to ensure all features work as expected.
+Phase 5: Local LLM Integration
+11. Personal Assistant Interface
+Design and implement a chat interface for the personal assistant.
+Integrate a local LLM capable of accessing and searching user files.
+RAG (Retrieval-Augmented Generation) Implementation
+Index files using SSE for efficient search.
+Implement RAG to allow the LLM to perform full-text searches.
+Phase 6: Deployment and Maintenance
+13. Deployment
+Deploy the app locally and ensure it runs on localhost:4231.
+Test the Docker containerization for the backend and MongoDB.
+Documentation and User Guide
+Write comprehensive documentation for the app.
+Create a user guide to help users understand how to use the app.
+15. Maintenance and Updates
+Set up a system for regular updates and maintenance.
+Monitor the app for any security vulnerabilities or bugs.
