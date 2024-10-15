@@ -1,20 +1,25 @@
 version: '3.8'
 
 services:
-  idapt-server:
-    build: .
-    ports:
-      - "4231:3000"
-    environment:
-      - MONGODB_URI=mongodb://mongo:27017/idapt
-    depends_on:
-      - mongo
-
-  mongo:
+  mongodb:
     image: mongo:latest
-    # Removed the ports section to restrict access from outside of the container
+    container_name: mongodb
     volumes:
       - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
+
+  idaptServer:
+    build: .
+    container_name: idaptServer
+    ports:
+      - "4231:4231" # TODO make this use app port ?
+    env_file:
+      - .env  # This will load the environment variables from your .env file
+    environment:
+      MONGODB_URI: ${MONGODB_URI}
+      #TODO add other variables ?
 
 volumes:
   mongo_data:
