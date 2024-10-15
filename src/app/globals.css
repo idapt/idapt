@@ -25,3 +25,13 @@ body {
     text-wrap: balance;
   }
 }
+
+/* src/app/styles/globals.css */
+
+.file-upload {
+  margin: 20px;
+}
+
+.error {
+  color: red;
+}
