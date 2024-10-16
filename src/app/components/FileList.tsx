@@ -9,7 +9,7 @@ interface File {
     type: string;
 }
 
-const FileList: React.FC = () => {
+const FileList: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
     const [files, setFiles] = useState<File[]>([]);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -17,7 +17,6 @@ const FileList: React.FC = () => {
         try {
             const response = await fetch('/api/files');
             const data = await response.json();
-            console.log('Fetched files:', data);
             if (Array.isArray(data)) {
                 setFiles(data);
             } else {
@@ -44,7 +43,7 @@ const FileList: React.FC = () => {
             },
             body: JSON.stringify({ id: fileId, newName }),
         });
-        fetchFiles(); // Call fetchFiles after moving the file
+        fetchFiles(); // Refresh the file list after moving the file
     };
 
     const handleRename = async (fileId: number, newName: string) => {
@@ -55,7 +54,7 @@ const FileList: React.FC = () => {
             },
             body: JSON.stringify({ id: fileId, newName }),
         });
-        fetchFiles(); // Call fetchFiles after renaming the file
+        fetchFiles(); // Refresh the file list after renaming the file
     };
 
     const handleDelete = async (fileId: number) => {
@@ -66,7 +65,7 @@ const FileList: React.FC = () => {
             },
             body: JSON.stringify({ id: fileId }),
         });
-        fetchFiles(); // Call fetchFiles after deleting the file
+        fetchFiles(); // Refresh the file list after deleting the file
     };
 
     return (

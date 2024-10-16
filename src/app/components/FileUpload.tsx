@@ -4,6 +4,10 @@ const FileUpload: React.FC = () => {
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [uploadProgress, setUploadProgress] = useState<number>(0);
     const [uploadMessage, setUploadMessage] = useState<string>('');
+    const [showToast, setShowToast] = useState<boolean>(false);
+    const [isUploading, setIsUploading] = useState<boolean>(false);
+    const [uploadedCount, setUploadedCount] = useState<number>(0);
+    const [totalFiles, setTotalFiles] = useState<number>(0);
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
@@ -30,21 +34,42 @@ const FileUpload: React.FC = () => {
                 formData.append('files', file);
             });
 
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
+            setTotalFiles(selectedFiles.length);
+            setIsUploading(true);
+            setShowToast(true);
+            setUploadMessage('Uploading files...');
 
-            if (response.ok) {
-                setUploadMessage('Upload successful!');
-                setUploadProgress(100);
-            } else {
-                const errorData = await response.json();
-                setUploadMessage(`Upload failed: ${errorData.error}`);
+            for (const file of selectedFiles) {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (response.ok) {
+                    setUploadedCount(prev => prev + 1);
+                    const percentage = Math.round(((uploadedCount + 1) / totalFiles) * 100);
+                    setUploadProgress(percentage);
+                } else {
+                    const errorData = await response.json();
+                    setUploadMessage(`Upload failed: ${errorData.error}`);
+                }
             }
+
+            setUploadMessage('All files uploaded successfully!');
+            setUploadProgress(100);
+            setTimeout(() => {
+                setShowToast(false);
+                setIsUploading(false);
+                setUploadedCount(0);
+                setTotalFiles(0);
+            }, 3000); // Auto-dismiss after 3 seconds
         } else {
             console.error('No files selected');
         }
+    };
+
+    const closeToast = () => {
+        setShowToast(false);
     };
 
     return (
@@ -53,9 +78,14 @@ const FileUpload: React.FC = () => {
                 <input type="file" multiple onChange={handleFileChange} />
                 <button type="submit">Upload</button>
             </form>
-            {uploadMessage && (
-                <div style={{ backgroundColor: uploadProgress === 100 ? 'lightgreen' : 'lightcoral' }}>
-                    {uploadMessage} {uploadProgress}% done
+            {showToast && (
+                <div className="toast" style={{ backgroundColor: isUploading ? 'yellow' : 'lightgreen' }}>
+                    <span>
+                        {isUploading
+                            ? `Uploading ${uploadedCount} of ${totalFiles} files (${uploadProgress}%)`
+                            : uploadMessage}
+                    </span>
+                    <button className="close-button" onClick={closeToast}>✖</button>
                 </div>
             )}
             <div>
@@ -66,6 +96,30 @@ const FileUpload: React.FC = () => {
                     ))}
                 </ul>
             </div>
+            <style jsx>{`
+                .toast {
+                    position: fixed;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    color: black;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    z-index: 1000;
+                }
+                .close-button {
+                    background: none;
+                    border: none;
+                    color: black;
+                    font-size: 16px;
+                    cursor: pointer;
+                    margin-left: 10px;
+                }
+            `}</style>
         </div>
     );
 };
