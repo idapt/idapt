@@ -1,44 +1,72 @@
 import React, { useState } from 'react';
 
 const FileUpload: React.FC = () => {
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [uploadProgress, setUploadProgress] = useState<number>(0);
+    const [uploadMessage, setUploadMessage] = useState<string>('');
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         if (event.target.files) {
-            setSelectedFile(event.target.files[0]);
+            setSelectedFiles(Array.from(event.target.files));
+        }
+    };
+
+    const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        if (event.dataTransfer.items) {
+            const files = Array.from(event.dataTransfer.items)
+                .filter(item => item.kind === 'file')
+                .map(item => item.getAsFile())
+                .filter((file): file is File => file !== null);
+            setSelectedFiles(prevFiles => [...prevFiles, ...files]);
         }
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        if (selectedFile) {
+        if (selectedFiles.length > 0) {
             const formData = new FormData();
-            formData.append('file', selectedFile);
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
 
-            // Send file to backend API
             const response = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData,
             });
 
             if (response.ok) {
-                // Handle success
-                console.log('File uploaded successfully');
+                setUploadMessage('Upload successful!');
+                setUploadProgress(100);
             } else {
-                // Handle error
                 const errorData = await response.json();
-                console.error('File upload failed:', errorData);
+                setUploadMessage(`Upload failed: ${errorData.error}`);
             }
         } else {
-            console.error('File is missing');
+            console.error('No files selected');
         }
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <input type="file" onChange={handleFileChange} />
-            <button type="submit">Upload</button>
-        </form>
+        <div>
+            <form onSubmit={handleSubmit} onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+                <input type="file" multiple onChange={handleFileChange} />
+                <button type="submit">Upload</button>
+            </form>
+            {uploadMessage && (
+                <div style={{ backgroundColor: uploadProgress === 100 ? 'lightgreen' : 'lightcoral' }}>
+                    {uploadMessage} {uploadProgress}% done
+                </div>
+            )}
+            <div>
+                <h4>Selected Files:</h4>
+                <ul>
+                    {selectedFiles.map((file, index) => (
+                        <li key={index}>{file.name}</li>
+                    ))}
+                </ul>
+            </div>
+        </div>
     );
 };
 

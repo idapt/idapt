@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import formidable from 'formidable'; // Importing formidable
-import prisma from '../../lib/prisma'; // Adjust the import based on your project structure
+import formidable from 'formidable';
+import prisma from '../../lib/prisma';
 import fs from 'fs';
 
 export const config = {
@@ -10,7 +10,7 @@ export const config = {
 };
 
 const uploadFile = async (req: NextApiRequest, res: NextApiResponse) => {
-    const form = formidable({ keepExtensions: true }); // Use formidable directly
+    const form = formidable({ keepExtensions: true });
 
     form.parse(req, async (err, fields, files) => {
         if (err) {
@@ -18,33 +18,39 @@ const uploadFile = async (req: NextApiRequest, res: NextApiResponse) => {
             return res.status(500).json({ error: 'Error in file upload' });
         }
 
-        const file = files.file[0];
-        if (!file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
+        const uploadedFiles = Array.isArray(files.files) ? files.files : [files.files];
+        const totalFiles = uploadedFiles.length;
+        let uploadedCount = 0;
 
-        const filePath = file.filepath;
-        const fileContent = fs.readFileSync(filePath, 'utf-8'); // Read file content
+        for (const file of uploadedFiles) {
+            if (!file) {
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
 
-        try {
-            // Create a new file entry in the PostgreSQL database
-            const newFile = await prisma.file.create({
-                data: {
-                    name: file.originalFilename || file.newFilename,
-                    content: fileContent, // Store the file content
-                },
-            });
+            const filePath = file.filepath;
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
 
-            res.status(200).json({ message: 'File uploaded successfully', file: newFile });
-        } catch (error) {
-            console.error('Error saving file to database:', error);
-            return res.status(500).json({ error: 'Error saving file to database' });
-        } finally {
-            // Clean up the uploaded file from the server
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+            try {
+                const newFile = await prisma.file.create({
+                    data: {
+                        name: file.originalFilename || file.newFilename,
+                        content: fileContent,
+                    },
+                });
+                uploadedCount++;
+                const percentage = Math.round((uploadedCount / totalFiles) * 100);
+                console.log(`Uploaded ${uploadedCount} of ${totalFiles} files (${percentage}%)`);
+            } catch (error) {
+                console.error('Error saving file to database:', error);
+                return res.status(500).json({ error: 'Error saving file to database' });
+            } finally {
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
             }
         }
+
+        res.status(200).json({ message: 'All files uploaded successfully', totalFiles });
     });
 };
 
