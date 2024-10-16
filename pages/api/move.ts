@@ -2,14 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import prisma from '../../lib/prisma';
 
 const moveFile = async (req: NextApiRequest, res: NextApiResponse) => {
-    const { id, newName } = req.body;
+    const { id, newName, folderId } = req.body;
 
     try {
         const updatedFile = await prisma.file.update({
             where: { id },
-            data: { name: newName },
+            data: { name: newName, folderId },
         });
-
+    
         res.status(200).json({ message: 'File moved successfully', file: updatedFile });
     } catch (error) {
         console.error('Error moving file:', error);

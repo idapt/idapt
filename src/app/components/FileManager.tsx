@@ -11,6 +11,12 @@ const FileManager: React.FC = () => {
     const handleSelectFile = (file: File | null) => {
         setSelectedFile(file);
     };
+    const [currentFolderId, setCurrentFolderId] = useState<number | null>(null);
+
+    const handleNavigateFolder = (folderId: number | null) => {
+        setCurrentFolderId(folderId);
+        // Additional logic for navigating folders can be added here
+    };
 
     return (
         <div className="min-h-screen bg-white p-4">
@@ -32,8 +38,12 @@ const FileManager: React.FC = () => {
                     </button>
                 </div>
             </div>
-            <div className="overflow-y-auto max-h-[70vh]">
-                <FileList viewMode={viewMode} onSelectFile={handleSelectFile} />
+            <div>
+            <FileList
+                viewMode="grid"
+                onSelectFile={handleSelectFile} 
+                onNavigateFolder={handleNavigateFolder} // Pass the function here
+                />
             </div>
         </div>
     );
