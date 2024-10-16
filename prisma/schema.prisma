@@ -3,34 +3,24 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
-  url      = env("MONGODB_URI")
+  provider = "postgresql" // Changed from mongodb to postgresql
+  url      = env("DATABASE_URL")
 }
 
 model File {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int      @id @default(autoincrement()) // Changed from String to Int for PostgreSQL
   name        String
   content     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   encrypted   Boolean  @default(false)
-  userId      String   @db.ObjectId
-  user        User?    @relation("UserFiles", fields: [userId], references: [id]) // Added relation name
+  userId      Int      // Changed from String to Int for PostgreSQL
+  user        User?    @relation("UserFiles", fields: [userId], references: [id]) // Relation remains unchanged
 }
 
 model User {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          Int      @id @default(autoincrement()) // Changed from String to Int for PostgreSQL
   username    String   @unique
   passwordHash String
-  files       File[]   @relation("UserFiles") // Relation field to File
+  files       File[]   @relation("UserFiles") // Relation field to File remains unchanged
 }
-
-// For dev its is required to create a db and user 
-// use idaptServerDb
-   //db.createUser({
-   //    user: "user", // Replace with your MONGODB_USERNAME
-   //    pwd: "qsdfghjklm!", // Replace with your MONGODB_PASSWORD
-   //    roles: [
-   //        { role: "readWrite", db: "idaptServerDb" } // Replace with your DATABASE_NAME
-   //    ]
-   //});
