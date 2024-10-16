@@ -1,4 +1,3 @@
-// components/FileItem.tsx
 import React from 'react';
 
 interface FileItemProps {
@@ -8,7 +7,7 @@ interface FileItemProps {
         size: string;
         type: string;
     };
-    onMove: (fileId: number) => void;
+    onMove: (fileId: number, newName: string) => void;
     onRename: (fileId: number, newName: string) => void;
     onDelete: (fileId: number) => void;
 }

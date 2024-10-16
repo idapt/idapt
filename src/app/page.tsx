@@ -1,13 +1,10 @@
-// src/app/page.tsx
-
 import React from 'react';
-import FileUpload from './components/FileUpload';
+import FileManager from './components/FileManager';
 
 const HomePage: React.FC = () => {
     return (
         <div>
-            <h1>File Upload</h1>
-            <FileUpload />
+            <FileManager />
         </div>
     );
 };

@@ -3,24 +3,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // Changed from mongodb to postgresql
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model File {
-  id          Int      @id @default(autoincrement()) // Changed from String to Int for PostgreSQL
-  name        String
-  content     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  encrypted   Boolean  @default(false)
-  userId      Int      // Changed from String to Int for PostgreSQL
-  user        User?    @relation("UserFiles", fields: [userId], references: [id]) // Relation remains unchanged
-}
-
-model User {
-  id          Int      @id @default(autoincrement()) // Changed from String to Int for PostgreSQL
-  username    String   @unique
-  passwordHash String
-  files       File[]   @relation("UserFiles") // Relation field to File remains unchanged
+  id        Int      @id @default(autoincrement())
+  name      String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  encrypted Boolean  @default(false) // You can keep this if you still want to store encrypted files
 }

@@ -1,5 +1,3 @@
-'use client';
-
 import React, { useState } from 'react';
 
 const FileUpload: React.FC = () => {
@@ -28,8 +26,11 @@ const FileUpload: React.FC = () => {
                 console.log('File uploaded successfully');
             } else {
                 // Handle error
-                console.error('File upload failed');
+                const errorData = await response.json();
+                console.error('File upload failed:', errorData);
             }
+        } else {
+            console.error('File is missing');
         }
     };
 

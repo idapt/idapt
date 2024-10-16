@@ -2,29 +2,29 @@ import React from 'react';
 
 interface FileActionsProps {
     selectedFile: string; // Assuming selectedFile is a string representing the file name
-    onMove: (newPath: string) => void;
-    onRename: (newName: string) => void;
-    onDelete: () => void;
+    onMove: (fileId: number, newName: string) => void;
+    onRename: (fileId: number, newName: string) => void;
+    onDelete: (fileId: number) => void;
 }
 
 const FileActions: React.FC<FileActionsProps> = ({ selectedFile, onMove, onRename, onDelete }) => {
     const handleMove = () => {
         const newPath = prompt('Enter new path:');
         if (newPath) {
-            onMove(newPath);
+            onMove(selectedFile.id, newPath);
         }
     };
 
     const handleRename = () => {
         const newName = prompt('Enter new name:');
         if (newName) {
-            onRename(newName);
+            onRename(selectedFile.id, newName);
         }
     };
 
     const handleDelete = () => {
-        if (confirm(`Are you sure you want to delete ${selectedFile}?`)) {
-            onDelete();
+        if (confirm(`Are you sure you want to delete ${selectedFile.name}?`)) {
+            onDelete(selectedFile.id);
         }
     };
 
