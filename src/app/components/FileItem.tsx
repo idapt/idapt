@@ -7,37 +7,14 @@ interface FileItemProps {
         size: string;
         type: string;
     };
-    onMove: (fileId: number, newName: string) => void;
-    onRename: (fileId: number, newName: string) => void;
-    onDelete: (fileId: number) => void;
 }
 
-const FileItem: React.FC<FileItemProps> = ({ file, onMove, onRename, onDelete }) => {
-    const handleRename = () => {
-        const newName = prompt('Enter new file name:', file.name);
-        if (newName) {
-            onRename(file.id, newName);
-        }
-    };
-
+const FileItem: React.FC<FileItemProps> = ({ file }) => {
     return (
-        <div className="file-item flex justify-between items-center p-2 border-b">
-            <div className="file-info">
-                <span className="file-name">{file.name}</span>
-                <span className="file-size">{file.size}</span>
-                <span className="file-type">{file.type}</span>
-            </div>
-            <div className="file-actions flex space-x-2">
-                <button onClick={() => onMove(file.id)} className="bg-blue-500 text-white px-2 py-1 rounded">
-                    Move
-                </button>
-                <button onClick={handleRename} className="bg-yellow-500 text-white px-2 py-1 rounded">
-                    Rename
-                </button>
-                <button onClick={() => onDelete(file.id)} className="bg-red-500 text-white px-2 py-1 rounded">
-                    Delete
-                </button>
-            </div>
+        <div className="flex flex-col">
+            <span className="font-semibold">{file.name}</span>
+            <span className="text-gray-500">{file.size}</span>
+            <span className="text-gray-400">{file.type}</span>
         </div>
     );
 };

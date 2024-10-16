@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import FileItem from './FileItem';
-import FileActions from './FileActions';
 
 interface File {
     id: number;
@@ -9,82 +7,41 @@ interface File {
     type: string;
 }
 
-const FileList: React.FC<{ onRefresh: () => void }> = ({ onRefresh }) => {
-    const [files, setFiles] = useState<File[]>([]);
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+interface FileListProps {
+    viewMode: 'grid' | 'list';
+    onSelectFile: (file: File | null) => void;
+}
 
-    const fetchFiles = async () => {
-        try {
-            const response = await fetch('/api/files');
-            const data = await response.json();
-            if (Array.isArray(data)) {
-                setFiles(data);
-            } else {
-                console.error('Expected an array but got:', data);
-            }
-        } catch (error) {
-            console.error('Error fetching files:', error);
-        }
-    };
+const FileList: React.FC<FileListProps> = ({ viewMode, onSelectFile }) => {
+    const [files, setFiles] = useState<File[]>([]);
 
     useEffect(() => {
-        fetchFiles(); // Call fetchFiles when the component mounts
+        const fetchFiles = async () => {
+            const response = await fetch('/api/files');
+            const data = await response.json();
+            setFiles(data);
+        };
+
+        fetchFiles();
     }, []);
 
     const handleSelectFile = (file: File) => {
-        setSelectedFile(file);
-    };
-
-    const handleMove = async (fileId: number, newName: string) => {
-        await fetch(`/api/move`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id: fileId, newName }),
-        });
-        fetchFiles(); // Refresh the file list after moving the file
-    };
-
-    const handleRename = async (fileId: number, newName: string) => {
-        await fetch(`/api/rename`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id: fileId, newName }),
-        });
-        fetchFiles(); // Refresh the file list after renaming the file
-    };
-
-    const handleDelete = async (fileId: number) => {
-        await fetch(`/api/delete`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ id: fileId }),
-        });
-        fetchFiles(); // Refresh the file list after deleting the file
+        onSelectFile(file);
     };
 
     return (
-        <div>
-            <ul>
-                {files.map((file) => (
-                    <li key={file.id} onClick={() => handleSelectFile(file)}>
-                        <FileItem file={file} onMove={handleMove} onRename={handleRename} onDelete={handleDelete} />
-                    </li>
-                ))}
-            </ul>
-            {selectedFile && (
-                <FileActions
-                    selectedFile={selectedFile}
-                    onMove={handleMove}
-                    onRename={handleRename}
-                    onDelete={handleDelete}
-                />
-            )}
+        <div className={`p-4 ${viewMode === 'grid' ? 'grid grid-cols-3 gap-4' : 'grid grid-cols-1'}`}>
+            {files.map((file) => (
+                <div
+                    key={file.id}
+                    className="border p-4 rounded shadow hover:shadow-lg transition cursor-pointer"
+                    onClick={() => handleSelectFile(file)}
+                >
+                    <div className="font-semibold">{file.name}</div>
+                    <div className="text-gray-500">{file.size}</div>
+                    <div className="text-gray-400">{file.type}</div>
+                </div>
+            ))}
         </div>
     );
 };
