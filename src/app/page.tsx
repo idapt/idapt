@@ -1,10 +1,12 @@
+"use client";
+
 import React from 'react';
-import FileManager from './components/FileManager';
+import Chat from './components/Chat';
 
 const HomePage: React.FC = () => {
     return (
         <div>
-            {/* <FileManager /> */}
+            <Chat />
         </div>
     );
 };

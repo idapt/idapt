@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from 'react';
 import FileList from './FileList';
 import FileUpload from './FileUpload';
