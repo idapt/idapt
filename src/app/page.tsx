@@ -4,7 +4,7 @@ import FileManager from './components/FileManager';
 const HomePage: React.FC = () => {
     return (
         <div>
-            <FileManager />
+            {/* <FileManager /> */}
         </div>
     );
 };
