@@ -108,8 +108,8 @@ const Chat: React.FC = () => {
         <div className="flex flex-col h-screen bg-gray-100">
             <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4">
                 {messages.map((msg, index) => (
-                    <div key={index} className={`flex ${msg.user === 'You' ? 'justify-end' : 'justify-start'} mb-2`}>
-                        <div className={`max-w-full lg:max-w-2xl break-words ${msg.user === 'You' ? 'bg-gray-300 text-black rounded-lg p-3' : 'bg-transparent text-gray-800'}`}>
+                    <div key={index} className={`flex ${msg.user === 'You' ? 'justify-end' : 'justify-start'} mb-3`}>
+                        <div className={`max-w-full lg:max-w-2xl break-words ${msg.user === 'You' ? 'bg-gray-300 text-black rounded-full p-3 mr-0' : 'bg-transparent text-gray-800 rounded-full p-3'}`}>
                             {msg.text}
                         </div>
                     </div>
