@@ -1,12 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 const chatHandler = async (req: NextApiRequest, res: NextApiResponse) => {
-    const { message } = req.body;
+    const { messages } = req.body;
     const host = process.env.OLLAMA_API_HOST || 'localhost';
     const port = process.env.OLLAMA_API_PORT || '5000';
 
     try {
-        // Ensure the correct endpoint is used
         const response = await fetch(`http://${host}:${port}/api/chat`, {
             method: 'POST',
             headers: {
@@ -14,8 +13,8 @@ const chatHandler = async (req: NextApiRequest, res: NextApiResponse) => {
             },
             body: JSON.stringify({
                 model: 'llama3.1:8b', // Replace with your model name
-                messages: [{ role: 'user', content: message }],
-                stream: false // Set to true if you want streaming
+                messages: messages,
+                stream: false
             }),
         });
 

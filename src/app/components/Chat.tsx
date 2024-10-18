@@ -16,7 +16,13 @@ const Chat: React.FC = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ message: input }),
+                body: JSON.stringify({
+                    messages: messages.map(msg => ({
+                        role: msg.user === 'You' ? 'user' : 'assistant',
+                        content: msg.text
+                    })).concat({ role: 'user', content: input }),
+                    stream: false
+                }),
             });
 
             const data = await response.json();
