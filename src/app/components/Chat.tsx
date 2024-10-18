@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const Chat: React.FC = () => {
     const [messages, setMessages] = useState<{ user: string; text: string }[]>([]);
     const [input, setInput] = useState('');
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
     const handleSend = async () => {
         if (!input.trim()) return;
 
         const userMessage = { user: 'You', text: input };
-        setMessages([...messages, userMessage]);
+        setMessages((prevMessages) => [...prevMessages, userMessage]);
         setInput(''); // Clear the input immediately
 
         try {
@@ -69,16 +71,37 @@ const Chat: React.FC = () => {
         }
     };
 
+    const scrollToBottom = () => {
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    const isUserAtBottom = () => {
+        if (chatContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+            return scrollHeight - scrollTop <= clientHeight + 50; // Allow a small buffer
+        }
+        return false;
+    };
+
+    useEffect(() => {
+        if (isUserAtBottom()) {
+            scrollToBottom();
+        }
+    }, [messages]);
+
     return (
         <div className="flex flex-col h-screen bg-gray-100">
-            <div className="flex-1 overflow-y-auto p-4">
+            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4">
                 {messages.map((msg, index) => (
                     <div key={index} className={`flex ${msg.user === 'You' ? 'justify-end' : 'justify-start'} mb-2`}>
-                        <div className={`max-w-xs lg:max-w-md ${msg.user === 'You' ? 'bg-blue-500 text-white rounded-lg p-2' : 'bg-transparent text-gray-800'}`}>
+                        <div className={`max-w-full lg:max-w-2xl ${msg.user === 'You' ? 'bg-gray-300 text-black rounded-lg p-3' : 'bg-transparent text-gray-800'}`}>
                             {msg.text}
                         </div>
                     </div>
                 ))}
+                <div ref={messagesEndRef} />
             </div>
             <div className="p-4 bg-white border-t border-gray-300 flex items-center">
                 <input
