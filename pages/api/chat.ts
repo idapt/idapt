@@ -1,7 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 const chatHandler = async (req: NextApiRequest, res: NextApiResponse) => {
-    const { messages } = req.body;
+    const { messages, chatId } = req.body;
     const host = process.env.OLLAMA_API_HOST || 'localhost';
     const port = process.env.OLLAMA_API_PORT || '5000';
 
@@ -32,13 +35,13 @@ const chatHandler = async (req: NextApiRequest, res: NextApiResponse) => {
         });
 
         let buffer = '';
+        let completeMessage = '';
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             
             buffer += decoder.decode(value, { stream: true });
-
             let boundary = buffer.indexOf('\n');
             while (boundary !== -1) {
                 const line = buffer.slice(0, boundary).trim();
@@ -47,10 +50,15 @@ const chatHandler = async (req: NextApiRequest, res: NextApiResponse) => {
                 if (line) {
                     try {
                         const parsedLine = JSON.parse(line);
-                        res.write(`data: ${JSON.stringify(parsedLine)}\n\n`);
-                        // Flush the response to ensure immediate sending
-                        if (res.flush) {
-                            res.flush();
+                        completeMessage += parsedLine.message.content; // Accumulate the message content
+                        if (chatId) {
+                            // Send the data to the client
+                            res.write(`data: ${JSON.stringify(parsedLine)}\n\n`);
+                            
+                            // Flush the response to ensure immediate sending
+                            if (res.flush) {
+                                res.flush();
+                            }
                         }
                     } catch (e) {
                         console.error('Error parsing JSON:', e);
@@ -61,7 +69,7 @@ const chatHandler = async (req: NextApiRequest, res: NextApiResponse) => {
             }
         }
 
-        res.end();
+        res.end(); // Ensure the response is properly closed
     } catch (error) {
         console.error('Error in chat handler:', error);
         res.status(500).json({ error: 'An error occurred while processing the request.' });

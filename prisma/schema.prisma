@@ -27,3 +27,21 @@ model File {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model Chat {
+  id        Int      @id @default(autoincrement())
+  title     String
+  messages  Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id        Int     @id @default(autoincrement())
+  content   String
+  user      String
+  chatId    Int
+  chat      Chat    @relation(fields: [chatId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
