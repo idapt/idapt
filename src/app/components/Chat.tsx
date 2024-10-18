@@ -6,9 +6,12 @@ const Chat: React.FC = () => {
     const [chatHistory, setChatHistory] = useState<{ id: number; title: string; messages: { user: string; text: string }[] }[]>([]);
     const [currentChatId, setCurrentChatId] = useState<number | null>(null);
     const [isHistoryVisible, setIsHistoryVisible] = useState(true);
+    const [isSettingsVisible, setIsSettingsVisible] = useState(false); // State to control settings menu visibility
+    const [syncedFolderPath, setSyncedFolderPath] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const chatContainerRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLTextAreaElement | null>(null);
+    const settingsRef = useRef<HTMLDivElement | null>(null);
 
     const fetchChatHistory = async () => {
         try {
@@ -224,6 +227,28 @@ const Chat: React.FC = () => {
         setIsHistoryVisible(!isHistoryVisible);
     };
 
+    const toggleSettingsVisibility = () => {
+        setIsSettingsVisible(!isSettingsVisible);
+    };
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+                setIsSettingsVisible(false);
+            }
+        };
+
+        if (isSettingsVisible) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isSettingsVisible]);
+
     const selectChat = (chatId: number) => {
         const selectedChat = chatHistory.find(chat => chat.id === chatId);
         if (selectedChat) {
@@ -264,8 +289,70 @@ const Chat: React.FC = () => {
         setMessages([]);
     };
 
+    const handleFolderSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files.length > 0) {
+            const path = event.target.files[0].webkitRelativePath.split('/')[0];
+            setSyncedFolderPath(path);
+        }
+    };
+
     return (
-        <div className="flex h-screen">
+        <div className="flex h-screen relative">
+            <button
+                onClick={toggleSettingsVisibility}
+                className="absolute top-4 right-4 p-2 bg-gray-500 text-white rounded-full hover:bg-gray-600 focus:outline-none"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    className="w-6 h-6"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+            </button>
+            {isSettingsVisible && (
+                <div className="fixed inset-0 bg-gray-800 bg-opacity-50 flex justify-center items-center">
+                    <div ref={settingsRef} className="bg-white p-6 rounded shadow-lg relative w-1/2">
+                        <button
+                            onClick={toggleSettingsVisibility}
+                            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-6 w-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                        <h2 className="text-lg font-bold mb-2">Settings</h2>
+                        <div className="mb-4">
+                            <label className="block text-gray-700 mb-2">Synced Folder Path</label>
+                            <input
+                                type="file"
+                                webkitdirectory="true"
+                                directory="true"
+                                className="hidden"
+                                id="folderInput"
+                                onChange={handleFolderSelection}
+                            />
+                            <label
+                                htmlFor="folderInput"
+                                className="cursor-pointer bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                            >
+                                Browse
+                            </label>
+                            {syncedFolderPath && (
+                                <p className="mt-2 text-gray-600">Selected Folder: {syncedFolderPath}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
             <div
                 className={`history-menu ${isHistoryVisible ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out bg-white border-r border-gray-300 p-4 overflow-y-auto`}
             >
@@ -372,3 +459,5 @@ const Chat: React.FC = () => {
 };
 
 export default Chat;
+
+
