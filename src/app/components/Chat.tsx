@@ -5,6 +5,7 @@ const Chat: React.FC = () => {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const chatContainerRef = useRef<HTMLDivElement | null>(null);
+    const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
     const handleSend = async () => {
         if (!input.trim()) return;
@@ -91,12 +92,24 @@ const Chat: React.FC = () => {
         }
     }, [messages]);
 
+    const adjustTextareaHeight = () => {
+        if (inputRef.current) {
+            inputRef.current.style.height = 'auto'; // Reset height
+            const maxHeight = window.innerHeight / 3; // One third of the screen height
+            inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, maxHeight)}px`;
+        }
+    };
+
+    useEffect(() => {
+        adjustTextareaHeight();
+    }, [input]);
+
     return (
         <div className="flex flex-col h-screen bg-gray-100">
             <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4">
                 {messages.map((msg, index) => (
                     <div key={index} className={`flex ${msg.user === 'You' ? 'justify-end' : 'justify-start'} mb-2`}>
-                        <div className={`max-w-full lg:max-w-2xl ${msg.user === 'You' ? 'bg-gray-300 text-black rounded-lg p-3' : 'bg-transparent text-gray-800'}`}>
+                        <div className={`max-w-full lg:max-w-2xl break-words ${msg.user === 'You' ? 'bg-gray-300 text-black rounded-lg p-3' : 'bg-transparent text-gray-800'}`}>
                             {msg.text}
                         </div>
                     </div>
@@ -104,13 +117,20 @@ const Chat: React.FC = () => {
                 <div ref={messagesEndRef} />
             </div>
             <div className="p-4 bg-white border-t border-gray-300 flex items-center">
-                <input
-                    type="text"
-                    className="flex-grow p-2 border border-gray-300 rounded-lg mr-2"
+                <textarea
+                    ref={inputRef}
+                    className="flex-grow p-2 border border-gray-300 rounded-lg mr-2 resize-none overflow-y-auto"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSend();
+                        }
+                    }}
                     placeholder="Type your message..."
+                    rows={1}
+                    style={{ maxHeight: '33vh' }} // Limit to one third of the viewport height
                 />
                 <button
                     onClick={handleSend}
