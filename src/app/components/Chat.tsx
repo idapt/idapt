@@ -69,52 +69,38 @@ const Chat: React.FC = () => {
         }
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            handleSend();
-        }
-    };
-
     return (
         <div className="flex flex-col h-screen bg-gray-100">
             <div className="flex-1 overflow-y-auto p-4">
                 {messages.map((msg, index) => (
-                    <div
-                        key={index}
-                        className={`mb-2 p-3 rounded-lg ${
-                            msg.user === 'You' ? 'bg-gray-300 self-end' : 'bg-white'
-                        } shadow-sm`}
-                    >
-                        <strong>{msg.user}:</strong> {msg.text}
+                    <div key={index} className={`flex ${msg.user === 'You' ? 'justify-end' : 'justify-start'} mb-2`}>
+                        <div className={`max-w-xs lg:max-w-md ${msg.user === 'You' ? 'bg-blue-500 text-white rounded-lg p-2' : 'bg-transparent text-gray-800'}`}>
+                            {msg.text}
+                        </div>
                     </div>
                 ))}
             </div>
-            <div className="p-4 bg-white border-t border-gray-200 flex items-center">
+            <div className="p-4 bg-white border-t border-gray-300 flex items-center">
                 <input
                     type="text"
+                    className="flex-grow p-2 border border-gray-300 rounded-lg mr-2"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Type a message..."
-                    className="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
+                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                    placeholder="Type your message..."
                 />
                 <button
                     onClick={handleSend}
-                    className="ml-2 p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 focus:outline-none"
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
-                        className="w-5 h-5"
+                        className="w-6 h-6"
                     >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 12h14M12 5l7 7-7 7"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
                     </svg>
                 </button>
             </div>
