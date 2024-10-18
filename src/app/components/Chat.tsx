@@ -23,24 +23,23 @@ const Chat: React.FC = () => {
         }
     };
 
-    
     useEffect(() => {
         fetchChatHistory();
     }, []);
-    
+
     useEffect(() => {
         if (currentChatId !== null) {
             // Removed debug log
         }
     }, [currentChatId]);
-    
+
     const handleSend = async () => {
         if (!input.trim()) return;
-    
+
         const userMessage = { user: 'You', text: input };
         setMessages((prevMessages) => [...prevMessages, userMessage]);
         setInput(''); // Clear the input immediately
-    
+
         try {
             let chat;
             let tempChatId = currentChatId; // Temporary variable to hold chat ID if currentChatId is null as the update of it is async
@@ -54,11 +53,11 @@ const Chat: React.FC = () => {
                         initialMessage: { content: userMessage.text, user: userMessage.user },
                     }),
                 });
-    
+
                 if (!response.ok) {
                     throw new Error('Failed to create chat');
                 }
-    
+
                 chat = await response.json();
                 setCurrentChatId(chat.id); // Set the currentChatId to the new chat's ID
                 setChatHistory((prevHistory) => [...prevHistory, chat]);
@@ -75,7 +74,6 @@ const Chat: React.FC = () => {
                     }),
                 });
             }
-            
             // Fetch response from LLM API
             const llmResponse = await fetch('/api/chat', {
                 method: 'POST',
@@ -90,13 +88,13 @@ const Chat: React.FC = () => {
                     chatId: tempChatId, // Use tempChatId for the chat ID
                 }),
             });
-    
+
             if (!llmResponse.body) throw new Error('ReadableStream not supported in this browser.');
-    
+
             const reader = llmResponse.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let botMessage = { user: 'Bot', text: '' };
-    
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) {
@@ -133,7 +131,6 @@ const Chat: React.FC = () => {
                     }
                 }
             }
-
             // Save the complete bot message to the database after generation
             if (tempChatId !== null) {
                 await fetch(`/api/chatHistory/${tempChatId}`, {
@@ -146,7 +143,7 @@ const Chat: React.FC = () => {
                     }),
                 });
             }
-    
+
             // Check if the chat title is still the default "new chat" name
             const currentChat = chatHistory.find((c) => c.id === tempChatId);
             if (currentChat && currentChat.title === 'New Chat') {
@@ -162,7 +159,6 @@ const Chat: React.FC = () => {
                         botMessage: botMessage.text,
                     }),
                 });
-
                 if (!titleResponse.ok) {
                     throw new Error('Failed to generate chat title');
                 }
@@ -185,7 +181,7 @@ const Chat: React.FC = () => {
                     }),
                 });
             }
-    
+
         } catch (error) {
             console.error('Error in handleSend:', error);
             // Handle error (e.g., show an error message to the user)
@@ -270,48 +266,56 @@ const Chat: React.FC = () => {
 
     return (
         <div className="flex h-screen">
-            {isHistoryVisible && (
-                <div className="w-1/4 bg-white border-r border-gray-300 p-4 overflow-y-auto">
-                    <button onClick={createNewChat} className="mb-4 p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 flex items-center justify-center">
+            <div
+                className={`history-menu ${isHistoryVisible ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out bg-white border-r border-gray-300 p-4 overflow-y-auto`}
+            >
+                <div className="flex justify-between items-center mb-4">
+                    <button onClick={toggleHistoryVisibility} className="p-2 text-blue-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" strokeWidth="2" stroke="currentColor" fill="none" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 8h8M8 12h8m-8 4h8" />
+                        </svg>
+                    </button>
+                    <button onClick={createNewChat} className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 flex items-center justify-center">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
                     </button>
-                    <ul className="space-y-2">
-                        {chatHistory.map((chat) => (
-                            <li
-                                key={chat.id}
-                                className="cursor-pointer hover:bg-gray-200 p-2 rounded flex justify-between items-center"
-                                onClick={() => selectChat(chat.id)}
-                            >
-                                <span>{chat.title}</span>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation(); // Prevent triggering the selectChat function
-                                        deleteChat(chat.id);
-                                    }}
-                                    className="opacity-0 hover:opacity-100 transition-opacity duration-200"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-5 w-5 text-gray-500 hover:text-gray-700"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
                 </div>
-            )}
+                <ul className="space-y-2">
+                    {chatHistory.map((chat) => (
+                        <li
+                            key={chat.id}
+                            className="cursor-pointer hover:bg-gray-200 p-2 rounded flex justify-between items-center"
+                            onClick={() => selectChat(chat.id)}
+                        >
+                            <span>{chat.title}</span>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Prevent triggering the selectChat function
+                                    deleteChat(chat.id);
+                                }}
+                                className="opacity-0 hover:opacity-100 transition-opacity duration-200"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5 text-gray-500 hover:text-gray-700"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </div>
             {!isHistoryVisible && (
                 <button onClick={toggleHistoryVisibility} className="absolute top-4 left-4 p-2 text-blue-500">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
