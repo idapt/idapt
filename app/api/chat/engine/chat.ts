@@ -31,7 +31,7 @@ export async function createChatEngine(documentIds?: string[], params?: any) {
     );
   }
 
-  const configFile = path.join("config", "tools.json");
+  /*const configFile = path.join("config", "tools.json");
   let toolConfig: any;
   try {
     // add tools from config file if it exists
@@ -41,7 +41,7 @@ export async function createChatEngine(documentIds?: string[], params?: any) {
   }
   if (toolConfig) {
     tools.push(...(await createTools(toolConfig)));
-  }
+  }*/
 
   const agent = new ReActAgent({
     tools,
