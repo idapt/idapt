@@ -23,8 +23,8 @@ export async function createChatEngine(documentIds?: string[], params?: any) {
           preFilters: generateFilters(documentIds || []),
         }),
         metadata: {
-          name: "data_query_engine",
-          description: `A query engine for documents from your data source.`,
+          name: "personal_notes_query_engine",
+          description: `A query engine for the user's personal notes.`,
         },
       }),
     );
