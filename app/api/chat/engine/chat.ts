@@ -21,6 +21,7 @@ export async function createChatEngine(documentIds?: string[], params?: any) {
       new QueryEngineTool({
         queryEngine: index.asQueryEngine({
           preFilters: generateFilters(documentIds || []),
+          similarityTopK: process.env.TOP_K ? parseInt(process.env.TOP_K) : 6,
         }),
         metadata: {
           name: "personal_notes_query_engine",
