@@ -19,15 +19,11 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-      args:
-        DATABASE_URL: ${DATABASE_URL}
     container_name: idapt-server
     ports:
       - "3000:3000"
     env_file:
       - .env
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,14 +35,14 @@ services:
       resources:
         reservations:
           devices:
-          - driver: nvidia
-            capabilities: ["gpu"]
-            count: all
+            - driver: nvidia
+              capabilities: ["gpu"]
+              count: all
     volumes:
-      - ollama:/root/.ollama
+      - /usr/share/ollama/.ollama:/root/.ollama  # Mount the host directory so that we use existing models and dont download them again at each rebuild
     restart: always
     runtime: nvidia
 
 volumes:
   postgres_data:
-  ollama:
+  #ollama:
