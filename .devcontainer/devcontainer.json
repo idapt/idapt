@@ -1,5 +1,7 @@
 {
-  "image": "mcr.microsoft.com/vscode/devcontainers/typescript-node:dev-20-bullseye",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "idapt-server",
+  "workspaceFolder": "/app",
   "features": {
     "ghcr.io/devcontainers-contrib/features/turborepo-npm:1": {},
     "ghcr.io/devcontainers-contrib/features/typescript:2": {},

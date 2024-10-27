@@ -37,3 +37,4 @@ next-env.d.ts
 output/
 git_ignored_folder/
 cache/
+.github/
