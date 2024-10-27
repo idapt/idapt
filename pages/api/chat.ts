@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const chatHandler = async (req: NextApiRequest, res: NextApiResponse) => {
     const { messages, chatId } = req.body;
     const host = process.env.OLLAMA_API_HOST || 'localhost';
-    const port = process.env.OLLAMA_API_PORT || '5000';
+    const port = process.env.OLLAMA_API_PORT || '11434';
 
     try {
         const response = await fetch(`http://${host}:${port}/api/chat`, {

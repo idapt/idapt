@@ -1,26 +1,52 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:latest
     container_name: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      #- ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     environment:
       POSTGRES_USER: ${DATABASE_USERNAME}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  idaptServer:
-    build: .
-    container_name: idaptServer
+  idapt-server:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+    container_name: idapt-server
     ports:
-      - "4231:4231" # TODO make this use app port ?
+      - "3000:3000"
     env_file:
-      - .env  # This will load the environment variables from your .env file
+      - .env
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      #TODO add other variables ?
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            capabilities: ["gpu"]
+            count: all
+    volumes:
+      - ollama:/root/.ollama
+    restart: always
+    runtime: nvidia
 
 volumes:
   postgres_data:
+  ollama:
