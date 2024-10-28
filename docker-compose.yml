@@ -2,9 +2,10 @@ services:
   postgres:
     image: postgres:latest
     container_name: postgres
+    ports:
+      - "5432:5432" # to remove for production as this is only for dev access to the database
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      #- ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     environment:
       POSTGRES_USER: ${DATABASE_USERNAME}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
@@ -16,9 +17,7 @@ services:
       retries: 5
 
   idapt-server:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: node:20
     container_name: idapt-server
     ports:
       - "3000:3000"
@@ -27,6 +26,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - .:/app
 
   ollama:
     container_name: ollama
@@ -45,4 +46,3 @@ services:
 
 volumes:
   postgres_data:
-  #ollama:
