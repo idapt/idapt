@@ -4,44 +4,25 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("PGURL")
 }
 
-model Folder {
-  id        Int      @id @default(autoincrement())
-  name      String
-  parentId  Int?
-  parent    Folder?  @relation("FolderToFolder", fields: [parentId], references: [id])
-  children  Folder[] @relation("FolderToFolder")
-  files     File[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model idapt_docs {
+  id      Int     @id @default(autoincrement())
+  uid     String  @unique
+  collection String
+  key     String
+  value   Json
+
+  @@map("llamaindx_doc")
 }
 
-model File {
-  id        Int     @id @default(autoincrement())
-  name      String
-  content   String
-  folderId  Int?
-  folder    Folder? @relation(fields: [folderId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+model idapt_indexes {
+  id      Int     @id @default(autoincrement())
+  uid     String  @unique
+  collection String
+  key     String
+  value   Json
 
-model Chat {
-  id        Int      @id @default(autoincrement())
-  title     String
-  messages  Message[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Message {
-  id        Int     @id @default(autoincrement())
-  content   String
-  user      String
-  chatId    Int
-  chat      Chat    @relation(fields: [chatId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@map("llamaindx_index")
 }
