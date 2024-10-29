@@ -16,8 +16,21 @@ services:
       timeout: 5s
       retries: 5
 
+  idapt-frontend:
+    image: node:20-alpine
+    container_name: idapt-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/frontend
+
   idapt-server:
-    image: node:20
+    image: python:3.11-slim
     container_name: idapt-server
     ports:
       - "3000:3000"
@@ -27,7 +40,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - .:/app
+      - ./backend:/backend
 
   ollama:
     container_name: ollama

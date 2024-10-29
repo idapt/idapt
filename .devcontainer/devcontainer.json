@@ -1,15 +1,50 @@
+// Not used for now, need configuration
 {
-  "dockerComposeFile": "../docker-compose.yml",
-  "service": "idapt-server",
-  "workspaceFolder": "/app",
+  "image": "mcr.microsoft.com/vscode/devcontainers/typescript-node:dev-20-bullseye",
   "features": {
     "ghcr.io/devcontainers-contrib/features/turborepo-npm:1": {},
-    "ghcr.io/devcontainers-contrib/features/typescript:2": {}
+    "ghcr.io/devcontainers-contrib/features/typescript:2": {},
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "toolsToInstall": [
+        "flake8",
+        "black",
+        "mypy",
+        "poetry"
+      ]
+    }
+  },
+  "customizations": {
+    "codespaces": {
+      "openFiles": [
+        "README.md"
+      ]
+    },
+    "vscode": {
+      "extensions": [
+        "ms-vscode.typescript-language-features",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "ms-python.black-formatter",
+        "ms-python.vscode-flake8",
+        "ms-python.vscode-pylance"
+      ],
+      "settings": {
+        "python.formatting.provider": "black",
+        "python.languageServer": "Pylance",
+        "python.analysis.typeCheckingMode": "basic"
+      }
+    }
+  },
+  "containerEnv": {
+    "POETRY_VIRTUALENVS_CREATE": "false",
+    "PYTHONPATH": "${PYTHONPATH}:${workspaceFolder}/backend"
   },
   "forwardPorts": [
-    3000, // Open the React app port
-    5432 // Open Postgres port for access with pgAdmin
+    3000,
+    8000
   ],
+  "postCreateCommand": "cd backend && poetry install && cd ../frontend && npm install",
   "overrideCommand": true,
   "command": "tail -f /dev/null" // Keep the container running so that we can run commands in it manually
 }
