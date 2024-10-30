@@ -22,7 +22,7 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - ./frontend/.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,7 +35,8 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env
+      - master.env
+      - ./backend/.env
     depends_on:
       postgres:
         condition: service_healthy
