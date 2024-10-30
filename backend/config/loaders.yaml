@@ -1,5 +1,5 @@
 file: {}
 db:
-  - uri: postgresql+psycopg://postgres:pass@postgres:5432/idapt-server-db
-    queries:
-      - SELECT * FROM documents
+  - uri: ${PG_CONNECTION_STRING}
+#    queries:
+#      - SELECT * FROM documents
