@@ -3,7 +3,7 @@ services:
     image: postgres:latest
     container_name: postgres
     ports:
-      - "5432:5432" # to remove for production as this is only for dev access to the database
+      - "5432:5432" # TODO remove for production as this is only for dev access to the database
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -16,24 +16,11 @@ services:
       timeout: 5s
       retries: 5
 
-  idapt-frontend:
-    image: node:20-alpine
-    container_name: idapt-frontend
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./frontend/.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./frontend:/frontend
-
-  idapt-server:
+  idapt-backend:
     image: python:3.11-slim
-    container_name: idapt-server
+    container_name: idapt-backend
     ports:
-      - "3000:3000"
+      - "8000:8000"
     env_file:
       - master.env
       - ./backend/.env
@@ -42,10 +29,29 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  idapt-frontend:
+    image: node:20-alpine
+    container_name: idapt-frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      idapt-backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/frontend
 
   ollama:
     container_name: ollama
     image: ollama/ollama:latest
+      - "5432:5432" # Allow access to ollama from outside if the user wants to. # TODO remove for production ?
     deploy:
       resources:
         reservations:
@@ -54,7 +60,7 @@ services:
               capabilities: ["gpu"]
               count: all
     volumes:
-      - /usr/share/ollama/.ollama:/root/.ollama  # Mount the host directory so that we use existing models and dont download them again at each rebuild
+      - /usr/share/ollama/.ollama:/root/.ollama  # Mount the host directory so that we use existing models and dont download them again at each rebuild # TODO adjust for windows and macos.
     restart: always
     runtime: nvidia
 
