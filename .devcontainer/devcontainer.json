@@ -1,6 +1,8 @@
 // Not used for now, need configuration
 {
-  "image": "mcr.microsoft.com/vscode/devcontainers/typescript-node:dev-20-bullseye",
+  "name": "idapt-stack",
+  "dockerComposeFile": "../docker-compose.yml",
+  /*"image": "mcr.microsoft.com/vscode/devcontainers/typescript-node:dev-20-bullseye",
   "features": {
     "ghcr.io/devcontainers-contrib/features/turborepo-npm:1": {},
     "ghcr.io/devcontainers-contrib/features/typescript:2": {},
@@ -39,12 +41,14 @@
   "containerEnv": {
     "POETRY_VIRTUALENVS_CREATE": "false",
     "PYTHONPATH": "${PYTHONPATH}:${workspaceFolder}/backend"
-  },
+  },*/
   "forwardPorts": [
     3000,
-    8000
+    8000,
+    5432,
+    11434
   ],
-  "postCreateCommand": "cd backend && poetry install && cd ../frontend && npm install",
+  //"postCreateCommand": "cd backend && poetry install && cd ../frontend && npm install",
   "overrideCommand": true,
   "command": "tail -f /dev/null" // Keep the container running so that we can run commands in it manually
 }

@@ -24,6 +24,22 @@ init_observability()
 environment = os.getenv("ENVIRONMENT", "dev")  # Default to 'development' if not set
 logger = logging.getLogger("uvicorn")
 
+# Define the origins that should be allowed to make requests to your API
+origins = [
+    "http://localhost:3000",  # Allow requests from your frontend running on localhost:3000
+    "http://idapt-backend:8000",  # Allow requests from container frontend url within the docker network
+    "https://idapt-frontend:3000",  # Allow requests from container frontend url within the docker network
+]
+
+# Add CORS middleware to the FastAPI app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Allow requests from these origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
 if environment == "dev":
     logger.warning("Running in development mode - allowing CORS for all origins")
     app.add_middleware(

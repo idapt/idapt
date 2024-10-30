@@ -8,9 +8,9 @@ RUN npm install
 
 # Build the application
 COPY . .
-RUN npm run build
+#RUN npm run build
 
 # ====================================
-FROM build as release
+#FROM build as release
 
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "dev"]
