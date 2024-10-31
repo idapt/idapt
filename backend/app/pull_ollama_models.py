@@ -32,10 +32,11 @@ def pull_models():
                 for line in response.iter_lines():
                     if line:
                         try:
-                            json_line = json.loads(line)
-                            print(json_line)
+                            json.loads(line)  # Just parse the line without printing
                         except json.JSONDecodeError as e:
                             print(f"Failed to parse JSON line: {e}")
+
+                print(f"Finished pulling model: {model}")  # Print when done
 
             except requests.exceptions.RequestException as e:
                 print(f"Failed to pull model {model}: {e}")
