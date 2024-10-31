@@ -1,9 +1,11 @@
-name: idapt
+name: idapt_dev
 services:
   # Ollama is used as the LLM model provider for the backend.
   ollama:
     container_name: ollama
     image: ollama/ollama:latest
+    ports:
+      - "11434:11434" # Allow access to ollama from outside for dev.
     networks:
       - idapt-backend-network
     deploy:
@@ -25,6 +27,8 @@ services:
     build:
       context: ./postgres
       dockerfile: ./Dockerfile
+    ports:
+      - "5432:5432" # Allow access to the database from outside for dev.
     networks:
       - idapt-backend-network
     volumes:
@@ -39,48 +43,40 @@ services:
 
   # The backend is the main service of the application.
   idapt-backend:
-    image: python:3.11-slim
-    container_name: idapt-backend
     build:
       context: ./backend
-      dockerfile: ./Dockerfile
+      dockerfile: dev.Dockerfile 
+    container_name: idapt-backend
+    ports:
+      - "8000:8000" # Allow access to the backend from outside for dev.
     networks:
       - idapt-backend-network
       - idapt-frontend-network
-    env_file:
-      - ./postgres/.env # Used to get the default superuser password and other variables.
-      - ./backend/.env
-      - ./.env # To pass the prod variable.
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - ./postgres/.env # Used to get the default superuser password and other variables.
+      - ./backend/.env
+      - ./dev.env # To pass the dev variable.
     volumes:
-      - ./backend:/backend
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health"]
-      interval: 2s
-      timeout: 5s
-      retries: 20
+      - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
 
   # The frontend is the main service of the application.
   idapt-frontend:
-    image: node:20-alpine
-    container_name: idapt-frontend
     build:
       context: ./frontend
-      dockerfile: ./Dockerfile
+      dockerfile: dev.Dockerfile
+    container_name: idapt-frontend
     ports:
       - "3000:3000"
     networks:
       - idapt-frontend-network
     env_file:
       - ./frontend/.env
-      - ./.env # To pass the prod variable.
-    depends_on:
-      idapt-backend:
-        condition: service_healthy
+      - ./dev.env # To pass the dev variable.
     volumes:
-      - ./frontend:/frontend
+      - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
 
 volumes:
   postgres_data:
