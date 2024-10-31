@@ -1,64 +1,13 @@
+name: idapt
 services:
-  postgres:
-    image: postgres:latest
-    container_name: postgres
-    ports:
-      - "5432:5432" # TODO remove for production as this is only for dev access to the database
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: ${PGUSER:-user}
-      POSTGRES_PASSWORD: ${PGPASSWORD:-password}
-      POSTGRES_DB: ${PGDATABASE:-db}
-    healthcheck:
-      test: ["CMD-SHELL", "echo 'SELECT 1' | psql -U ${PGUSER} > /dev/null 2>&1 || exit 1"]
-      interval: 2s
-      timeout: 5s
-      #retries: 20
-
-  idapt-backend:
-    image: python:3.11-slim
-    container_name: idapt-backend
-    build:
-      context: ./backend
-      dockerfile: ./Dockerfile
-    ports:
-      - "8000:8000"
-    env_file:
-      - ./.env
-      - ./backend/.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./backend:/backend
-    #healthcheck:
-    #  test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health"]
-    #  interval: 2s
-    #  timeout: 5s
-    #  #retries: 
-
-  idapt-frontend:
-    image: node:20-alpine
-    container_name: idapt-frontend
-    build:
-      context: ./frontend
-      dockerfile: ./Dockerfile
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./frontend/.env
-    #depends_on:
-    #  idapt-backend:
-    #    condition: service_healthy
-    volumes:
-      - ./frontend:/frontend
-
+  # Ollama is used as the LLM model provider for the backend.
   ollama:
     container_name: ollama
     image: ollama/ollama:latest
     ports:
       - "11434:11434" # Allow access to ollama from outside if the user wants to. # TODO remove for production ?
+    networks:
+      - idapt-backend-network
     deploy:
       resources:
         reservations:
@@ -67,9 +16,87 @@ services:
               capabilities: ["gpu"]
               count: all
     volumes:
-      - /usr/share/ollama/.ollama:/root/.ollama  # Mount the host directory so that we use existing models and dont download them again at each rebuild # TODO adjust for windows and macos.
+      - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
     restart: always
     runtime: nvidia
 
+  # Postgres is used as the database for the backend.
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    build:
+      context: ./postgres
+      dockerfile: ./Dockerfile
+    ports:
+      - "5432:5432" # TODO remove for production as this is only for dev access to the database
+    networks:
+      - idapt-backend-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Store the database data in a volume so that we don't lose it at each rebuild
+    env_file:
+      - ./postgres/.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  # The backend is the main service of the application.
+  idapt-backend:
+    image: python:3.11-slim
+    container_name: idapt-backend
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
+    ports:
+      - "8000:8000"
+    networks:
+      - idapt-backend-network
+      - idapt-frontend-network
+    env_file:
+      - ./postgres/.env # Used to get the default superuser password and other variables.
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  # The frontend is the main service of the application.
+  idapt-frontend:
+    image: node:20-alpine
+    container_name: idapt-frontend
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile
+    ports:
+      - "3000:3000"
+    networks:
+      - idapt-frontend-network
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      idapt-backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/frontend
+
 volumes:
   postgres_data:
+  ollama_data:
+  backend_data:
+
+networks:
+  idapt-backend-network:
+    attachable: false
+    name: idapt-backend-network
+    driver: bridge # Change to not allow external access later ?
+  idapt-frontend-network:
+    attachable: true
+    name: idapt-frontend-network
+    driver: bridge

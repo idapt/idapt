@@ -1,5 +1,4 @@
 file: {}
 db:
-  - uri: ${PG_CONNECTION_STRING}
-#    queries:
-#      - SELECT * FROM documents
+  queries:
+    - SELECT * FROM files 

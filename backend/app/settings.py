@@ -41,7 +41,7 @@ def init_ollama():
             "Ollama support is not installed. Please install it with `poetry add llama-index-llms-ollama` and `poetry add llama-index-embeddings-ollama`"
         )
 
-    base_url = os.getenv("OLLAMA_BASE_URL") or "http://127.0.0.1:11434"
+    base_url = "http://" + os.getenv("OLLAMA_HOST", "ollama") + ":" + os.getenv("OLLAMA_PORT", "11434")
     request_timeout = float(
         os.getenv("OLLAMA_REQUEST_TIMEOUT", DEFAULT_REQUEST_TIMEOUT)
     )

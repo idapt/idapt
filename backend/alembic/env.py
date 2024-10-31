@@ -15,17 +15,21 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the SQLAlchemy URL from the environment variable from the .env file and not from the alembic.ini file
-# Load environment variables from .env file
-from dotenv import load_dotenv
-import os
-load_dotenv()
-config.set_main_option('sqlalchemy.url', os.getenv('PG_CONNECTION_STRING'))
+# Build the SQLAlchemy URL from the environment variables.
+pg_user = os.getenv("POSTGRES_USER", "postgres")
+# Retrieve the password from the file.
+with open("/backend/config/superuser_password.txt", "r") as f:
+    pg_password = f.read()
+pg_host = os.getenv("POSTGRES_HOST", "postgres")
+pg_port = os.getenv("POSTGRES_PORT", "5432")
+pg_database = os.getenv("POSTGRES_DB", "idapt-db")
+config.set_main_option('sqlalchemy.url', f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}")
 
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from app.engine.models import Base  # Import your models
+from app.database.models import Base  # Import your models
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

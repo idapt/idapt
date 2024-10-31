@@ -6,6 +6,7 @@ load_dotenv()
 
 import logging
 import os
+import subprocess
 
 import uvicorn
 from app.api.routers import api_router
@@ -15,11 +16,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from app.database.init_db import change_superuser_password
+from app.pull_ollama_models import pull_models
+import threading
 
 app = FastAPI()
 
 init_settings()
 init_observability()
+
+# Change the superuser password if it's not already set
+change_superuser_password()
+
+# Pull Ollama models if not already present, in another thread so it doesn't block the startup
+threading.Thread(target=pull_models, daemon=True).start()
 
 environment = os.getenv("ENVIRONMENT", "dev")  # Default to 'development' if not set
 logger = logging.getLogger("uvicorn")

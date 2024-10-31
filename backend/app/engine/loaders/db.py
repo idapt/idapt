@@ -3,7 +3,7 @@ import os
 import yaml
 from typing import List
 from pydantic import BaseModel
-
+from app.database.connection import get_connection_string
 logger = logging.getLogger(__name__)
 
 
@@ -19,7 +19,7 @@ def get_db_documents(configs: List[DBLoaderConfig] = None):
             config = yaml.safe_load(file)
 
         # Substitute the environment variable for the DB URI
-        db_uri = os.getenv('DB_URI', 'default_db_uri_if_not_set')
+        db_uri = get_connection_string()
         configs = [
             DBLoaderConfig(uri=db_uri, queries=db_config.get('queries', []))
             for db_config in config.get('db', [])
@@ -42,8 +42,3 @@ def get_db_documents(configs: List[DBLoaderConfig] = None):
             docs.extend(documents)
 
     return docs
-
-# Example usage
-if __name__ == "__main__":
-    documents = get_db_documents()
-    print(documents)
