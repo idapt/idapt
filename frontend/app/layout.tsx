@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { SettingsProvider } from "./components/ui/settings";
 import "./globals.css";
 import "./markdown.css";
 
@@ -16,7 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <SettingsProvider>{children}</SettingsProvider>
+      </body>
     </html>
   );
 }
