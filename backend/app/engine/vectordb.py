@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from app.database.connection import get_connection_string
 
 PGVECTOR_SCHEMA = "public"
-PGVECTOR_TABLE = "llamaindex_embedding"
+PGVECTOR_TABLE = "embeddings"
 
 vector_store: PGVectorStore = None
 
