@@ -25,9 +25,15 @@ export default function ChatSection() {
       "Content-Type": "application/json", // using JSON because of vercel/ai 2.2.26
     },
     onError: (error: unknown) => {
-      if (!(error instanceof Error)) throw error;
-      const message = JSON.parse(error.message);
-      alert(message.detail);
+      console.error("Chat error:", error);
+      if (error instanceof Error) {
+        try {
+          const message = JSON.parse(error.message);
+          alert(message.detail || "Failed to connect to chat service");
+        } catch {
+          alert("Failed to connect to chat service. Please try again.");
+        }
+      }
     },
     sendExtraMessageFields: true,
   });

@@ -62,14 +62,14 @@ services:
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
 
-  # The frontend is the main service of the application.
+  # Use a node container to develop the frontend application.
   idapt-frontend:
     build:
       context: ./frontend
       dockerfile: dev.Dockerfile
     container_name: idapt-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     networks:
       - idapt-frontend-network
     env_file:
@@ -77,6 +77,21 @@ services:
       - ./dev.env # To pass the dev variable.
     volumes:
       - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
+
+  # Use a separate container to use nginx to do like in the production environment.
+  # ? Dont use nginx in dev ? Just expose every container on host ports ?
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "3030:3030"
+    volumes:
+      - ./frontend/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - idapt-frontend-network
+    depends_on:
+      - idapt-frontend
+      - idapt-backend
 
 volumes:
   postgres_data:

@@ -39,11 +39,10 @@ services:
 
   # The backend is the main service of the application.
   idapt-backend:
-    image: python:3.11-slim
-    container_name: idapt-backend
     build:
       context: ./backend
       dockerfile: ./Dockerfile
+    container_name: idapt-backend
     networks:
       - idapt-backend-network
       - idapt-frontend-network
@@ -62,13 +61,12 @@ services:
 
   # The frontend is the main service of the application.
   idapt-frontend:
-    image: node:20-alpine
-    container_name: idapt-frontend
     build:
       context: ./frontend
       dockerfile: ./Dockerfile
+    container_name: idapt-frontend
     ports:
-      - "3000:3000"
+      - "3030:3030" # Port that the nginx proxy listens to.
     networks:
       - idapt-frontend-network
     env_file:

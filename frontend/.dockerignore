@@ -4,3 +4,5 @@ npm-debug.log
 .dockerignore
 .gitignore
 README.md
+!nginx.conf
+!nginx.dev.conf

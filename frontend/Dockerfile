@@ -1,3 +1,4 @@
+# Use the node image only to build the application.
 FROM node:20-alpine AS build
 
 WORKDIR /frontend
@@ -11,7 +12,12 @@ COPY . .
 RUN npm run build
 
 # ====================================
-FROM build AS release
-RUN npm install -g serve
+# Use the nginx image to serve the built application.
+FROM nginx:alpine
 
-CMD ["serve", "-s", "out"]
+# Copy the built app
+COPY --from=build /frontend/out /usr/share/nginx/html
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+CMD ["nginx", "-g", "daemon off;"]
