@@ -6,6 +6,7 @@ from app.engine.loaders.db import DBLoaderConfig, get_db_documents
 from app.engine.loaders.file import FileLoaderConfig, get_file_documents
 from app.engine.loaders.web import WebLoaderConfig, get_web_documents
 from llama_index.core import Document
+from app.database.connection import get_connection_string
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +30,12 @@ def get_documents() -> List[Document]:
             case "web":
                 document = get_web_documents(WebLoaderConfig(**loader_config))
             case "db":
-                document = get_db_documents(
-                    configs=[DBLoaderConfig(**cfg) for cfg in loader_config]
-                )
+                db_uri = get_connection_string()
+                configs = [
+                    DBLoaderConfig(uri=db_uri, queries=db_config.get('queries', []))
+                    for db_config in loader_config
+                ]
+                document = get_db_documents(configs)
             case _:
                 raise ValueError(f"Invalid loader type: {loader_type}")
         documents.extend(document)

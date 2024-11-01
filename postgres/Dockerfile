@@ -1,20 +1,22 @@
-# This is installing the pgvector extension for postgres not present in the postgres image.
+# Use the official Postgres image as a base image
 FROM postgres:latest
 
+# Install the build dependencies
+USER root
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
     postgresql-server-dev-all \
-    postgresql-client \ 
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
-# Need the postgresql-client for the pg_isready command
+
+# Clone, build, and install the pgvector extension
 WORKDIR /tmp
+RUN rm -rf pgvector && \
+    git clone --branch v0.5.0 https://github.com/pgvector/pgvector.git && \
+    cd pgvector && \
+    make && \
+    make install
 
-# Check if the pgvector directory exists before cloning
-RUN if [ ! -d "pgvector" ]; then \
-        git clone https://github.com/pgvector/pgvector.git; \
-    fi
-
-WORKDIR /tmp/pgvector
-RUN make
-RUN make install
+# Create initialization script to enable the extension
+RUN echo 'CREATE EXTENSION IF NOT EXISTS vector;' > /docker-entrypoint-initdb.d/init-vector.sql

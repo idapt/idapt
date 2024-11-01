@@ -1,4 +1,6 @@
 file: {}
 db:
-  queries:
-    - SELECT * FROM files 
+  - uri: ""  # This will be replaced with the actual connection string
+    queries:
+      - SELECT * FROM files 
+      #- SELECT * FROM files_metadata

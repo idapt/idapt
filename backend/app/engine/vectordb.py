@@ -15,7 +15,6 @@ def get_vector_store():
     if vector_store is None:
 
         original_conn_string = get_connection_string()
-        print(original_conn_string)
 
         original_scheme = urlparse(original_conn_string).scheme + "://"
         conn_string = original_conn_string.replace(

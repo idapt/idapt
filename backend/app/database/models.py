@@ -1,5 +1,6 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, func
+from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, func, JSON
 from sqlalchemy.orm import relationship, declarative_base
+from pgvector.sqlalchemy import Vector
 
 Base = declarative_base()
 
@@ -35,3 +36,21 @@ class FileMetadata(Base):
     value = Column(String, nullable=False)
     
     file = relationship("File", back_populates="file_metadata")
+
+class DataDocstore(Base):
+    __tablename__ = 'data_docstore'
+    
+    id = Column(Integer, primary_key=True)
+    key = Column(String, nullable=False)
+    namespace = Column(String, nullable=False)
+    value = Column(JSON, nullable=False)
+
+class DataEmbeddings(Base):
+    __tablename__ = 'data_embeddings'
+    
+    id = Column(Integer, primary_key=True)
+    text = Column(String, nullable=False)
+    metadata_ = Column(JSON)
+    node_id = Column(String)
+    file_id = Column(Integer, ForeignKey('files.id'))
+    embedding = Column(Vector(1024))

@@ -12,7 +12,7 @@ from llama_index.core.tools.query_engine import QueryEngineTool
 
 def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
     system_prompt = os.getenv("SYSTEM_PROMPT")
-    top_k = int(os.getenv("TOP_K", 0))
+    top_k = int(os.getenv("TOP_K", 6))
     tools: List[BaseTool] = []
     callback_manager = CallbackManager(handlers=event_handlers or [])
 
@@ -27,8 +27,8 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         tools.append(query_engine_tool)
 
     # Add additional tools
-    configured_tools: List[BaseTool] = ToolFactory.from_env()
-    tools.extend(configured_tools)
+    #configured_tools: List[BaseTool] = ToolFactory.from_env()
+    #tools.extend(configured_tools)
 
     return AgentRunner.from_llm(
         llm=Settings.llm,
