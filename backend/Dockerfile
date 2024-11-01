@@ -1,8 +1,8 @@
-FROM python:3.11 as build
+FROM python:3.11 AS build
 
-WORKDIR /app
+WORKDIR /backend
 
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/backend
 
 # Install Poetry
 RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python && \
@@ -16,11 +16,11 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python
 # RUN apt update && apt install -y chromium chromium-driver 
 
 # Install dependencies
-COPY ./pyproject.toml ./poetry.lock* /app/
+COPY ./pyproject.toml ./poetry.lock* /backend/
 RUN poetry install --no-root --no-cache --only main
 
 # ====================================
-FROM build as release
+FROM build AS release
 
 COPY . .
 

@@ -1,6 +1,6 @@
-FROM node:20-alpine as build
+FROM node:20-alpine AS build
 
-WORKDIR /app
+WORKDIR /frontend
 
 # Install dependencies
 COPY package.json package-lock.* ./
@@ -11,7 +11,7 @@ COPY . .
 RUN npm run build
 
 # ====================================
-FROM build as release
+FROM build AS release
 RUN npm install -g serve
 
 CMD ["serve", "-s", "out"]
