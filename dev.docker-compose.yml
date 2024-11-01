@@ -81,7 +81,6 @@ services:
 volumes:
   postgres_data:
   ollama_data:
-  backend_data:
 
 networks:
   idapt-backend-network:

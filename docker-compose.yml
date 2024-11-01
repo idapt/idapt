@@ -54,8 +54,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./backend:/backend
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health"]
       interval: 2s
@@ -79,13 +77,10 @@ services:
     depends_on:
       idapt-backend:
         condition: service_healthy
-    volumes:
-      - ./frontend:/frontend
 
 volumes:
   postgres_data:
   ollama_data:
-  backend_data:
 
 networks:
   idapt-backend-network:
