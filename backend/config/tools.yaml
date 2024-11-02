@@ -1,5 +1,5 @@
 local:
-  duckduckgo: {}
-  document_generator: {}
+  #duckduckgo: {}
+  #document_generator: {}
 llamahub:
-  wikipedia.WikipediaToolSpec: {}
+  #wikipedia.WikipediaToolSpec: {}

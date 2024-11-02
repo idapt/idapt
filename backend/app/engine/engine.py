@@ -26,6 +26,7 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         query_engine_tool = QueryEngineTool.from_defaults(query_engine=query_engine)
         tools.append(query_engine_tool)
 
+    # Not used for now
     # Add additional tools
     #configured_tools: List[BaseTool] = ToolFactory.from_env()
     #tools.extend(configured_tools)
