@@ -27,9 +27,6 @@ else:
         format='%(levelname)s: %(message)s'
     )
     logger.setLevel(logging.INFO)
-    # Disable most logging in production
-    #logging.basicConfig(level=logging.WARNING)
-    #logger.setLevel(logging.WARNING)
 
 import uvicorn
 from app.api.routers import api_router
@@ -55,13 +52,16 @@ def create_app() -> FastAPI:
     # Configure CORS
     configure_cors(app)
     
-    # Mount routers and static files
-    app.include_router(api_router)
+    # Mount static files
+    mount_static_files(app)
+    
+    # Include API router
+    app.include_router(api_router, prefix="/api")
     
     return app
 
 def configure_cors(app: FastAPI):
-    if os.getenv("ENVIRONMENT") == "dev":
+    if environment == "dev":
         app.add_middleware(
             CORSMiddleware,
             allow_origins=["*"],
@@ -69,11 +69,16 @@ def configure_cors(app: FastAPI):
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        
+        @app.get("/")
+        async def redirect_to_docs():
+            return RedirectResponse(url="/docs")
     else:
-        # Production CORS settings
         default_origins = ["http://idapt-backend:8000"]
         trusted_origins = os.getenv("TRUSTED_ORIGINS", "").split(",")
         all_origins = default_origins + [o.strip() for o in trusted_origins if o.strip()]
+        
+        logger.info(f"Allowed origins: {all_origins}")
         
         app.add_middleware(
             CORSMiddleware,
@@ -82,6 +87,21 @@ def configure_cors(app: FastAPI):
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+def mount_static_files(app: FastAPI):
+    def mount_directory(directory: str, path: str):
+        if os.path.exists(directory):
+            logger.info(f"Mounting static files '{directory}' at '{path}'")
+            app.mount(
+                path,
+                StaticFiles(directory=directory, check_dir=False),
+                name=f"{directory}-static",
+            )
+    
+    # Mount the data files to serve the file viewer
+    mount_directory(DATA_DIR, "/api/files/data")
+    # Mount the output files from tools
+    mount_directory("output", "/api/files/output")
 
 # Create the app instance
 app = create_app()
@@ -92,4 +112,8 @@ if __name__ == "__main__":
     if os.getenv("MODEL_PROVIDER") == "ollama":
         threading.Thread(target=pull_models, daemon=True).start()
         
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    app_host = os.getenv("APP_HOST", "0.0.0.0")
+    app_port = int(os.getenv("APP_PORT", "8000"))
+    reload = environment == "dev"
+    
+    uvicorn.run(app="main:app", host=app_host, port=app_port, reload=reload)
