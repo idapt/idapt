@@ -5,6 +5,7 @@ from .chat import chat_router  # noqa: F401
 from .chat_config import config_router  # noqa: F401
 from .upload import file_upload_router  # noqa: F401
 from .generate import generate_router  # noqa: F401
+from .vault import vault_router  # noqa: F401
 
 api_router = APIRouter()
 api_router.include_router(health_router, prefix="/health", tags=["health"])
