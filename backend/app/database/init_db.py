@@ -1,3 +1,6 @@
-from .initialization.database_initializer import initialize_database
+from .initialization.database_initializer import get_database_initializer
 
-__all__ = ['initialize_database']
+def initialize_database():
+    """Initialize the database using the singleton initializer"""
+    initializer = get_database_initializer()
+    initializer.initialize()
