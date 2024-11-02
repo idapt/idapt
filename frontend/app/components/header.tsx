@@ -2,11 +2,11 @@ import Image from "next/image";
 
 export default function Header() {
   return (
-    <div className="z-10 w-full flex items-center justify-center">
+    <div className="z-10 w-full flex items-center justify-left">
       <div className="flex items-center justify-center py-2">
         <a
           href="https://www.idapt.ai/"
-          className="flex items-center justify-center font-nunito text-lg font-bold gap-2"
+          className="flex items-center justify-center font-nunito text-lg font-bold gap-2 ml-4"
         >
           <Image
             className="rounded-xl"
