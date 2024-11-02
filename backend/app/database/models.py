@@ -26,6 +26,7 @@ class File(Base):
     
     folder = relationship("Folder", back_populates="files")
     file_metadata = relationship("FileMetadata", back_populates="file", uselist=False)
+    embeddings = relationship("DataEmbeddings", back_populates="file")
 
 class FileMetadata(Base):
     __tablename__ = 'file_metadata'
@@ -37,25 +38,15 @@ class FileMetadata(Base):
     
     file = relationship("File", back_populates="file_metadata")
 
-class DataDocstore(Base):
-    __tablename__ = 'data_docstore'
-    
-    id = Column(Integer, primary_key=True)
-    key = Column(String, nullable=False)
-    namespace = Column(String, nullable=False)
-    value = Column(JSON, nullable=False)
-    
-    __table_args__ = (
-        # Add unique constraint on key and namespace columns
-        UniqueConstraint('key', 'namespace', name='uq_data_docstore_key_namespace'),
-    )
-
 class DataEmbeddings(Base):
     __tablename__ = 'data_embeddings'
     
     id = Column(Integer, primary_key=True)
     text = Column(String, nullable=False)
     metadata_ = Column(JSON)
-    node_id = Column(String)
+    node_id = Column(String, unique=True)
+    doc_id = Column(String, unique=True)
     file_id = Column(Integer, ForeignKey('files.id'))
     embedding = Column(Vector(1024))
+    
+    file = relationship("File", back_populates="embeddings")
