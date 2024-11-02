@@ -12,6 +12,7 @@ api_router.include_router(chat_router, prefix="/chat", tags=["chat"])
 api_router.include_router(config_router, prefix="/chat/config", tags=["chat-config"])
 api_router.include_router(file_upload_router, prefix="/chat/upload", tags=["chat-upload"])
 api_router.include_router(generate_router, prefix="/generate", tags=["generate"])
+api_router.include_router(vault_router, prefix="/vault", tags=["vault"])
 
 # Dynamically adding additional routers if they exist
 try:
