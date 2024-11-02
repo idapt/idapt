@@ -79,23 +79,23 @@ class FileService:
         )
 
         tools = _get_available_tools()
-        code_executor_tools = ["interpreter", "artifact"]
+        #code_executor_tools = ["interpreter", "artifact"]
         # If the file is CSV and there is a code executor tool, we don't need to index.
-        if extension == "csv" and any(tool in tools for tool in code_executor_tools):
-            return document_file
+        #if extension == "csv" and any(tool in tools for tool in code_executor_tools):
+        #    return document_file
+        #else:
+        # Insert the file into the index and update document ids to the file metadata
+        if isinstance(index, LlamaCloudIndex):
+            doc_id = cls._add_file_to_llama_cloud_index(
+                index, document_file.name, file_data
+            )
+            # Add document ids to the file metadata
+            document_file.refs = [doc_id]
         else:
-            # Insert the file into the index and update document ids to the file metadata
-            if isinstance(index, LlamaCloudIndex):
-                doc_id = cls._add_file_to_llama_cloud_index(
-                    index, document_file.name, file_data
-                )
-                # Add document ids to the file metadata
-                document_file.refs = [doc_id]
-            else:
-                documents = cls._load_file_to_documents(document_file)
-                cls._add_documents_to_vector_store_index(documents, index)
-                # Add document ids to the file metadata
-                document_file.refs = [doc.doc_id for doc in documents]
+            documents = cls._load_file_to_documents(document_file)
+            cls._add_documents_to_vector_store_index(documents, index)
+            # Add document ids to the file metadata
+            document_file.refs = [doc.doc_id for doc in documents]
 
         # Return the file metadata
         return document_file
@@ -292,9 +292,9 @@ def _get_available_tools() -> Dict[str, List[FunctionTool]]:
         logger.warning("ToolFactory not found, no tools will be available")
         return {}
 
-    try:
-        tools = ToolFactory.from_env(map_result=True)
-        return tools  # type: ignore
-    except Exception as e:
-        logger.error(f"Error loading tools from environment: {str(e)}")
-        raise ValueError(f"Failed to get available tools: {str(e)}") from e
+    #try:
+    #    tools = ToolFactory.from_env(map_result=True)
+    #    return tools  # type: ignore
+    #except Exception as e:
+    #    logger.error(f"Error loading tools from environment: {str(e)}")
+    #    raise ValueError(f"Failed to get available tools: {str(e)}") from e
