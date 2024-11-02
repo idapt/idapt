@@ -1,10 +1,12 @@
 import Header from "@/app/components/header";
 import { Settings } from "./components/ui/settings";
+import { ResetButton } from "./components/ui/chat/reset-button";
 import ChatSection from "./components/chat-section";
 
 export default function Home() {
   return (
     <main className="h-screen w-screen flex justify-center items-center background-gradient">
+      <ResetButton />
       <Settings />
       <div className="space-y-0 w-[90%] h-full">
         <Header />

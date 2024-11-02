@@ -1,3 +1,5 @@
+"use client";
+
 import { X } from "lucide-react";
 import { Button } from "../button";
 import { useGenerate } from "./hooks/use-generate";
@@ -18,6 +20,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       const result = await generate();
       if (result.status === 'success') {
         alert('Data generated successfully!');
+        onClose();
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to generate data');
