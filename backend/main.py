@@ -39,84 +39,57 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from app.database.init_db import change_superuser_password
+from app.database.init_db import initialize_database
 from app.pull_ollama_models import pull_models
 
 logger.info("Starting application initialization")
 
-app = FastAPI()
-
-logger.info("Initializing settings")
-init_settings()
-init_observability()
-
-logger.info("Initializing database")
-# Change the superuser password if it's not already set
-change_superuser_password()
-
-# Pull Ollama models if not already present
-if os.getenv("MODEL_PROVIDER") == "ollama":
-    logger.info("Starting Ollama model pull process")
-    threading.Thread(target=pull_models, daemon=True).start()
-
-if environment == "dev":
-    logger.warning("Running in development mode - allowing CORS for all origins")
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # Redirect to documentation page when accessing base URL
-    @app.get("/")
-    async def redirect_to_docs():
-        return RedirectResponse(url="/docs")
-
-else:
-    # Default origins
-    default_origins = [
-        "http://idapt-backend:8000", # Allow requests from other containers on the same docker network, typically the frontend container routed through the nginx proxy.
-    ]
-
-    # Get trusted origins from environment variable
-    trusted_origins_str = os.getenv("TRUSTED_ORIGINS", "")
-    trusted_origins = trusted_origins_str.split(",") if trusted_origins_str else []
-
-    # Combine default and trusted origins
-    all_origins = default_origins + [origin.strip() for origin in trusted_origins if origin.strip()]
+def create_app() -> FastAPI:
+    app = FastAPI()
     
-    logger.info(f"Allowed origins: {all_origins}")
+    # Initialize core components
+    init_settings()
+    init_observability()
+    initialize_database()
     
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=all_origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # Configure CORS
+    configure_cors(app)
+    
+    # Mount routers and static files
+    app.include_router(api_router)
+    
+    return app
 
-def mount_static_files(directory, path):
-    if os.path.exists(directory):
-        logger.info(f"Mounting static files '{directory}' at '{path}'")
-        app.mount(
-            path,
-            StaticFiles(directory=directory, check_dir=False),
-            name=f"{directory}-static",
+def configure_cors(app: FastAPI):
+    if os.getenv("ENVIRONMENT") == "dev":
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    else:
+        # Production CORS settings
+        default_origins = ["http://idapt-backend:8000"]
+        trusted_origins = os.getenv("TRUSTED_ORIGINS", "").split(",")
+        all_origins = default_origins + [o.strip() for o in trusted_origins if o.strip()]
+        
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=all_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
 
+# Create the app instance
+app = create_app()
 
-# Mount the data files to serve the file viewer
-mount_static_files(DATA_DIR, "/api/files/data")
-# Mount the output files from tools
-mount_static_files("output", "/api/files/output")
-
-app.include_router(api_router, prefix="/api")
-
+# Only run these in the main process, not in reloaded processes
 if __name__ == "__main__":
-    app_host = os.getenv("APP_HOST", "0.0.0.0")
-    app_port = int(os.getenv("APP_PORT", "8000"))
-    reload = True if environment == "dev" else False
-
-    uvicorn.run(app="main:app", host=app_host, port=app_port, reload=reload)
+    # Pull Ollama models if needed
+    if os.getenv("MODEL_PROVIDER") == "ollama":
+        threading.Thread(target=pull_models, daemon=True).start()
+        
+    uvicorn.run(app, host="0.0.0.0", port=8000)
