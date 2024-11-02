@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, func, JSON
+from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, func, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship, declarative_base
 from pgvector.sqlalchemy import Vector
 
@@ -44,6 +44,11 @@ class DataDocstore(Base):
     key = Column(String, nullable=False)
     namespace = Column(String, nullable=False)
     value = Column(JSON, nullable=False)
+    
+    __table_args__ = (
+        # Add unique constraint on key and namespace columns
+        UniqueConstraint('key', 'namespace', name='uq_data_docstore_key_namespace'),
+    )
 
 class DataEmbeddings(Base):
     __tablename__ = 'data_embeddings'
