@@ -20,6 +20,7 @@ from app.settings import init_settings
 from app.database.models import Base, File, Folder, DataEmbeddings
 from app.database.connection import get_connection_string
 from app.config import DATA_DIR
+from app.engine.node_processor import process_document_to_nodes, delete_nodes_for_file
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -161,20 +162,40 @@ def generate_datasource():
                             folder_id=folder_id
                         )
                         session.merge(db_file)
+                        session.flush()  # Get the file ID
+                        
                         doc = Document(text=content, metadata={
                             "file_name": file,
                             "private": "false",
                             "folder_id": str(folder_id) if folder_id else None,
                             "file_id": str(db_file.id)
                         })
-                        new_or_modified_docs.append(doc)
+                        
+                        # Process document into nodes
+                        nodes = process_document_to_nodes(session, doc, db_file.id)
+                        session.flush()  # Get node IDs
+
+                        # Create embeddings for nodes
+                        for node in nodes:
+                            embedding_doc = Document(
+                                text=node.text,
+                                metadata={
+                                    "file_id": str(db_file.id),
+                                    "node_id": node.node_id,  # Use the string UUID
+                                    "file_name": file,
+                                    "private": "false",
+                                    "folder_id": str(folder_id) if folder_id else None
+                                }
+                            )
+                            new_or_modified_docs.append(embedding_doc)
 
         # Handle deleted files
         deleted_files = set(existing_files.keys()) - set(current_files.keys())
         if deleted_files:
             for file_name, folder_id in deleted_files:
                 file_id = existing_files[(file_name, folder_id)][1]
-                # Delete embeddings for this file
+                # Delete nodes and embeddings for this file
+                delete_nodes_for_file(session, file_id)
                 session.query(DataEmbeddings).filter_by(file_id=file_id).delete()
                 # Delete the file
                 session.query(File).filter_by(id=file_id).delete()
@@ -184,6 +205,12 @@ def generate_datasource():
 
         # Process new or modified documents
         if new_or_modified_docs:
+            # Create a mapping of node text to node_id for lookup
+            node_text_map = {}
+            for doc in new_or_modified_docs:
+                node_text_map[doc.text] = doc.metadata["node_id"]
+            
+            # Run the pipeline to get embeddings
             pipeline = IngestionPipeline(
                 transformations=[
                     SentenceSplitter(
@@ -194,7 +221,20 @@ def generate_datasource():
                 ],
                 vector_store=vector_store,
             )
-            pipeline.run(show_progress=True, documents=new_or_modified_docs)
+            
+            # Get nodes with embeddings
+            nodes_with_embeddings = pipeline.run(
+                show_progress=True, 
+                documents=new_or_modified_docs,
+                return_nodes=True  # This ensures we get the nodes back
+            )
+            
+            # Update the node_ids to match our database nodes
+            for node in nodes_with_embeddings:
+                node.node_id = node_text_map[node.text]
+            
+            # Add to vector store
+            vector_store.add(nodes_with_embeddings)
 
         logger.info("Finished generating the index")
     except Exception as e:

@@ -27,6 +27,7 @@ class File(Base):
     folder = relationship("Folder", back_populates="files")
     file_metadata = relationship("FileMetadata", back_populates="file", uselist=False)
     embeddings = relationship("DataEmbeddings", back_populates="file")
+    nodes = relationship("Node", back_populates="file")
 
 class FileMetadata(Base):
     __tablename__ = 'file_metadata'
@@ -44,9 +45,23 @@ class DataEmbeddings(Base):
     id = Column(Integer, primary_key=True)
     text = Column(String, nullable=False)
     metadata_ = Column(JSON)
-    node_id = Column(String, unique=True)
+    node_id = Column(String, ForeignKey('nodes.node_id'))
     doc_id = Column(String, unique=True)
     file_id = Column(Integer, ForeignKey('files.id'))
     embedding = Column(Vector(1024))
     
     file = relationship("File", back_populates="embeddings")
+    node = relationship("Node", back_populates="embeddings", primaryjoin="DataEmbeddings.node_id==Node.node_id")
+
+class Node(Base):
+    __tablename__ = 'nodes'
+    
+    id = Column(Integer, primary_key=True)
+    node_id = Column(String, unique=True, nullable=False)
+    text = Column(Text, nullable=False)
+    metadata_ = Column(JSON)
+    file_id = Column(Integer, ForeignKey('files.id'))
+    created_at = Column(DateTime, server_default=func.now())
+    
+    file = relationship("File", back_populates="nodes")
+    embeddings = relationship("DataEmbeddings", back_populates="node", primaryjoin="Node.node_id==DataEmbeddings.node_id")
