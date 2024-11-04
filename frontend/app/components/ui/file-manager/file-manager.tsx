@@ -1,7 +1,7 @@
 "use client";
 
 import { Grid2X2, List, Upload, FolderUp, Loader2 } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { Button } from "../button";
 import { FileList } from "./file-list";
 import { FileGrid } from "./file-grid";
@@ -30,11 +30,12 @@ export function FileManager() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      await uploadFile(file, "", {
+      const folderPath = path.map(p => p.name).join('/');
+      await uploadFile(file, folderPath, {
         onError: (error) => alert(error),
         onComplete: () => {
           if (fileInputRef.current) fileInputRef.current.value = '';
-          refreshContents(); // Refresh contents after upload
+          refreshContents();
         }
       });
     }
@@ -42,11 +43,12 @@ export function FileManager() {
 
   const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      await uploadFolder(e.target, "", {
+      const folderPath = path.map(p => p.name).join('/');
+      await uploadFolder(e.target, folderPath, {
         onError: (error) => alert(error),
         onComplete: () => {
           if (folderInputRef.current) folderInputRef.current.value = '';
-          refreshContents(); // Refresh contents after upload
+          refreshContents();
         }
       });
     }

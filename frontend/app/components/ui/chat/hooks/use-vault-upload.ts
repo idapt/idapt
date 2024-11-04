@@ -23,16 +23,18 @@ export function useVaultUpload() {
   const [currentConflict, setCurrentConflict] = useState<FileConflict | null>(null);
   const [conflictResolution, setConflictResolution] = useState<ConflictResolution | null>(null);
 
-  const uploadToVault = async (items: VaultUploadItem[]) => {
+  const uploadToVault = async (items: VaultUploadItem[], skipConflictCheck: boolean = false) => {
     try {
-      // First check for conflicts
-      const conflictsResponse = await fetch(`${backend}/api/vault/check-conflicts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
-      });
-      
-      const conflicts = await conflictsResponse.json();
+      if (!skipConflictCheck) {
+        // First check for conflicts
+        const conflictsResponse = await fetch(`${backend}/api/vault/check-conflicts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items }),
+        });
+        
+        const conflicts = await conflictsResponse.json();
+      }
       
       // Start upload with conflict resolution
       const response = await fetch(`${backend}/api/vault/upload${conflictResolution ? `?conflict_resolution=${conflictResolution}` : ''}`, {

@@ -74,7 +74,8 @@ async def upload_to_vault(
                             f.write(file_data)
                         
                         # Create folder structure and file in database with cleaned path
-                        folder = DBFileService.create_folder_path(session, str(Path(db_path).parent))
+                        parent_path = str(Path(db_path).parent)
+                        folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
                         DBFileService.create_file(
                             session,
                             name=item.name,

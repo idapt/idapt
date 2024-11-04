@@ -19,7 +19,7 @@ export function useFolderUpload() {
       // Get the relative path of the file within the selected folder
       const relativePath = file.webkitRelativePath;
       const fullPath = targetPath ? `${targetPath}/${relativePath}` : relativePath;
-
+      
       // For files, we need to read their content
       if (file.size > 0) {
         const content = await new Promise<string>((resolve) => {
@@ -46,7 +46,7 @@ export function useFolderUpload() {
     }
 
     try {
-      await uploadToVault(uploadItems);
+      await uploadToVault(uploadItems, true);
       options?.onComplete?.();
     } catch (error) {
       options?.onError?.(error instanceof Error ? error.message : 'Upload failed');

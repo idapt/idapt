@@ -9,22 +9,20 @@ interface FileUploadOptions {
 export function useFileUpload() {
   const { uploadToVault, progress, currentConflict, resolveConflict } = useVaultUpload();
 
-  const uploadFile = async (file: File, targetPath: string = "", options?: FileUploadOptions) => {
+  const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
     const content = await new Promise<string>((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
       reader.readAsDataURL(file);
     });
 
-    const fullPath = targetPath ? `${targetPath}/${file.name}` : file.name;
-
     try {
       await uploadToVault([{
-        path: fullPath,
+        path: folderId ? `${folderId}/${file.name}` : file.name,
         content,
         is_folder: false,
         name: file.name
-      }]);
+      }], true);
       options?.onComplete?.();
     } catch (error) {
       options?.onError?.(error instanceof Error ? error.message : 'Upload failed');
