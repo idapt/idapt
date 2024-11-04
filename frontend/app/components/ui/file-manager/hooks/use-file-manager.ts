@@ -4,7 +4,6 @@ import { FileNode } from '../types';
 
 export function useFileManager() {
   const { backend } = useClientConfig();
-  const [tree, setTree] = useState<FileNode[]>([]);
   const [currentFolder, setCurrentFolder] = useState<FileNode | null>(null);
   const [path, setPath] = useState<FileNode[]>([]);
   const [contents, setContents] = useState<FileNode[]>([]);
@@ -20,7 +19,7 @@ export function useFileManager() {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch folder contents');
       const data = await response.json();
-      setContents(data);
+      setContents(data.filter(item => item.name !== '.'));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch folder contents');
     } finally {
@@ -49,7 +48,6 @@ export function useFileManager() {
   }, [fetchFolderContents]);
 
   return {
-    tree,
     contents,
     currentFolder,
     path,

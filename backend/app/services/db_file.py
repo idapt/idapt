@@ -97,28 +97,22 @@ class DBFileService:
         return build_tree()
 
     @staticmethod
-    def get_folder_contents(session: Session, folder_id: int | None = None) -> List[dict]:
-        """Get contents of a specific folder or root folder if folder_id is None"""
-        if folder_id is None:
-            # If folder_id is None, return the contents of the root folder
-            folders = session.query(Folder).filter(Folder.parent_id == None).all()
-        else:
-            # Get subfolders
-            folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
-
+    def get_folder_contents(db: Session, folder_id: int | None) -> List[dict]:
+        # Get folders
+        folders = db.query(Folder).filter(Folder.parent_id == folder_id).all()
         folder_nodes = [{
             "id": folder.id,
             "name": folder.name,
             "type": "folder"
         } for folder in folders]
-        
-        # Get files
-        files = session.query(File).filter(File.folder_id == folder_id).all() if folder_id else session.query(File).filter(File.folder_id == None).all()
+
+        # Get files - for root folder (folder_id is None) or specific folder
+        files = db.query(File).filter(File.folder_id == folder_id).all()
         file_nodes = [{
             "id": file.id,
             "name": file.name,
             "type": "file",
             "mime_type": file.mime_type
         } for file in files]
-        
+
         return folder_nodes + file_nodes

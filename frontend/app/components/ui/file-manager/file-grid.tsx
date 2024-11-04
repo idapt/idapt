@@ -11,9 +11,11 @@ interface FileGridProps {
 }
 
 export function FileGrid({ items, viewMode, onFolderClick }: FileGridProps) {
+  const filteredItems = items.filter(item => item.name !== '.');
+  
   return (
     <div className={viewMode === 'grid' ? "grid grid-cols-4 gap-4 p-4" : "space-y-1 p-4"}>
-      {items.map((item) => (
+      {filteredItems.map((item) => (
         <FileItem
           key={item.id}
           name={item.name}

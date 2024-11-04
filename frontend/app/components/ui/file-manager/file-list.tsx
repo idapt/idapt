@@ -2,23 +2,23 @@
 
 import { FileItem } from "./file-item";
 
-export function FileList() {
-  // Placeholder data - will be replaced with real data later
-  const files = [
-    { name: "Document.pdf", type: "file", size: "2.4 MB", modified: "2024-03-31" },
-    { name: "Images", type: "folder", modified: "2024-03-30" },
-    { name: "Report.docx", type: "file", size: "1.2 MB", modified: "2024-03-29" },
-  ];
+interface FileListProps {
+  items: FileNode[];
+  onFolderClick: (folder: FileNode) => void;
+  onUploadComplete: () => void;
+}
 
+export function FileList({ items, onFolderClick }: FileListProps) {
+  const filteredItems = items.filter(item => item.name !== '.');
+  
   return (
-    <div className="space-y-1">
-      {files.map((file) => (
+    <div className="space-y-1 p-4">
+      {filteredItems.map((item) => (
         <FileItem
-          key={file.name}
-          name={file.name}
-          type={file.type as "file" | "folder"}
-          size={file.size}
-          modified={file.modified}
+          key={item.id}
+          name={item.name}
+          type={item.type as "file" | "folder"}
+          onClick={() => item.type === 'folder' && onFolderClick(item)}
         />
       ))}
     </div>
