@@ -61,7 +61,8 @@ services:
       - ./dev.env # To pass the dev variable.
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
-
+      - idapt_data:/idapt_data # The volume where the data is stored.
+      
   # Use a node container to develop the frontend application.
   idapt-frontend:
     build:
@@ -96,6 +97,7 @@ services:
 volumes:
   postgres_data:
   ollama_data:
+  idapt_data:
 
 networks:
   idapt-backend-network:

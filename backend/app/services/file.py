@@ -197,9 +197,9 @@ class FileService:
             index = VectorStoreIndex(nodes=nodes)
         else:
             index.insert_nodes(nodes=nodes)
-        index.storage_context.persist(
-            persist_dir=os.environ.get("STORAGE_DIR", "storage")
-        )
+        #index.storage_context.persist(
+        #    persist_dir=os.environ.get("STORAGE_DIR", "storage")
+        #)
     @staticmethod
     def _add_file_to_llama_cloud_index(
         index: LlamaCloudIndex,
