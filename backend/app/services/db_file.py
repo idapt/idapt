@@ -5,6 +5,7 @@ from app.database.connection import get_connection_string
 from datetime import datetime
 import mimetypes
 import os
+from typing import List
 
 def get_db_session():
     engine = create_engine(get_connection_string())
@@ -64,3 +65,60 @@ class DBFileService:
         session.add(file)
         session.commit()
         return file 
+
+    @staticmethod
+    def get_file_tree(session: Session) -> List[dict]:
+        """Get complete file/folder hierarchy"""
+        def build_tree(folder=None):
+            query = session.query(Folder).filter(Folder.parent_id == (folder.id if folder else None))
+            tree = []
+            
+            for folder in query.all():
+                node = {
+                    "id": folder.id,
+                    "name": folder.name,
+                    "type": "folder",
+                    "children": build_tree(folder)
+                }
+                
+                # Add files in this folder
+                files = session.query(File).filter(File.folder_id == folder.id).all()
+                node["children"].extend([{
+                    "id": file.id,
+                    "name": file.name,
+                    "type": "file",
+                    "mime_type": file.mime_type
+                } for file in files])
+                
+                tree.append(node)
+            
+            return tree
+        
+        return build_tree()
+
+    @staticmethod
+    def get_folder_contents(session: Session, folder_id: int | None = None) -> List[dict]:
+        """Get contents of a specific folder or root folder if folder_id is None"""
+        if folder_id is None:
+            # If folder_id is None, return the contents of the root folder
+            folders = session.query(Folder).filter(Folder.parent_id == None).all()
+        else:
+            # Get subfolders
+            folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
+
+        folder_nodes = [{
+            "id": folder.id,
+            "name": folder.name,
+            "type": "folder"
+        } for folder in folders]
+        
+        # Get files
+        files = session.query(File).filter(File.folder_id == folder_id).all() if folder_id else session.query(File).filter(File.folder_id == None).all()
+        file_nodes = [{
+            "id": file.id,
+            "name": file.name,
+            "type": "file",
+            "mime_type": file.mime_type
+        } for file in files]
+        
+        return folder_nodes + file_nodes

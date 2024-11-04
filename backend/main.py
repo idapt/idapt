@@ -38,6 +38,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from app.database.init_db import initialize_database
 from app.pull_ollama_models import pull_models
+from app.api.routers.file_manager import file_manager_router
 
 logger.info("Starting application initialization")
 
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     
     # Include API router
     app.include_router(api_router, prefix="/api")
+    app.include_router(file_manager_router, prefix="/api/file-manager", tags=["File Manager"])
     
     return app
 
