@@ -7,7 +7,6 @@ import uuid
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-
 from llama_index.core import VectorStoreIndex
 from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.readers.file.base import (
@@ -18,14 +17,10 @@ from llama_index.core.tools.function_tool import FunctionTool
 from llama_index.indices.managed.llama_cloud.base import LlamaCloudIndex
 from llama_index.readers.file import FlatReader
 from pydantic import BaseModel, Field
-
 logger = logging.getLogger(__name__)
-
 PRIVATE_STORE_PATH = str(Path("output", "uploaded"))
 TOOL_STORE_PATH = str(Path("output", "tools"))
 LLAMA_CLOUD_STORE_PATH = str(Path("output", "llamacloud"))
-
-
 class DocumentFile(BaseModel):
     id: str
     name: str  # Stored file name
@@ -40,13 +35,10 @@ class DocumentFile(BaseModel):
     refs: Optional[List[str]] = Field(
         None, description="The document ids in the index."
     )
-
-
 class FileService:
     """
     To store the files uploaded by the user and add them to the index.
     """
-
     @classmethod
     def process_private_file(
         cls,
@@ -61,45 +53,38 @@ class FileService:
             from app.engine.index import IndexConfig, get_index
         except ImportError as e:
             raise ValueError("IndexConfig or get_index is not found") from e
-
         if params is None:
             params = {}
-
         # Add the nodes to the index and persist it
         index_config = IndexConfig(**params)
         index = get_index(index_config)
-
         # Preprocess and store the file
         file_data, extension = cls._preprocess_base64_file(base64_content)
-
         document_file = cls.save_file(
             file_data,
             file_name=file_name,
             save_dir=PRIVATE_STORE_PATH,
         )
-
         tools = _get_available_tools()
-        #code_executor_tools = ["interpreter", "artifact"]
+        code_executor_tools = ["interpreter", "artifact"]
         # If the file is CSV and there is a code executor tool, we don't need to index.
-        #if extension == "csv" and any(tool in tools for tool in code_executor_tools):
-        #    return document_file
-        #else:
-        # Insert the file into the index and update document ids to the file metadata
-        if isinstance(index, LlamaCloudIndex):
-            doc_id = cls._add_file_to_llama_cloud_index(
-                index, document_file.name, file_data
-            )
-            # Add document ids to the file metadata
-            document_file.refs = [doc_id]
+        if extension == "csv" and any(tool in tools for tool in code_executor_tools):
+            return document_file
         else:
-            documents = cls._load_file_to_documents(document_file)
-            cls._add_documents_to_vector_store_index(documents, index)
-            # Add document ids to the file metadata
-            document_file.refs = [doc.doc_id for doc in documents]
-
+            # Insert the file into the index and update document ids to the file metadata
+            if isinstance(index, LlamaCloudIndex):
+                doc_id = cls._add_file_to_llama_cloud_index(
+                    index, document_file.name, file_data
+                )
+                # Add document ids to the file metadata
+                document_file.refs = [doc_id]
+            else:
+                documents = cls._load_file_to_documents(document_file)
+                cls._add_documents_to_vector_store_index(documents, index)
+                # Add document ids to the file metadata
+                document_file.refs = [doc.doc_id for doc in documents]
         # Return the file metadata
         return document_file
-
     @classmethod
     def save_file(
         cls,
@@ -109,7 +94,6 @@ class FileService:
     ) -> DocumentFile:
         """
         Save the content to a file in the local file server (accessible via URL)
-
         Args:
             content (bytes | str): The content to save, either bytes or string.
             file_name (str): The original name of the file.
@@ -119,7 +103,6 @@ class FileService:
         """
         if save_dir is None:
             save_dir = os.path.join("output", "uploaded")
-
         file_id = str(uuid.uuid4())
         name, extension = os.path.splitext(file_name)
         extension = extension.lstrip(".")
@@ -127,12 +110,9 @@ class FileService:
         if extension == "":
             raise ValueError("File is not supported!")
         new_file_name = f"{sanitized_name}_{file_id}.{extension}"
-
         file_path = os.path.join(save_dir, new_file_name)
-
         if isinstance(content, str):
             content = content.encode()
-
         try:
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "wb") as file:
@@ -150,9 +130,7 @@ class FileService:
         except Exception as e:
             logger.error(f"Unexpected error when writing to file {file_path}: {str(e)}")
             raise
-
         logger.info(f"Saved file to {file_path}")
-
         file_url_prefix = os.getenv("FILESERVER_URL_PREFIX")
         if file_url_prefix is None:
             logger.warning(
@@ -160,13 +138,11 @@ class FileService:
             )
             file_url_prefix = "http://localhost:8000/api/files"
         file_size = os.path.getsize(file_path)
-
         file_url = os.path.join(
             file_url_prefix,
             save_dir,
             new_file_name,
         )
-
         return DocumentFile(
             id=file_id,
             name=new_file_name,
@@ -176,7 +152,6 @@ class FileService:
             url=file_url,
             refs=None,
         )
-
     @staticmethod
     def _preprocess_base64_file(base64_content: str) -> Tuple[bytes, str | None]:
         header, data = base64_content.split(",", 1)
@@ -184,7 +159,6 @@ class FileService:
         extension = mimetypes.guess_extension(mime_type).lstrip(".")
         # File data as bytes
         return base64.b64decode(data), extension
-
     @staticmethod
     def _load_file_to_documents(file: DocumentFile) -> List[Document]:
         """
@@ -192,7 +166,6 @@ class FileService:
         """
         _, extension = os.path.splitext(file.name)
         extension = extension.lstrip(".")
-
         # Load file to documents
         # If LlamaParse is enabled, use it to parse the file
         # Otherwise, use the default file loaders
@@ -210,7 +183,6 @@ class FileService:
             doc.metadata["file_name"] = file.name
             doc.metadata["private"] = "true"
         return documents
-
     @staticmethod
     def _add_documents_to_vector_store_index(
         documents: List[Document], index: VectorStoreIndex
@@ -220,7 +192,6 @@ class FileService:
         """
         pipeline = IngestionPipeline()
         nodes = pipeline.run(documents=documents)
-
         # Add the nodes to the index and persist it
         if index is None:
             index = VectorStoreIndex(nodes=nodes)
@@ -229,7 +200,6 @@ class FileService:
         index.storage_context.persist(
             persist_dir=os.environ.get("STORAGE_DIR", "storage")
         )
-
     @staticmethod
     def _add_file_to_llama_cloud_index(
         index: LlamaCloudIndex,
@@ -244,7 +214,6 @@ class FileService:
             from app.engine.service import LLamaCloudFileService  # type: ignore
         except ImportError as e:
             raise ValueError("LlamaCloudFileService is not found") from e
-
         project_id = index._get_project_id()
         pipeline_id = index._get_pipeline_id()
         # LlamaCloudIndex is a managed index so we can directly use the files
@@ -256,45 +225,35 @@ class FileService:
             custom_metadata={},
         )
         return doc_id
-
-
 def _sanitize_file_name(file_name: str) -> str:
     """
     Sanitize the file name by replacing all non-alphanumeric characters with underscores
     """
     sanitized_name = re.sub(r"[^a-zA-Z0-9.]", "_", file_name)
     return sanitized_name
-
-
 def _get_llamaparse_parser():
     from app.engine.loaders import load_configs
     from app.engine.loaders.file import FileLoaderConfig, llama_parse_parser
-
     config = load_configs()
     file_loader_config = FileLoaderConfig(**config["file"])
     if file_loader_config.use_llama_parse:
         return llama_parse_parser()
     else:
         return None
-
-
 def _default_file_loaders_map():
     default_loaders = get_file_loaders_map()
     default_loaders[".txt"] = FlatReader
     default_loaders[".csv"] = FlatReader
     return default_loaders
-
-
 def _get_available_tools() -> Dict[str, List[FunctionTool]]:
     try:
         from app.engine.tools import ToolFactory  # type: ignore
     except ImportError:
         logger.warning("ToolFactory not found, no tools will be available")
         return {}
-
-    #try:
-    #    tools = ToolFactory.from_env(map_result=True)
-    #    return tools  # type: ignore
-    #except Exception as e:
-    #    logger.error(f"Error loading tools from environment: {str(e)}")
-    #    raise ValueError(f"Failed to get available tools: {str(e)}") from e
+    try:
+        tools = ToolFactory.from_env(map_result=True)
+        return tools  # type: ignore
+    except Exception as e:
+        logger.error(f"Error loading tools from environment: {str(e)}")
+        raise ValueError(f"Failed to get available tools: {str(e)}") from e

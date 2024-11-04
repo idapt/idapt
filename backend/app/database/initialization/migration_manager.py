@@ -1,6 +1,6 @@
 import os
 import logging
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, MetaData
 from alembic.config import Config
 from alembic import command
 from alembic.runtime.migration import MigrationContext
@@ -9,12 +9,20 @@ import time
 
 logger = logging.getLogger(__name__)
 
+# Ignore tables managed by llama index
+TABLES_TO_IGNORE = ["data_docstore", "data_embeddings"]
+
+def include_object(object, name, type_, reflected, compare_to):
+    """Should you include this table or not?"""
+    if type_ == "table" and name in TABLES_TO_IGNORE:
+        return False
+    return True
+
 class DatabaseMigrationManager:
     def __init__(self, connection_string, max_retries=5, retry_delay=2):
         self.connection_string = connection_string
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        # Get the absolute path to alembic.ini relative to this file
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.alembic_ini_path = os.path.join(current_dir, "alembic", "alembic.ini")
         
@@ -83,25 +91,27 @@ class DatabaseMigrationManager:
         """Initialize a new database with tables and alembic version"""
         from app.database.models import Base
         
-        # Create all tables
-        Base.metadata.create_all(engine)
+        # Create filtered metadata that excludes data_embeddings and data_docstore
+        filtered_metadata = MetaData()
+        for table in Base.metadata.tables.values():
+            if include_object(table, table.name, "table", False, None):
+                table.tometadata(filtered_metadata)
+        
+        # Create all tables except data_embeddings and data_docstore
+        filtered_metadata.create_all(engine)
         
         # Configure alembic and stamp the database
         config = self._get_alembic_config()
         config.set_main_option('sqlalchemy.url', self.connection_string)
         
-        # Stamp the alembic version table with the current head revision
+        # Stamp the alembic version table
         with engine.begin() as connection:
             config.attributes['connection'] = connection
-            from alembic.script import ScriptDirectory
             script = ScriptDirectory.from_config(config)
             head_rev = script.get_current_head()
-            
-            from alembic import command
             command.stamp(config, head_rev)
             
             # Verify the alembic_version table was created
-            from sqlalchemy import inspect
             inspector = inspect(engine)
             if 'alembic_version' not in inspector.get_table_names():
                 raise RuntimeError("Failed to create alembic_version table")

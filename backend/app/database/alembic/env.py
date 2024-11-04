@@ -16,12 +16,25 @@ config.set_main_option('sqlalchemy.url', connection_string)
 # Set target metadata
 target_metadata = Base.metadata
 
+# Ignore tables managed by llama index
+TABLES_TO_IGNORE = ["data_docstore", "data_embeddings"]
+
+# Ignore the data_embeddings table
+def include_object(object, name, type_, reflected, compare_to):
+    """
+    Should you include this table or not?
+    """
+    if type_ == "table" and name in TABLES_TO_IGNORE:
+        return False
+    return True
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_object=include_object, 
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -43,6 +56,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
+            include_object=include_object, 
             version_table="alembic_version",
             compare_type=True,
             compare_server_default=True

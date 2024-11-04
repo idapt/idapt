@@ -38,7 +38,9 @@ async def chat(
         )
         event_handler = EventCallbackHandler()
         chat_engine = get_chat_engine(
-            filters=filters, params=params, event_handlers=[event_handler]
+            filters=filters,
+            params=params,
+            event_handlers=[event_handler]
         )
         response = chat_engine.astream_chat(last_message_content, messages)
 

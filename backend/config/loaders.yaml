@@ -1,13 +1,4 @@
 file: {}
 db:
   - uri: ""  # This will be replaced with the actual connection string
-    queries:
-      - >
-        SELECT 
-          f.id as file_id,
-          f.name as file_name,
-          f.content as text,
-          f.folder_id,
-          fm.value as metadata
-        FROM files f
-        LEFT JOIN file_metadata fm ON f.id = fm.file_id
+    queries: []
