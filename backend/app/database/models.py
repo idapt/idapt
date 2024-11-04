@@ -20,7 +20,6 @@ class File(Base):
     
     id = Column(Integer, primary_key=True) #The id of the file
     name = Column(String, nullable=False) #The name of the file
-    content = Column(Text, nullable=True) #The content of the file
     file_type = Column(String, nullable=False) #The type of the file
     mime_type = Column(String, nullable=True) #The mime type of the file
     created_at = Column(DateTime, server_default=func.now()) #The date the file was created

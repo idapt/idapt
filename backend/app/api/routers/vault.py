@@ -3,29 +3,31 @@ import base64
 import os
 from pathlib import Path
 from typing import AsyncGenerator
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from sse_starlette.sse import EventSourceResponse
 import json
+import httpx
 
 from app.api.routers.models import VaultUploadRequest, VaultUploadProgress
 from app.config import DATA_DIR
 from app.services.file import FileService
+from app.services.db_file import DBFileService, get_db_session
 
 vault_router = r = APIRouter()
 
-@r.post("/check-conflicts")
-async def check_upload_conflicts(request: VaultUploadRequest) -> list[str]:
-    conflicts = []
-    for item in request.items:
-        if not item.is_folder:
-            full_path = Path(DATA_DIR) / item.path
-            if full_path.exists():
-                conflicts.append(item.path)
-    return conflicts
+async def trigger_generate():
+    """Trigger the generate endpoint after upload"""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post("http://localhost:8000/api/generate")
+            response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Failed to trigger generate endpoint: {e}")
 
 @r.post("/upload")
 async def upload_to_vault(
-    request: VaultUploadRequest, 
+    request: VaultUploadRequest,
+    background_tasks: BackgroundTasks,
     conflict_resolution: str | None = None
 ) -> EventSourceResponse:
     async def process_uploads() -> AsyncGenerator[dict, None]:
@@ -34,12 +36,20 @@ async def upload_to_vault(
         skipped = []
         
         try:
+            session = get_db_session()
+            
             for idx, item in enumerate(request.items, 1):
                 try:
+                    # Store full path for filesystem operations
                     full_path = Path(DATA_DIR) / item.path
+                    
+                    # Get relative path for database operations by removing idapt_data prefix
+                    db_path = str(full_path).replace(str(DATA_DIR), '').lstrip('/')
                     
                     if item.is_folder:
                         os.makedirs(str(full_path), exist_ok=True)
+                        # Create folder in database with cleaned path
+                        DBFileService.create_folder_path(session, db_path)
                         processed.append(f"Created folder: {item.path}")
                     else:
                         # Check for file conflict
@@ -48,7 +58,6 @@ async def upload_to_vault(
                                 skipped.append(f"Skipped existing file: {item.path}")
                                 continue
                             else:
-                                # Yield conflict notification
                                 yield {
                                     "event": "conflict",
                                     "data": json.dumps({
@@ -58,14 +67,22 @@ async def upload_to_vault(
                                 }
                                 continue
 
-                        # Process and save file
+                        # Process and save file to disk
                         os.makedirs(str(full_path.parent), exist_ok=True)
                         file_data, _ = FileService._preprocess_base64_file(item.content)
                         with open(str(full_path), "wb") as f:
                             f.write(file_data)
                         
+                        # Create folder structure and file in database with cleaned path
+                        folder = DBFileService.create_folder_path(session, str(Path(db_path).parent))
+                        DBFileService.create_file(
+                            session,
+                            name=item.name,
+                            folder_id=folder.id if folder else None
+                        )
+                        
                         processed.append(f"Uploaded file: {item.path}")
-                    
+
                     yield {
                         "event": "message",
                         "data": VaultUploadProgress(
@@ -90,6 +107,9 @@ async def upload_to_vault(
                         ).model_dump_json()
                     }
                     return
+
+            # Trigger generate endpoint after successful upload
+            background_tasks.add_task(trigger_generate)
             
             # Final success message
             yield {
@@ -101,7 +121,7 @@ async def upload_to_vault(
                     status="completed"
                 ).model_dump_json()
             }
-            
+
         except Exception as e:
             yield {
                 "event": "message",
