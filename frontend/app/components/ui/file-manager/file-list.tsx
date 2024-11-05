@@ -15,7 +15,7 @@ export function FileList({ items, onFolderClick, onUploadComplete }: FileListPro
     <div className="space-y-1 p-4">
       {filteredItems.map((item) => (
         <FileItem
-          key={item.id}
+          key={`${item.type}-${item.id}-${item.path}`}
           id={item.id}
           name={item.name}
           type={item.type as "file" | "folder"}

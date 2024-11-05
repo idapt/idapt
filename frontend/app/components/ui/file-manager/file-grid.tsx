@@ -17,7 +17,7 @@ export function FileGrid({ items, viewMode, onFolderClick, onUploadComplete }: F
     <div className={viewMode === 'grid' ? "grid grid-cols-4 gap-4 p-4" : "space-y-1 p-4"}>
       {filteredItems.map((item) => (
         <FileItem
-          key={item.id}
+          key={`${item.type}-${item.id}-${item.path}`}
           id={item.id}
           name={item.name}
           type={item.type as "file" | "folder"}
