@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from fastapi.responses import Response
 
 from app.database.connection import get_db_session
 from app.services.file_manager import FileManagerService
@@ -13,7 +14,15 @@ file_manager = FileManagerService()
 @r.get("/download/{file_id}")
 async def download_file(file_id: int, session: Session = Depends(get_db_session)):
     result = await file_manager.download_file(session, file_id)
-    return result
+    return Response(
+        content=result["content"],
+        media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": f"attachment; filename={result['filename']}",
+            "X-Creation-Time": str(result["created_at"]),
+            "X-Modified-Time": str(result["modified_at"])
+        }
+    )
 
 @r.delete("/file/{file_id}")
 async def delete_file(file_id: int, session: Session = Depends(get_db_session)):

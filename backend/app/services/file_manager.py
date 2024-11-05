@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from pathlib import Path
 import os
-from typing import Dict
+from typing import Dict, Any
 
 from app.services.db_file import DBFileService
 from app.services.file_system import FileSystemService
@@ -14,26 +14,39 @@ class FileManagerService:
         self.llama_index = LlamaIndexService()
 
     async def download_file(self, session: Session, file_id: int) -> Dict[str, str]:
-        file = DBFileService.get_file(session, file_id)
-        if not file:
-            raise HTTPException(status_code=404, detail="File not found")
+        try:
+            file = DBFileService.get_file(session, file_id)
+            if not file:
+                raise HTTPException(status_code=404, detail="File not found")
             
-        file_path = Path(os.getenv("STORAGE_PATH", "")) / file.path
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="File not found on disk")
+            # Add idapt_data prefix to the path
+            file_path = Path(os.getenv("STORAGE_PATH", "")) / "/idapt_data" / file.path
+
+            if not file_path.exists():
+                raise HTTPException(status_code=404, detail="File not found on disk")
+
+            # Get the file content from the filesystem
+            with open(file_path, "rb") as f:
+                file_content = f.read()
+
+            return {
+                "content": file_content,
+                "filename": file.name,
+                "created_at": file.original_created_at or file.created_at,
+                "modified_at": file.original_modified_at or file.updated_at
+            }
             
-        return {
-            "path": str(file_path),
-            "filename": file.name
-        }
+        except Exception as e:
+            print(f"Error downloading file: {str(e)}")
+            raise
 
     async def delete_file(self, session: Session, file_id: int):
         file = DBFileService.get_file(session, file_id)
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
 
-        # Delete from filesystem
-        await self.file_system.delete_file(file.path)
+        # Delete from filesystem with idapt_data prefix
+        await self.file_system.delete_file(f"/idapt_data/{file.path}")
         
         # Delete from database
         DBFileService.delete_file(session, file_id)
