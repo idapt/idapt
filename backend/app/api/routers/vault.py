@@ -50,34 +50,32 @@ async def upload_to_vault(
                     # Get relative path for database operations by removing idapt_data prefix
                     db_path = str(full_path).replace(str(DATA_DIR), '').lstrip('/')
                     
+                    # Check if path already exists
+                    if DBFileService.path_exists(session, db_path):
+                        # Delete existing file/folder if it exists
+                        if item.is_folder:
+                            folder = session.query(Folder).filter(Folder.path == db_path).first()
+                            if folder:
+                                DBFileService.delete_folder(session, folder.id)
+                                await file_system.delete_folder(db_path)
+                        else:
+                            file = session.query(File).filter(File.path == db_path).first()
+                            if file:
+                                DBFileService.delete_file(session, file.id)
+                                await file_system.delete_file(db_path)
+                    
+                    # Now proceed with the upload
                     if item.is_folder:
                         os.makedirs(str(full_path), exist_ok=True)
-                        # Create folder in database with cleaned path
                         DBFileService.create_folder_path(session, db_path)
-                        processed.append(f"Created folder: {item.path}")
                     else:
-                        # Check for file conflict
-                        if full_path.exists() and conflict_resolution not in ['overwrite', 'overwrite_all']:
-                            if conflict_resolution in ['skip', 'skip_all']:
-                                skipped.append(f"Skipped existing file: {item.path}")
-                                continue
-                            else:
-                                yield {
-                                    "event": "conflict",
-                                    "data": json.dumps({
-                                        "path": item.path,
-                                        "name": item.name
-                                    })
-                                }
-                                continue
-
                         # Process and save file to disk
                         os.makedirs(str(full_path.parent), exist_ok=True)
                         file_data, _ = FileService._preprocess_base64_file(item.content)
                         with open(str(full_path), "wb") as f:
                             f.write(file_data)
                         
-                        # Create folder structure and file in database with cleaned path
+                        # Create folder structure and file in database
                         parent_path = str(Path(db_path).parent)
                         folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
                         

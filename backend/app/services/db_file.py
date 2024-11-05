@@ -12,33 +12,40 @@ class DBFileService:
     @staticmethod
     def create_folder_path(session: Session, path: str) -> Folder:
         """Create folder hierarchy and return the last folder"""
-        # Remove idapt_data from the start of the path if present
         path = path.replace('idapt_data/', '').replace('idapt_data\\', '')
-        
-        # Split path and filter out empty parts
         parts = [p for p in path.split('/') if p]
         current_folder = None
         current_path = ""
         
-        print(f"Creating folder path: {path}")  # Debug log
-        
         for part in parts:
             current_path = f"{current_path}/{part}" if current_path else part
+            
+            # First try to find an existing folder with the same path
             folder = session.query(Folder).filter(
-                Folder.name == part,
-                Folder.parent_id == (current_folder.id if current_folder else None)
+                Folder.path == current_path
             ).first()
             
+            # If not found, try to find by name and parent
             if not folder:
-                print(f"Creating new folder: {part}")  # Debug log
+                folder = session.query(Folder).filter(
+                    Folder.name == part,
+                    Folder.parent_id == (current_folder.id if current_folder else None)
+                ).first()
+            
+            if not folder:
+                print(f"Creating new folder: {part} with path {current_path}")
                 folder = Folder(
                     name=part,
                     path=current_path,
                     parent_id=current_folder.id if current_folder else None
-                    # TODO add original metadata support if uploaded ?
                 )
                 session.add(folder)
-                session.commit()
+                try:
+                    session.commit()
+                except Exception as e:
+                    session.rollback()
+                    print(f"Error creating folder: {str(e)}")
+                    raise
             
             current_folder = folder
         
@@ -54,19 +61,24 @@ class DBFileService:
         original_modified_at: datetime | None = None,
     ) -> File:
         """Create a file record in the database without content"""
-        mime_type, _ = mimetypes.guess_type(name)
-        
-        file = File(
-            name=name,
-            path=path,
-            mime_type=mime_type,
-            folder_id=folder_id,
-            original_created_at=original_created_at,
-            original_modified_at=original_modified_at,
-        )
-        
-        session.add(file)
-        session.commit()
+        try:
+            mime_type, _ = mimetypes.guess_type(name)
+            
+            file = File(
+                name=name,
+                path=path,
+                mime_type=mime_type,
+                folder_id=folder_id,
+                original_created_at=original_created_at,
+                original_modified_at=original_modified_at,
+            )
+            
+            session.add(file)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(f"Error creating file: {str(e)}")
+            raise
         return file
 
     @staticmethod
@@ -154,22 +166,32 @@ class DBFileService:
 
     @staticmethod
     def delete_folder(session: Session, folder_id: int) -> bool:
-        """Delete a folder and all its files from the database"""
+        """Delete a folder and all its contents from the database"""
         folder = DBFileService.get_folder(session, folder_id)
         if folder:
-            # Delete all files in this folder and subfolders
-            files = DBFileService.get_folder_files_recursive(session, folder_id)
-            for file in files:
-                session.delete(file)
-            
-            # Delete all subfolders
-            subfolders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
-            for subfolder in subfolders:
-                session.delete(subfolder)
-            
-            session.delete(folder)
-            session.commit()
-            return True
+            try:
+                # Delete all files in this folder and subfolders recursively
+                files = DBFileService.get_folder_files_recursive(session, folder_id)
+                for file in files:
+                    session.delete(file)
+                
+                # Delete all subfolders recursively
+                def delete_subfolders(folder_id):
+                    subfolders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
+                    for subfolder in subfolders:
+                        delete_subfolders(subfolder.id)
+                        session.delete(subfolder)
+                
+                delete_subfolders(folder_id)
+                
+                # Delete the main folder
+                session.delete(folder)
+                session.commit()
+                return True
+            except Exception as e:
+                session.rollback()
+                print(f"Error deleting folder: {str(e)}")
+                return False
         return False
 
     @staticmethod
@@ -198,3 +220,10 @@ class DBFileService:
             files.extend(DBFileService.get_folder_files_recursive(session, subfolder.id))
         
         return files
+
+    @staticmethod
+    def path_exists(session: Session, path: str) -> bool:
+        """Check if a file or folder exists at the given path"""
+        file_exists = session.query(File).filter(File.path == path).first() is not None
+        folder_exists = session.query(Folder).filter(Folder.path == path).first() is not None
+        return file_exists or folder_exists
