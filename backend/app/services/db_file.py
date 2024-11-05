@@ -18,10 +18,12 @@ class DBFileService:
         # Split path and filter out empty parts
         parts = [p for p in path.split('/') if p]
         current_folder = None
+        current_path = ""
         
         print(f"Creating folder path: {path}")  # Debug log
         
         for part in parts:
+            current_path = f"{current_path}/{part}" if current_path else part
             folder = session.query(Folder).filter(
                 Folder.name == part,
                 Folder.parent_id == (current_folder.id if current_folder else None)
@@ -31,6 +33,7 @@ class DBFileService:
                 print(f"Creating new folder: {part}")  # Debug log
                 folder = Folder(
                     name=part,
+                    path=current_path,
                     parent_id=current_folder.id if current_folder else None
                     # TODO add original metadata support if uploaded ?
                 )
@@ -42,31 +45,29 @@ class DBFileService:
         return current_folder
 
     @staticmethod
-    def create_file(        
+    def create_file(
         session: Session,
         name: str,
+        path: str,
         folder_id: int | None = None,
         original_created_at: datetime | None = None,
         original_modified_at: datetime | None = None,
     ) -> File:
         """Create a file record in the database without content"""
-
         mime_type, _ = mimetypes.guess_type(name)
         
         file = File(
             name=name,
+            path=path,
             mime_type=mime_type,
             folder_id=folder_id,
             original_created_at=original_created_at,
             original_modified_at=original_modified_at,
-            # The following are automatically set by the database
-            # created_at=datetime.utcnow(),
-            # updated_at=datetime.utcnow()
         )
         
         session.add(file)
         session.commit()
-        return file 
+        return file
 
     @staticmethod
     def get_file_tree(session: Session) -> List[dict]:
@@ -156,6 +157,16 @@ class DBFileService:
         """Delete a folder and all its files from the database"""
         folder = DBFileService.get_folder(session, folder_id)
         if folder:
+            # Delete all files in this folder and subfolders
+            files = DBFileService.get_folder_files_recursive(session, folder_id)
+            for file in files:
+                session.delete(file)
+            
+            # Delete all subfolders
+            subfolders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
+            for subfolder in subfolders:
+                session.delete(subfolder)
+            
             session.delete(folder)
             session.commit()
             return True
@@ -172,3 +183,18 @@ class DBFileService:
             session.commit()
             return file
         return None
+
+    @staticmethod
+    def get_folder_files_recursive(session: Session, folder_id: int) -> List[File]:
+        """Get all files in a folder and its subfolders recursively"""
+        # Get direct files in this folder
+        files = session.query(File).filter(File.folder_id == folder_id).all()
+        
+        # Get all subfolders
+        subfolders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
+        
+        # Recursively get files from subfolders
+        for subfolder in subfolders:
+            files.extend(DBFileService.get_folder_files_recursive(session, subfolder.id))
+        
+        return files

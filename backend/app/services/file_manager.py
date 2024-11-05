@@ -13,8 +13,8 @@ class FileManagerService:
         self.file_system = FileSystemService()
         self.llama_index = LlamaIndexService()
 
-    async def download_file(self, file_id: int, session: Session) -> Dict[str, str]:
-        file = DBFileService.get_file(file_id, session)
+    async def download_file(self, session: Session, file_id: int) -> Dict[str, str]:
+        file = DBFileService.get_file(session, file_id)
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
             
@@ -27,8 +27,8 @@ class FileManagerService:
             "filename": file.name
         }
 
-    async def delete_file(self, file_id: int, session: Session):
-        file = DBFileService.get_file(file_id, session)
+    async def delete_file(self, session: Session, file_id: int):
+        file = DBFileService.get_file(session, file_id)
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
 
@@ -36,29 +36,32 @@ class FileManagerService:
         await self.file_system.delete_file(file.path)
         
         # Delete from database
-        DBFileService.delete_file(file_id, session)
+        DBFileService.delete_file(session, file_id)
 
         # Remove from LlamaIndex
         await self.llama_index.remove_document(str(file_id))
 
-    async def delete_folder(self, folder_id: int, session: Session):
-        folder = DBFileService.get_folder(folder_id, session)
+    async def delete_folder(self, session: Session, folder_id: int):
+        folder = DBFileService.get_folder(session, folder_id)
         if not folder:
             raise HTTPException(status_code=404, detail="Folder not found")
 
-        # Get all files in folder
-        files = DBFileService.get_folder_files(folder_id, session)
+        # Get all files in folder and subfolders recursively
+        files = DBFileService.get_folder_files_recursive(session, folder_id)
         
         # Delete files from filesystem and LlamaIndex
         for file in files:
             await self.file_system.delete_file(file.path)
             await self.llama_index.remove_document(str(file.id))
 
-        # Delete folder from database (will cascade delete files)
-        DBFileService.delete_folder(folder_id, session)
+        # Delete folder and all subfolders from filesystem
+        await self.file_system.delete_folder(folder.path)
 
-    async def rename_file(self, file_id: int, new_name: str, session: Session):
-        file = DBFileService.get_file(file_id, session)
+        # Delete folder from database (will cascade delete files and subfolders)
+        DBFileService.delete_folder(session, folder_id)
+
+    async def rename_file(self, session: Session, file_id: int, new_name: str):
+        file = DBFileService.get_file(session, file_id)
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
 
@@ -66,7 +69,7 @@ class FileManagerService:
         new_path = await self.file_system.rename_file(file.path, new_name)
         
         # Update database
-        updated_file = DBFileService.update_file(file_id, new_name, new_path, session)
+        updated_file = DBFileService.update_file(session, file_id, new_name, new_path)
         if not updated_file:
             raise HTTPException(status_code=500, detail="Failed to update file in database")
 

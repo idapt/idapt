@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from fastapi import HTTPException
+import shutil
 
 class FileSystemService:
     def __init__(self):
@@ -22,4 +23,10 @@ class FileSystemService:
             os.rename(str(full_old_path), str(new_path))
             return str(new_path.relative_to(self.base_path))
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}") 
+            raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
+
+    async def delete_folder(self, folder_path: str):
+        """Delete a folder and its contents from the filesystem"""
+        full_path = Path(os.getenv("STORAGE_PATH", "")) / folder_path
+        if full_path.exists():
+            shutil.rmtree(str(full_path))

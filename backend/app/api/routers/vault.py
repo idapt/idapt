@@ -84,6 +84,7 @@ async def upload_to_vault(
                         DBFileService.create_file(
                             session=session,
                             name=item.name,
+                            path=db_path,
                             folder_id=folder.id if folder else None,
                             original_created_at=item.original_created_at,
                             original_modified_at=item.original_modified_at,
