@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 from fastapi import Depends
 from sqlalchemy import create_engine
 from app.database.models import File, Folder
-from app.database.connection import get_db_session
 from datetime import datetime
 import mimetypes
 import os
@@ -11,13 +10,16 @@ from typing import List
 
 class DBFileService:
     @staticmethod
-    def create_folder_path(path: str, session: Session = Depends(get_db_session)) -> Folder:
+    def create_folder_path(session: Session, path: str) -> Folder:
         """Create folder hierarchy and return the last folder"""
         # Remove idapt_data from the start of the path if present
         path = path.replace('idapt_data/', '').replace('idapt_data\\', '')
         
+        # Split path and filter out empty parts
         parts = [p for p in path.split('/') if p]
         current_folder = None
+        
+        print(f"Creating folder path: {path}")  # Debug log
         
         for part in parts:
             folder = session.query(Folder).filter(
@@ -26,9 +28,10 @@ class DBFileService:
             ).first()
             
             if not folder:
+                print(f"Creating new folder: {part}")  # Debug log
                 folder = Folder(
                     name=part,
-                    parent_id=current_folder.id if current_folder else None,
+                    parent_id=current_folder.id if current_folder else None
                     # TODO add original metadata support if uploaded ?
                 )
                 session.add(folder)
@@ -39,24 +42,19 @@ class DBFileService:
         return current_folder
 
     @staticmethod
-    def create_file(
+    def create_file(        
+        session: Session,
         name: str,
         folder_id: int | None = None,
-        file_type: str | None = None,
         original_created_at: datetime | None = None,
         original_modified_at: datetime | None = None,
-        session: Session = Depends(get_db_session)
     ) -> File:
         """Create a file record in the database without content"""
-        if not file_type:
-            _, file_type = os.path.splitext(name)
-            file_type = file_type.lstrip('.')
-        
+
         mime_type, _ = mimetypes.guess_type(name)
         
         file = File(
             name=name,
-            file_type=file_type,
             mime_type=mime_type,
             folder_id=folder_id,
             original_created_at=original_created_at,
@@ -71,7 +69,7 @@ class DBFileService:
         return file 
 
     @staticmethod
-    def get_file_tree(session: Session = Depends(get_db_session)) -> List[dict]:
+    def get_file_tree(session: Session) -> List[dict]:
         """Get complete file/folder hierarchy"""
         def build_tree(folder=None):
             query = session.query(Folder).filter(Folder.parent_id == (folder.id if folder else None))
@@ -101,7 +99,7 @@ class DBFileService:
         return build_tree()
 
     @staticmethod
-    def get_folder_contents(folder_id: int | None, session: Session = Depends(get_db_session)) -> List[dict]:
+    def get_folder_contents(session: Session, folder_id: int | None) -> List[dict]:
         folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
         folder_nodes = [{
             "id": folder.id,
@@ -129,24 +127,24 @@ class DBFileService:
         return folder_nodes + file_nodes
 
     @staticmethod
-    def get_file(file_id: int, session: Session = Depends(get_db_session)) -> File | None:
+    def get_file(session: Session, file_id: int) -> File | None:
         """Get a file by ID"""
         return session.query(File).filter(File.id == file_id).first()
 
     @staticmethod
-    def get_folder(folder_id: int, session: Session = Depends(get_db_session)) -> Folder | None:
+    def get_folder(session: Session, folder_id: int) -> Folder | None:
         """Get a folder by ID"""
         return session.query(Folder).filter(Folder.id == folder_id).first()
 
     @staticmethod
-    def get_folder_files(folder_id: int, session: Session = Depends(get_db_session)) -> List[File]:
+    def get_folder_files(session: Session, folder_id: int) -> List[File]:
         """Get all files in a folder"""
         return session.query(File).filter(File.folder_id == folder_id).all()
 
     @staticmethod
-    def delete_file(file_id: int, session: Session = Depends(get_db_session)) -> bool:
+    def delete_file(session: Session, file_id: int) -> bool:
         """Delete a file from the database"""
-        file = DBFileService.get_file(file_id, session)
+        file = DBFileService.get_file(session, file_id)
         if file:
             session.delete(file)
             session.commit()
@@ -154,9 +152,9 @@ class DBFileService:
         return False
 
     @staticmethod
-    def delete_folder(folder_id: int, session: Session = Depends(get_db_session)) -> bool:
+    def delete_folder(session: Session, folder_id: int) -> bool:
         """Delete a folder and all its files from the database"""
-        folder = DBFileService.get_folder(folder_id, session)
+        folder = DBFileService.get_folder(session, folder_id)
         if folder:
             session.delete(folder)
             session.commit()
@@ -164,9 +162,9 @@ class DBFileService:
         return False
 
     @staticmethod
-    def update_file(file_id: int, name: str, path: str, session: Session = Depends(get_db_session)) -> File | None:
+    def update_file(session: Session, file_id: int, name: str, path: str) -> File | None:
         """Update file name and path"""
-        file = DBFileService.get_file(file_id, session)
+        file = DBFileService.get_file(session, file_id)
         if file:
             file.name = name
             file.path = path

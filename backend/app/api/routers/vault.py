@@ -3,11 +3,12 @@ import base64
 import os
 from pathlib import Path
 from typing import AsyncGenerator
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sse_starlette.sse import EventSourceResponse
 import json
 import httpx
-
+from datetime import datetime
+from sqlalchemy.orm import Session
 from app.api.routers.models import VaultUploadRequest, VaultUploadProgress
 from app.config import DATA_DIR
 from app.services.file import FileService
@@ -28,18 +29,21 @@ async def trigger_generate():
 async def upload_to_vault(
     request: VaultUploadRequest,
     background_tasks: BackgroundTasks,
-    conflict_resolution: str | None = None
+    conflict_resolution: str | None = None,
+    session: Session = Depends(get_db_session)
 ) -> EventSourceResponse:
     async def process_uploads() -> AsyncGenerator[dict, None]:
         total = len(request.items)
         processed = []
         skipped = []
         
+        print(f"Processing {total} upload items")
+        
         try:
-            session = get_db_session()
-            
             for idx, item in enumerate(request.items, 1):
                 try:
+                    print(f"Processing item {idx}/{total}: {item.path}")
+                    
                     # Store full path for filesystem operations
                     full_path = Path(DATA_DIR) / item.path
                     
@@ -76,10 +80,13 @@ async def upload_to_vault(
                         # Create folder structure and file in database with cleaned path
                         parent_path = str(Path(db_path).parent)
                         folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
+                        
                         DBFileService.create_file(
-                            session,
+                            session=session,
                             name=item.name,
-                            folder_id=folder.id if folder else None
+                            folder_id=folder.id if folder else None,
+                            original_created_at=item.original_created_at,
+                            original_modified_at=item.original_modified_at,
                         )
                         
                         processed.append(f"Uploaded file: {item.path}")
@@ -97,6 +104,8 @@ async def upload_to_vault(
                     await asyncio.sleep(0.1)
                     
                 except Exception as e:
+                    print(f"Error processing item: {str(e)}")
+                    error_message = str(e)
                     yield {
                         "event": "message",
                         "data": VaultUploadProgress(
@@ -104,7 +113,7 @@ async def upload_to_vault(
                             current=idx,
                             processed_items=processed + skipped,
                             status="error",
-                            error=f"Error processing {item.path}: {str(e)}"
+                            error=f"Error processing {item.path}: {error_message}"
                         ).model_dump_json()
                     }
                     return

@@ -8,22 +8,35 @@ Base = declarative_base()
 class Folder(Base):
     __tablename__ = 'folders'
     
-    id = Column(Integer, primary_key=True) #The id of the folder
-    name = Column(String, nullable=False) #The name of the folder
-    parent_id = Column(Integer, ForeignKey('folders.id'), nullable=True) #The parent folder of the folder
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    parent_id = Column(Integer, ForeignKey('folders.id'), nullable=True)
     
-    children = relationship("Folder", backref='parent', remote_side=[id]) #The children folders of the folder
-    files = relationship("File", back_populates="folder") #The files in the folder
+    # Original metadata
+    original_created_at = Column(DateTime, nullable=True)
+    original_modified_at = Column(DateTime, nullable=True)
+    
+    # System tracking
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    children = relationship("Folder", backref='parent', remote_side=[id])
+    files = relationship("File", back_populates="folder")
 
 class File(Base):
     __tablename__ = 'files'
     
-    id = Column(Integer, primary_key=True) #The id of the file
-    name = Column(String, nullable=False) #The name of the file
-    file_type = Column(String, nullable=False) #The type of the file
-    mime_type = Column(String, nullable=True) #The mime type of the file
-    created_at = Column(DateTime, server_default=func.now()) #The date the file was created
-    updated_at = Column(DateTime, onupdate=func.now()) #The date the file was last updated
-    folder_id = Column(Integer, ForeignKey('folders.id')) #The folder the file belongs to
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    mime_type = Column(String, nullable=True)
     
+    # Original metadata
+    original_created_at = Column(DateTime, nullable=True)
+    original_modified_at = Column(DateTime, nullable=True)
+    
+    # System tracking
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    folder_id = Column(Integer, ForeignKey('folders.id'))
     folder = relationship("Folder", back_populates="files")

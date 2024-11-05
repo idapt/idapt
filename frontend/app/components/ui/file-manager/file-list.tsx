@@ -8,7 +8,7 @@ interface FileListProps {
   onUploadComplete: () => void;
 }
 
-export function FileList({ items, onFolderClick }: FileListProps) {
+export function FileList({ items, onFolderClick, onUploadComplete }: FileListProps) {
   const filteredItems = items.filter(item => item.name !== '.');
   
   return (
@@ -16,9 +16,14 @@ export function FileList({ items, onFolderClick }: FileListProps) {
       {filteredItems.map((item) => (
         <FileItem
           key={item.id}
+          id={item.id}
           name={item.name}
           type={item.type as "file" | "folder"}
+          size={item.size}
+          modified={item.modified}
+          path={item.path}
           onClick={() => item.type === 'folder' && onFolderClick(item)}
+          onRefresh={onUploadComplete}
         />
       ))}
     </div>

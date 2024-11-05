@@ -15,11 +15,18 @@ export function useFolderUpload() {
     const files = Array.from(folderInput.files);
     const uploadItems = [];
 
+    console.log('Files to upload:', files);
+
     for (const file of files) {
-      // Get the relative path of the file within the selected folder
       const relativePath = file.webkitRelativePath;
       const fullPath = targetPath ? `${targetPath}/${relativePath}` : relativePath;
       
+      console.log('Processing file:', {
+        name: file.name,
+        relativePath,
+        fullPath
+      });
+
       // For files, we need to read their content
       if (file.size > 0) {
         const content = await new Promise<string>((resolve) => {
@@ -32,23 +39,31 @@ export function useFolderUpload() {
           path: fullPath,
           content,
           is_folder: false,
-          name: file.name
+          name: file.name,
+          mime_type: file.type,
+          original_created_at: file.lastModified.toString(),
+          original_modified_at: file.lastModified.toString()
         });
       } else {
-        // For folders, we just need the path
+        // For folders, we just need the path, name and metadata
         uploadItems.push({
           path: fullPath,
           content: "",
           is_folder: true,
-          name: file.name
+          name: file.name,
+          original_created_at: file.lastModified.toString(),
+          original_modified_at: file.lastModified.toString()
         });
       }
     }
+
+    console.log('Final upload items:', uploadItems);
 
     try {
       await uploadToVault(uploadItems, true);
       options?.onComplete?.();
     } catch (error) {
+      console.error('Upload error:', error);
       options?.onError?.(error instanceof Error ? error.message : 'Upload failed');
     }
   };

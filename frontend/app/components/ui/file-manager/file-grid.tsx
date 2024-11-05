@@ -10,7 +10,7 @@ interface FileGridProps {
   onUploadComplete: () => void;
 }
 
-export function FileGrid({ items, viewMode, onFolderClick }: FileGridProps) {
+export function FileGrid({ items, viewMode, onFolderClick, onUploadComplete }: FileGridProps) {
   const filteredItems = items.filter(item => item.name !== '.');
   
   return (
@@ -18,9 +18,15 @@ export function FileGrid({ items, viewMode, onFolderClick }: FileGridProps) {
       {filteredItems.map((item) => (
         <FileItem
           key={item.id}
+          id={item.id}
           name={item.name}
           type={item.type as "file" | "folder"}
+          size={item.size}
+          modified={item.modified}
+          path={item.path}
           onClick={() => item.type === 'folder' && onFolderClick(item)}
+          onRefresh={onUploadComplete}
+          viewMode={viewMode}
         />
       ))}
     </div>

@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import Any, Dict, List, Optional
+from datetime import datetime
 
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.schema import NodeWithScore
@@ -336,6 +337,9 @@ class VaultUploadItem(BaseModel):
     content: str  # Base64 content
     is_folder: bool = False
     name: str  # Original file name
+    mime_type: Optional[str] = None
+    original_created_at: Optional[datetime] = None
+    original_modified_at: Optional[datetime] = None
 
 
 class VaultUploadRequest(BaseModel):
@@ -355,5 +359,9 @@ class FileNode(BaseModel):
     id: int
     name: str
     type: str  # 'file' or 'folder'
-    mime_type: str | None = None
+    mime_type: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    original_created_at: Optional[datetime] = None
+    original_modified_at: Optional[datetime] = None
     children: List['FileNode'] | None = None

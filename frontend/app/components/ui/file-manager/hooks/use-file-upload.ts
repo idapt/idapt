@@ -21,7 +21,10 @@ export function useFileUpload() {
         path: folderId ? `${folderId}/${file.name}` : file.name,
         content,
         is_folder: false,
-        name: file.name
+        name: file.name,
+        mime_type: file.type,
+        original_created_at: file.lastModified.toString(),
+        original_modified_at: file.lastModified.toString()
       }], true);
       options?.onComplete?.();
     } catch (error) {

@@ -3,7 +3,11 @@ export interface FileNode {
   name: string;
   type: 'file' | 'folder';
   size?: string;
-  modified?: string;
+  mimeType?: string;
+  createdAt: string;
+  updatedAt: string;
+  originalCreatedAt?: string;
+  originalModifiedAt?: string;
   path?: string;
   parentId?: number | null;
 } 

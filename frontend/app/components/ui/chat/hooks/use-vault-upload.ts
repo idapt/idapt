@@ -15,6 +15,9 @@ interface VaultUploadItem {
   content: string;
   is_folder: boolean;
   name: string;
+  mime_type?: string;
+  original_created_at?: string;
+  original_modified_at?: string;
 }
 
 export function useVaultUpload() {
@@ -62,12 +65,15 @@ export function useVaultUpload() {
         buffer = lines.pop() || '';
 
         for (const line of lines) {
+          if (line.trim() === '') continue;
+          
           if (line.startsWith('data: ')) {
             try {
-              const data = JSON.parse(line.slice(6));
+              const jsonStr = line.slice(6);
+              const data = JSON.parse(jsonStr);
+              
               if (data.event === 'conflict') {
                 setCurrentConflict(JSON.parse(data.data));
-                // Wait for user resolution
                 await new Promise<void>((resolve) => {
                   const unsubscribe = watch(conflictResolution, (resolution) => {
                     if (resolution) {
@@ -79,7 +85,8 @@ export function useVaultUpload() {
                 continue;
               }
 
-              const progress: VaultUploadProgress = JSON.parse(data);
+              // Handle progress updates
+              const progress: VaultUploadProgress = data;
               setProgress(progress);
 
               if (progress.status === 'error') {
@@ -91,7 +98,7 @@ export function useVaultUpload() {
               }
             } catch (e) {
               console.error('Error parsing SSE data:', e);
-              continue;
+              if (e instanceof Error) throw e;
             }
           }
         }

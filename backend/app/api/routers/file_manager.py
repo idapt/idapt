@@ -12,17 +12,17 @@ file_manager = FileManagerService()
 
 @r.get("/download/{file_id}")
 async def download_file(file_id: int, session: Session = Depends(get_db_session)):
-    result = await file_manager.download_file(file_id, session)
+    result = await file_manager.download_file(session, file_id)
     return result
 
 @r.delete("/file/{file_id}")
 async def delete_file(file_id: int, session: Session = Depends(get_db_session)):
-    await file_manager.delete_file(file_id, session)
+    await file_manager.delete_file(session, file_id)
     return {"success": True}
 
 @r.delete("/folder/{folder_id}")
 async def delete_folder(folder_id: int, session: Session = Depends(get_db_session)):
-    await file_manager.delete_folder(folder_id, session)
+    await file_manager.delete_folder(session, folder_id)
     return {"success": True}
 
 @r.put("/file/{file_id}/rename")
@@ -31,7 +31,7 @@ async def rename_file(
     new_name: str, 
     session: Session = Depends(get_db_session)
 ):
-    await file_manager.rename_file(file_id, new_name, session)
+    await file_manager.rename_file(session, file_id, new_name)
     return {"success": True}
 
 @r.get("/folder")
@@ -39,7 +39,7 @@ async def get_root_folder_contents(
     session: Session = Depends(get_db_session)
 ) -> List[FileNode]:
     """Get contents of root folder"""
-    return DBFileService.get_folder_contents(None, session)
+    return DBFileService.get_folder_contents(session, None)
 
 @r.get("/folder/{folder_id}")
 async def get_folder_contents(
@@ -47,4 +47,4 @@ async def get_folder_contents(
     session: Session = Depends(get_db_session)
 ) -> List[FileNode]:
     """Get contents of a specific folder"""
-    return DBFileService.get_folder_contents(folder_id, session)
+    return DBFileService.get_folder_contents(session, folder_id)
