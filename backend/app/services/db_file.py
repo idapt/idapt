@@ -1,19 +1,17 @@
 from sqlalchemy.orm import Session
+from fastapi import Depends
 from sqlalchemy import create_engine
 from app.database.models import File, Folder
-from app.database.connection import get_connection_string
+from app.database.connection import get_db_session
 from datetime import datetime
 import mimetypes
 import os
 from typing import List
 
-def get_db_session():
-    engine = create_engine(get_connection_string())
-    return Session(engine)
 
 class DBFileService:
     @staticmethod
-    def create_folder_path(session: Session, path: str) -> Folder:
+    def create_folder_path(path: str, session: Session = Depends(get_db_session)) -> Folder:
         """Create folder hierarchy and return the last folder"""
         # Remove idapt_data from the start of the path if present
         path = path.replace('idapt_data/', '').replace('idapt_data\\', '')
@@ -30,7 +28,8 @@ class DBFileService:
             if not folder:
                 folder = Folder(
                     name=part,
-                    parent_id=current_folder.id if current_folder else None
+                    parent_id=current_folder.id if current_folder else None,
+                    # TODO add original metadata support if uploaded ?
                 )
                 session.add(folder)
                 session.commit()
@@ -41,10 +40,12 @@ class DBFileService:
 
     @staticmethod
     def create_file(
-        session: Session,
         name: str,
         folder_id: int | None = None,
         file_type: str | None = None,
+        original_created_at: datetime | None = None,
+        original_modified_at: datetime | None = None,
+        session: Session = Depends(get_db_session)
     ) -> File:
         """Create a file record in the database without content"""
         if not file_type:
@@ -58,8 +59,11 @@ class DBFileService:
             file_type=file_type,
             mime_type=mime_type,
             folder_id=folder_id,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            original_created_at=original_created_at,
+            original_modified_at=original_modified_at,
+            # The following are automatically set by the database
+            # created_at=datetime.utcnow(),
+            # updated_at=datetime.utcnow()
         )
         
         session.add(file)
@@ -67,7 +71,7 @@ class DBFileService:
         return file 
 
     @staticmethod
-    def get_file_tree(session: Session) -> List[dict]:
+    def get_file_tree(session: Session = Depends(get_db_session)) -> List[dict]:
         """Get complete file/folder hierarchy"""
         def build_tree(folder=None):
             query = session.query(Folder).filter(Folder.parent_id == (folder.id if folder else None))
@@ -97,22 +101,76 @@ class DBFileService:
         return build_tree()
 
     @staticmethod
-    def get_folder_contents(db: Session, folder_id: int | None) -> List[dict]:
-        # Get folders
-        folders = db.query(Folder).filter(Folder.parent_id == folder_id).all()
+    def get_folder_contents(folder_id: int | None, session: Session = Depends(get_db_session)) -> List[dict]:
+        folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
         folder_nodes = [{
             "id": folder.id,
             "name": folder.name,
-            "type": "folder"
+            "type": "folder",
+            "created_at": folder.created_at,
+            "updated_at": folder.updated_at,
+            "original_created_at": folder.original_created_at,
+            "original_modified_at": folder.original_modified_at
         } for folder in folders]
 
         # Get files - for root folder (folder_id is None) or specific folder
-        files = db.query(File).filter(File.folder_id == folder_id).all()
+        files = session.query(File).filter(File.folder_id == folder_id).all()
         file_nodes = [{
             "id": file.id,
             "name": file.name,
             "type": "file",
-            "mime_type": file.mime_type
+            "mime_type": file.mime_type,
+            "created_at": file.created_at,
+            "updated_at": file.updated_at,
+            "original_created_at": file.original_created_at,
+            "original_modified_at": file.original_modified_at
         } for file in files]
 
         return folder_nodes + file_nodes
+
+    @staticmethod
+    def get_file(file_id: int, session: Session = Depends(get_db_session)) -> File | None:
+        """Get a file by ID"""
+        return session.query(File).filter(File.id == file_id).first()
+
+    @staticmethod
+    def get_folder(folder_id: int, session: Session = Depends(get_db_session)) -> Folder | None:
+        """Get a folder by ID"""
+        return session.query(Folder).filter(Folder.id == folder_id).first()
+
+    @staticmethod
+    def get_folder_files(folder_id: int, session: Session = Depends(get_db_session)) -> List[File]:
+        """Get all files in a folder"""
+        return session.query(File).filter(File.folder_id == folder_id).all()
+
+    @staticmethod
+    def delete_file(file_id: int, session: Session = Depends(get_db_session)) -> bool:
+        """Delete a file from the database"""
+        file = DBFileService.get_file(file_id, session)
+        if file:
+            session.delete(file)
+            session.commit()
+            return True
+        return False
+
+    @staticmethod
+    def delete_folder(folder_id: int, session: Session = Depends(get_db_session)) -> bool:
+        """Delete a folder and all its files from the database"""
+        folder = DBFileService.get_folder(folder_id, session)
+        if folder:
+            session.delete(folder)
+            session.commit()
+            return True
+        return False
+
+    @staticmethod
+    def update_file(file_id: int, name: str, path: str, session: Session = Depends(get_db_session)) -> File | None:
+        """Update file name and path"""
+        file = DBFileService.get_file(file_id, session)
+        if file:
+            file.name = name
+            file.path = path
+            file.updated_at = datetime.utcnow()
+            session.commit()
+            return file
+        return None

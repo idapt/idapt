@@ -1,8 +1,7 @@
 import os
-from contextlib import contextmanager
-from typing import Generator
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
+from .service import DatabaseService
 
 def get_connection_string() -> str:
     """Get the database connection string from environment variables"""
@@ -14,27 +13,10 @@ def get_connection_string() -> str:
     
     return f"postgresql://{user}:{password}@{host}:{port}/{db}"
 
-# Create global engine
+# Create global engine and session factory
 engine = create_engine(get_connection_string())
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def get_session() -> Generator[Session, None, None]:
-    """Get a database session"""
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-
-@contextmanager
-def get_db_session():
-    """Context manager for database sessions"""
-    session = SessionLocal()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+# Create database service singleton
+db_service = DatabaseService(SessionLocal)
+get_db_session = db_service.get_db

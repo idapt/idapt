@@ -22,13 +22,31 @@ interface FileItemProps {
   path?: string;
   onClick?: () => void;
   onRefresh?: () => void;
+  viewMode?: 'grid' | 'list';
 }
 
-export function FileItem({ id, name, type, size, modified, path, onClick, onRefresh }: FileItemProps) {
+export function FileItem({ 
+  id, 
+  name, 
+  type, 
+  size, 
+  modified, 
+  path, 
+  onClick, 
+  onRefresh,
+  viewMode = 'list' 
+}: FileItemProps) {
   const { backend } = useClientConfig();
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(name);
   const [showDetails, setShowDetails] = useState(false);
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Prevent triggering click when using dropdown
+    if (!(e.target as HTMLElement).closest('.dropdown-trigger')) {
+      onClick?.();
+    }
+  };
 
   const handleDownload = async () => {
     try {
@@ -84,7 +102,7 @@ export function FileItem({ id, name, type, size, modified, path, onClick, onRefr
     <>
       <div 
         className="group relative flex items-center space-x-4 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
-        onClick={onClick}
+        onClick={handleClick}
       >
         {type === 'folder' ? (
           <Folder className="h-8 w-8 text-blue-500" />

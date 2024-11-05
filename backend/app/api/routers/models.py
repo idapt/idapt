@@ -348,3 +348,12 @@ class VaultUploadProgress(BaseModel):
     processed_items: List[str]
     status: str
     error: Optional[str] = None
+
+
+
+class FileNode(BaseModel):
+    id: int
+    name: str
+    type: str  # 'file' or 'folder'
+    mime_type: str | None = None
+    children: List['FileNode'] | None = None

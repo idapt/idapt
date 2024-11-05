@@ -11,8 +11,8 @@ import httpx
 from app.api.routers.models import VaultUploadRequest, VaultUploadProgress
 from app.config import DATA_DIR
 from app.services.file import FileService
-from app.services.db_file import DBFileService, get_db_session
-
+from app.services.db_file import DBFileService
+from app.database.connection import get_db_session
 vault_router = r = APIRouter()
 
 async def trigger_generate():
