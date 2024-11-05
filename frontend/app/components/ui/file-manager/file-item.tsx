@@ -50,7 +50,12 @@ export function FileItem({
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(`${backend}/api/file-manager/download/${id}`);
+      let response;
+      if (type === 'folder') {
+        response = await fetch(`${backend}/api/file-manager/download-folder/${id}`);
+      } else {
+        response = await fetch(`${backend}/api/file-manager/download/${id}`);
+      }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

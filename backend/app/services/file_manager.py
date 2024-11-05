@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 import os
 from typing import Dict, Any
+import zipfile
+import io
 
 from app.services.db_file import DBFileService
 from app.services.file_system import FileSystemService
@@ -90,3 +92,40 @@ class FileManagerService:
         await self.llama_index.update_document(str(file_id), {
             "metadata": {"filename": new_name, "path": new_path}
         }) 
+
+    async def download_folder(self, session: Session, folder_id: int) -> Dict[str, Any]:
+        try:
+            folder = DBFileService.get_folder(session, folder_id)
+            if not folder:
+                raise HTTPException(status_code=404, detail="Folder not found")
+            
+            # Create a memory buffer for the zip file
+            zip_buffer = io.BytesIO()
+            
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                # Get all files recursively
+                files = DBFileService.get_folder_files_recursive(session, folder_id)
+                
+                for file in files:
+                    # Calculate relative path within the zip
+                    relative_path = file.path.replace(folder.path + '/', '')
+                    
+                    # Read file content
+                    file_path = Path(os.getenv("STORAGE_PATH", "")) / "/idapt_data" / file.path
+                    if file_path.exists():
+                        with open(file_path, 'rb') as f:
+                            zip_file.writestr(relative_path, f.read())
+            
+            # Get the zip content
+            zip_buffer.seek(0)
+            zip_content = zip_buffer.getvalue()
+            
+            return {
+                "content": zip_content,
+                "filename": f"{folder.name}.zip",
+                "mime_type": "application/zip"
+            }
+            
+        except Exception as e:
+            print(f"Error creating folder zip: {str(e)}")
+            raise

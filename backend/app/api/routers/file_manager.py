@@ -57,3 +57,14 @@ async def get_folder_contents(
 ) -> List[FileNode]:
     """Get contents of a specific folder"""
     return DBFileService.get_folder_contents(session, folder_id)
+
+@r.get("/download-folder/{folder_id}")
+async def download_folder(folder_id: int, session: Session = Depends(get_db_session)):
+    result = await file_manager.download_folder(session, folder_id)
+    return Response(
+        content=result["content"],
+        media_type=result["mime_type"],
+        headers={
+            "Content-Disposition": f"attachment; filename={result['filename']}"
+        }
+    )
