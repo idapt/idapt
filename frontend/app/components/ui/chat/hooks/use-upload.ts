@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
 
-interface VaultUploadProgress {
+interface FileUploadProgress {
   total: number;
   current: number;
   processed_items: string[];
@@ -10,7 +10,7 @@ interface VaultUploadProgress {
   error?: string;
 }
 
-interface VaultUploadItem {
+interface FileUploadItem {
   path: string;
   content: string;
   is_folder: boolean;
@@ -20,17 +20,17 @@ interface VaultUploadItem {
   original_modified_at?: string;
 }
 
-export function useVaultUpload() {
+export function useUpload() {
   const { backend } = useClientConfig();
-  const [progress, setProgress] = useState<VaultUploadProgress | null>(null);
+  const [progress, setProgress] = useState<FileUploadProgress | null>(null);
   const [currentConflict, setCurrentConflict] = useState<FileConflict | null>(null);
   const [conflictResolution, setConflictResolution] = useState<ConflictResolution | null>(null);
 
-  const uploadToVault = async (items: VaultUploadItem[], skipConflictCheck: boolean = false) => {
+  const upload = async (items: FileUploadItem[], skipConflictCheck: boolean = false) => {
     try {
       if (!skipConflictCheck) {
         // First check for conflicts
-        const conflictsResponse = await fetch(`${backend}/api/vault/check-conflicts`, {
+        const conflictsResponse = await fetch(`${backend}/api/file-manager/check-conflicts`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ items }),
@@ -40,7 +40,7 @@ export function useVaultUpload() {
       }
       
       // Start upload with conflict resolution
-      const response = await fetch(`${backend}/api/vault/upload${conflictResolution ? `?conflict_resolution=${conflictResolution}` : ''}`, {
+      const response = await fetch(`${backend}/api/file-manager/upload${conflictResolution ? `?conflict_resolution=${conflictResolution}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items }),
@@ -86,7 +86,7 @@ export function useVaultUpload() {
               }
 
               // Handle progress updates
-              const progress: VaultUploadProgress = data;
+              const progress: FileUploadProgress = data;
               setProgress(progress);
 
               if (progress.status === 'error') {
@@ -110,7 +110,7 @@ export function useVaultUpload() {
   };
 
   return {
-    uploadToVault,
+    upload,
     progress,
     currentConflict,
     resolveConflict: setConflictResolution,

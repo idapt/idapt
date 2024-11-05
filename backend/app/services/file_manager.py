@@ -2,18 +2,48 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from pathlib import Path
 import os
+import base64
 from typing import Dict, Any
 import zipfile
 import io
 
 from app.services.db_file import DBFileService
 from app.services.file_system import FileSystemService
+from app.services.file import FileService
+from app.api.routers.models import FileUploadItem
 from app.services.llama_index import LlamaIndexService
-
 class FileManagerService:
     def __init__(self):
-        self.file_system = FileSystemService()
         self.llama_index = LlamaIndexService()
+        self.file_system = FileSystemService()
+        self.file_service = FileService()
+
+    async def process_upload_item(self, session: Session, item: FileUploadItem):
+        """Process a single upload item (file or folder)"""
+        try:
+            if item.is_folder:
+                # Create folder structure
+                await self.file_system.create_folder(item.path)
+                DBFileService.create_folder_path(session, item.path)
+            else:
+                # Process and save file
+                file_data = base64.b64decode(item.content.split(',')[1])
+                await self.file_system.save_file(item.path, file_data)
+                
+                # Create folder structure and file in database
+                parent_path = str(Path(item.path).parent)
+                folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
+                
+                DBFileService.create_file(
+                    session=session,
+                    name=item.name,
+                    path=item.path,
+                    folder_id=folder.id if folder else None,
+                    original_created_at=item.original_created_at,
+                    original_modified_at=item.original_modified_at,
+                )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to process upload: {str(e)}")
 
     async def download_file(self, session: Session, file_id: int) -> Dict[str, str]:
         try:

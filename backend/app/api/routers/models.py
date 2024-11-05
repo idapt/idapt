@@ -332,8 +332,8 @@ class ChatConfig(BaseModel):
         }
 
 
-class VaultUploadItem(BaseModel):
-    path: str  # Relative path in the vault
+class FileUploadItem(BaseModel):
+    path: str  # Relative path in the file system
     content: str  # Base64 content
     is_folder: bool = False
     name: str  # Original file name
@@ -342,11 +342,11 @@ class VaultUploadItem(BaseModel):
     original_modified_at: Optional[datetime] = None
 
 
-class VaultUploadRequest(BaseModel):
-    items: List[VaultUploadItem]
+class FileUploadRequest(BaseModel):
+    items: List[FileUploadItem]
 
 
-class VaultUploadProgress(BaseModel):
+class FileUploadProgress(BaseModel):
     total: int
     current: int
     processed_items: List[str]

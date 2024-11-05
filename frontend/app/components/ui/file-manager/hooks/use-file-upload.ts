@@ -1,4 +1,4 @@
-import { useVaultUpload } from "../../chat/hooks/use-vault-upload";
+import { useUpload } from '../../chat/hooks/use-upload';
 
 interface FileUploadOptions {
   onProgress?: (progress: number) => void;
@@ -7,7 +7,7 @@ interface FileUploadOptions {
 }
 
 export function useFileUpload() {
-  const { uploadToVault, progress, currentConflict, resolveConflict } = useVaultUpload();
+  const { upload, progress, currentConflict, resolveConflict } = useUpload();
 
   const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
     const content = await new Promise<string>((resolve) => {
@@ -17,7 +17,7 @@ export function useFileUpload() {
     });
 
     try {
-      await uploadToVault([{
+      await upload([{
         path: folderId ? `${folderId}/${file.name}` : file.name,
         content,
         is_folder: false,

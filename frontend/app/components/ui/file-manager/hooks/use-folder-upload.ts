@@ -1,4 +1,4 @@
-import { useVaultUpload } from "../../chat/hooks/use-vault-upload";
+import { useUpload } from "../../chat/hooks/use-upload";
 
 interface FolderUploadOptions {
   onProgress?: (progress: number) => void;
@@ -7,7 +7,7 @@ interface FolderUploadOptions {
 }
 
 export function useFolderUpload() {
-  const { uploadToVault, progress } = useVaultUpload();
+  const { upload, progress } = useUpload();
 
   const uploadFolder = async (folderInput: HTMLInputElement, targetPath: string = "", options?: FolderUploadOptions) => {
     if (!folderInput.files || folderInput.files.length === 0) return;
@@ -60,7 +60,7 @@ export function useFolderUpload() {
     console.log('Final upload items:', uploadItems);
 
     try {
-      await uploadToVault(uploadItems, true);
+      await upload(uploadItems, true);
       options?.onComplete?.();
     } catch (error) {
       console.error('Upload error:', error);
