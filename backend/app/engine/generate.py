@@ -7,10 +7,11 @@ from llama_index.core.ingestion import DocstoreStrategy, IngestionPipeline
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.settings import Settings
 from llama_index.core.storage import StorageContext
-from app.engine.loaders import get_documents
+from app.engine.loaders import get_documents, get_file_documents_from_paths
 from app.engine.vectordb import get_vector_store
 from app.engine.docdb import get_postgres_document_store
 from app.settings import init_settings
+from typing import List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
@@ -34,22 +35,28 @@ def run_pipeline(docstore, vector_store, documents):
     nodes = pipeline.run(show_progress=True, documents=documents)
     return nodes
 
-def generate_datasource():
-
+def generate_files_embeddings(file_paths: List[str] = None):
+    """Generate embeddings for specified files or all files if none specified"""
+    
     init_settings()
 
-    logger.info("Generate index for all the files in the data folder")
-
-    # Get the stores and documents or create new ones
-    documents = get_documents()
+    logger.info(f"Generate embeddings for files: {file_paths if file_paths else 'all'}")
+    
+    if file_paths:
+        # Get the documents for specified files or all files
+        documents = get_file_documents_from_paths(file_paths)
+    else:
+        documents = get_documents()
 
     # Set private=false to mark the document as public (required for filtering)
     for doc in documents:
         doc.metadata["private"] = "false"
 
-    vector_store = get_vector_store()
-
+    # Get the document store
     docstore = get_postgres_document_store()
+
+    # Get the vector store
+    vector_store = get_vector_store()
 
     # Run the ingestion pipeline
     _ = run_pipeline(docstore, vector_store, documents)

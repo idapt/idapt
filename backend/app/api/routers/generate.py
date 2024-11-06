@@ -1,19 +1,24 @@
 from fastapi import APIRouter, HTTPException
 import logging
-from app.engine.generate import generate_datasource
+from typing import List
+from pydantic import BaseModel
+from app.engine.generate import generate_files_embeddings
 
 generate_router = r = APIRouter()
 logger = logging.getLogger(__name__)
 
+class GenerateRequest(BaseModel):
+    file_paths: List[str]
+
 @r.post("")
-async def generate():
+async def generate(request: GenerateRequest):
     """
-    Generate the datasource by running the ingestion pipeline.
-    This will process all configured data sources and update the vector store.
+    Generate the datasource by running the ingestion pipeline for specified files.
+    This will process the given files and update the vector store.
     """
     logger.info("Starting the datasource generation process.")
     try:
-        generate_datasource()
+        generate_files_embeddings(request.file_paths)
         logger.info("Datasource generation completed successfully.")
         return {"status": "success", "message": "Successfully generated datasource"}
     except Exception as e:

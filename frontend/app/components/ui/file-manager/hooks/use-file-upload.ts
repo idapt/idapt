@@ -1,4 +1,5 @@
 import { useUpload } from '../../chat/hooks/use-upload';
+import { useGenerate } from '../hooks/use-generate';
 
 interface FileUploadOptions {
   onProgress?: (progress: number) => void;
@@ -8,6 +9,7 @@ interface FileUploadOptions {
 
 export function useFileUpload() {
   const { upload, progress, currentConflict, resolveConflict } = useUpload();
+  const { generate } = useGenerate();
 
   const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
     const content = await new Promise<string>((resolve) => {
@@ -17,8 +19,10 @@ export function useFileUpload() {
     });
 
     try {
+      const filePath = folderId ? `${folderId}/${file.name}` : file.name;
+      
       await upload([{
-        path: folderId ? `${folderId}/${file.name}` : file.name,
+        path: filePath,
         content,
         is_folder: false,
         name: file.name,
@@ -26,6 +30,10 @@ export function useFileUpload() {
         original_created_at: file.lastModified.toString(),
         original_modified_at: file.lastModified.toString()
       }], true);
+
+      // Generate index for the uploaded file
+      await generate([filePath]);
+      
       options?.onComplete?.();
     } catch (error) {
       options?.onError?.(error instanceof Error ? error.message : 'Upload failed');

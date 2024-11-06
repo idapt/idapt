@@ -16,6 +16,9 @@ def load_configs() -> Dict[str, Any]:
         configs = yaml.safe_load(f)
     return configs
 
+def get_file_documents_from_paths(file_paths: List[str]) -> List[Document]:
+    config = load_configs()
+    return get_file_documents(FileLoaderConfig(**config["file"]), file_paths)
 
 def get_documents() -> List[Document]:
     documents = []

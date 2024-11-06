@@ -20,16 +20,21 @@ import httpx
 from datetime import datetime
 from app.config import DATA_DIR
 
+import logging
+logger = logging.getLogger(__name__)
 
 file_manager_router = r = APIRouter()
 file_manager = FileManagerService()
 
 
-async def trigger_generate():
-    """Trigger the generate endpoint after upload"""
+async def trigger_generate(file_paths: List[str]):
+    """Trigger the generate endpoint after upload with specific files"""
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post("http://localhost:8000/api/generate")
+            response = await client.post(
+                "http://localhost:8000/api/generate",
+                json={"file_paths": file_paths}
+            )
             response.raise_for_status()
         except Exception as e:
             logger.error(f"Failed to trigger generate endpoint: {e}")
@@ -45,6 +50,7 @@ async def upload_files(
         total = len(request.items)
         processed = []
         skipped = []
+        file_paths = []
         
         print(f"Processing {total} upload items")
         
@@ -54,10 +60,10 @@ async def upload_files(
                     print(f"Processing item {idx}/{total}: {item.path}")
                     
                     # Store full path for filesystem operations
-                    full_path = convert_db_path_to_filesystem_path(item.path)
+                    full_path = Path(convert_db_path_to_filesystem_path(item.path))
                     
                     # Get relative path for database operations
-                    db_path = convert_filesystem_path_to_db_path(full_path)
+                    db_path = convert_filesystem_path_to_db_path(str(full_path))
                     
                     # Check if path already exists
                     if DBFileService.path_exists(session, db_path):
@@ -84,6 +90,9 @@ async def upload_files(
                         with open(str(full_path), "wb") as f:
                             f.write(file_data)
                         
+                        # Store file path for generation
+                        file_paths.append(db_path)
+                        
                         # Create folder structure and file in database
                         parent_path = str(Path(db_path).parent)
                         folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
@@ -94,7 +103,7 @@ async def upload_files(
                             path=db_path,
                             folder_id=folder.id if folder else None,
                             original_created_at=item.original_created_at,
-                            original_modified_at=item.original_modified_at,
+                            original_modified_at=item.original_modified_at
                         )
                         
                         processed.append(f"Uploaded file: {item.path}")
@@ -126,8 +135,9 @@ async def upload_files(
                     }
                     return
 
-            # Trigger generate endpoint after successful upload
-            background_tasks.add_task(trigger_generate)
+            # Trigger generate endpoint after successful upload only for files (not folders)
+            if file_paths:
+                background_tasks.add_task(trigger_generate, file_paths)
             
             # Final success message
             yield {

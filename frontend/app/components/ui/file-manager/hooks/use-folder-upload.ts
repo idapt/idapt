@@ -1,4 +1,5 @@
 import { useUpload } from "../../chat/hooks/use-upload";
+import { useGenerate } from "../hooks/use-generate";
 
 interface FolderUploadOptions {
   onProgress?: (progress: number) => void;
@@ -8,12 +9,14 @@ interface FolderUploadOptions {
 
 export function useFolderUpload() {
   const { upload, progress } = useUpload();
+  const { generate } = useGenerate();
 
   const uploadFolder = async (folderInput: HTMLInputElement, targetPath: string = "", options?: FolderUploadOptions) => {
     if (!folderInput.files || folderInput.files.length === 0) return;
 
     const files = Array.from(folderInput.files);
     const uploadItems = [];
+    const filePaths = [];
 
     console.log('Files to upload:', files);
 
@@ -21,11 +24,10 @@ export function useFolderUpload() {
       const relativePath = file.webkitRelativePath;
       const fullPath = targetPath ? `${targetPath}/${relativePath}` : relativePath;
       
-      console.log('Processing file:', {
-        name: file.name,
-        relativePath,
-        fullPath
-      });
+      // Store file paths for generation
+      if (file.size > 0) {
+        filePaths.push(fullPath);
+      }
 
       // For files, we need to read their content
       if (file.size > 0) {
@@ -45,7 +47,6 @@ export function useFolderUpload() {
           original_modified_at: file.lastModified.toString()
         });
       } else {
-        // For folders, we just need the path, name and metadata
         uploadItems.push({
           path: fullPath,
           content: "",
@@ -57,10 +58,14 @@ export function useFolderUpload() {
       }
     }
 
-    console.log('Final upload items:', uploadItems);
-
     try {
       await upload(uploadItems, true);
+      
+      // Generate index for uploaded files
+      if (filePaths.length > 0) {
+        await generate(filePaths);
+      }
+      
       options?.onComplete?.();
     } catch (error) {
       console.error('Upload error:', error);
