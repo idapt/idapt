@@ -11,6 +11,7 @@ from app.services.file_manager import FileManagerService, convert_db_path_to_fil
 from app.api.routers.models import FileNode, FileUploadRequest, FileUploadProgress
 from app.services.db_file import DBFileService
 from app.services.file import FileService
+from app.services.generate import GenerateService
 
 import base64
 import os
@@ -25,20 +26,6 @@ logger = logging.getLogger(__name__)
 
 file_manager_router = r = APIRouter()
 file_manager = FileManagerService()
-
-
-async def trigger_generate(file_paths: List[str]):
-    """Trigger the generate endpoint after upload with specific files"""
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(
-                "http://localhost:8000/api/generate",
-                json={"file_paths": file_paths}
-            )
-            response.raise_for_status()
-        except Exception as e:
-            logger.error(f"Failed to trigger generate endpoint: {e}")
-
 
 @r.post("/upload")
 async def upload_files(
@@ -137,7 +124,10 @@ async def upload_files(
 
             # Trigger generate endpoint after successful upload only for files (not folders)
             if file_paths:
-                background_tasks.add_task(trigger_generate, file_paths)
+                background_tasks.add_task(
+                    GenerateService.generate_embeddings,
+                    file_paths
+                )
             
             # Final success message
             yield {
@@ -163,7 +153,6 @@ async def upload_files(
             }
             
     return EventSourceResponse(process_uploads())
-
 
 @r.get("/download/{file_id}")
 async def download_file(file_id: int, session: Session = Depends(get_db_session)):
