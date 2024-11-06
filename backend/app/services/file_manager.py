@@ -32,8 +32,11 @@ class FileManagerService:
                 await self.file_system.save_file(item.path, file_data)
                 
                 # Create folder structure and file in database
-                parent_path = str(Path(item.path).parent)
-                folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
+                path_obj = Path(item.path)
+                parent_path = str(path_obj.parent)
+                parent_path = parent_path if parent_path != '.' else ''
+                
+                folder = None if not parent_path else DBFileService.create_folder_path(session, parent_path)
                 
                 DBFileService.create_file(
                     session=session,
@@ -78,14 +81,17 @@ class FileManagerService:
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
 
+        # Convert db file path to filesystem path
+        filesystem_path = convert_db_path_to_filesystem_path(file.path)
+
         # Delete from filesystem with idapt_data prefix
-        await self.file_system.delete_file(f"/idapt_data/{file.path}")
+        await self.file_system.delete_file(filesystem_path)
         
         # Delete from database
         DBFileService.delete_file(session, file_id)
 
         # Remove from LlamaIndex
-        await self.llama_index.remove_document(str(file_id))
+        await self.llama_index.remove_document(filesystem_path)
 
     async def delete_folder(self, session: Session, folder_id: int):
         folder = DBFileService.get_folder(session, folder_id)
@@ -95,10 +101,10 @@ class FileManagerService:
         # Get all files in folder and subfolders recursively
         files = DBFileService.get_folder_files_recursive(session, folder_id)
         
-        # Delete files from filesystem and LlamaIndex
+        # Delete all files in the folder and subfolders
         for file in files:
-            await self.file_system.delete_file(file.path)
-            await self.llama_index.remove_document(str(file.id))
+            # Use our delete_file method to delete from filesystem and LlamaIndex
+            await self.delete_file(session, file.id)
 
         # Delete folder and all subfolders from filesystem
         await self.file_system.delete_folder(folder.path)

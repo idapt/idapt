@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from llama_index.core import StorageContext
 from app.engine.vectordb import get_vector_store
 from app.engine.docdb import get_postgres_document_store
+
 logger = logging.getLogger("uvicorn")
 
 
@@ -15,8 +16,14 @@ class IndexConfig(BaseModel):
         default=None,
     )
 
+# Singleton index instance to avoid creating multiple instances
+index: VectorStoreIndex = None
 
+# TODO Make this better
 def get_index(config: IndexConfig = None):
+
+    global index
+    
     if config is None:
         config = IndexConfig()
     logger.info("Connecting vector store...")
