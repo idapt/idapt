@@ -12,6 +12,7 @@ from app.services.file_system import FileSystemService
 from app.services.file import FileService
 from app.api.routers.models import FileUploadItem
 from app.services.llama_index import LlamaIndexService
+
 class FileManagerService:
     def __init__(self):
         self.llama_index = LlamaIndexService()
@@ -159,3 +160,20 @@ class FileManagerService:
         except Exception as e:
             print(f"Error creating folder zip: {str(e)}")
             raise
+
+def convert_filesystem_path_to_db_path(full_path: str | Path) -> str:
+    """
+    Normalize a full path by removing the DATA_DIR prefix and leading slashes.
+    
+    Args:
+        full_path: The full path to normalize (can be string or Path object)
+        
+    Returns:
+        str: Normalized path relative to DATA_DIR
+    """
+    from app.config import DATA_DIR
+    return str(full_path).replace(str(DATA_DIR), '').lstrip('/')
+
+def convert_db_path_to_filesystem_path(path: str) -> str:
+    from app.config import DATA_DIR
+    return str(Path(DATA_DIR) / path)

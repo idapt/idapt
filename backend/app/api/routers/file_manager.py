@@ -7,7 +7,7 @@ import json
 from typing import List, AsyncGenerator
 
 from app.database.connection import get_db_session
-from app.services.file_manager import FileManagerService
+from app.services.file_manager import FileManagerService, convert_db_path_to_filesystem_path, convert_filesystem_path_to_db_path
 from app.api.routers.models import FileNode, FileUploadRequest, FileUploadProgress
 from app.services.db_file import DBFileService
 from app.services.file import FileService
@@ -54,10 +54,10 @@ async def upload_files(
                     print(f"Processing item {idx}/{total}: {item.path}")
                     
                     # Store full path for filesystem operations
-                    full_path = Path(DATA_DIR) / item.path
+                    full_path = convert_db_path_to_filesystem_path(item.path)
                     
-                    # Get relative path for database operations by removing idapt_data prefix
-                    db_path = str(full_path).replace(str(DATA_DIR), '').lstrip('/')
+                    # Get relative path for database operations
+                    db_path = convert_filesystem_path_to_db_path(full_path)
                     
                     # Check if path already exists
                     if DBFileService.path_exists(session, db_path):
