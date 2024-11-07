@@ -1,9 +1,17 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, func, JSON, UniqueConstraint, Index
+from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, func, JSON, UniqueConstraint, Index, Table
 from sqlalchemy.orm import relationship, declarative_base
 from sqlalchemy.ext.declarative import declared_attr
 from pgvector.sqlalchemy import Vector
 
 Base = declarative_base()
+
+# Association table for the many-to-many relationship
+data_file_association = Table(
+    'data_file_association',
+    Base.metadata,
+    Column('data_id', Integer, ForeignKey('data.id'), primary_key=True),
+    Column('file_id', Integer, ForeignKey('files.id'), primary_key=True)
+)
 
 class Folder(Base):
     __tablename__ = 'folders'
@@ -43,7 +51,9 @@ class File(Base):
     # Relationships
     folder_id = Column(Integer, ForeignKey('folders.id'))
     folder = relationship("Folder", back_populates="files")
-    data = relationship("DataFile", back_populates="file")
+    
+    # Many-to-many relationship with Data
+    data = relationship("Data", secondary=data_file_association, back_populates="files")
 
 # Table containing the processed / extracted data from the files
 class Data(Base):
@@ -51,14 +61,6 @@ class Data(Base):
     
     id = Column(Integer, primary_key=True)
     data = Column(JSON, nullable=False)
-    files = relationship("DataFile", back_populates="data")
-
-# Table linking data to files
-class DataFile(Base):
-    __tablename__ = 'data_files'
     
-    id = Column(Integer, primary_key=True)
-    data_id = Column(Integer, ForeignKey('data.id'))
-    file_id = Column(Integer, ForeignKey('files.id'))
-    data = relationship("Data", back_populates="files")
-    file = relationship("File", back_populates="data_files")
+    # Many-to-many relationship with File
+    files = relationship("File", secondary=data_file_association, back_populates="data")

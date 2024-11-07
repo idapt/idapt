@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from typing import List, Dict, Any
-from app.database.models import Data, DataFile, File
+from app.database.models import Data, File
 
 class DBDataManagerService:
     @staticmethod
@@ -13,18 +13,14 @@ class DBDataManagerService:
             session.add(data)
             session.flush()  # Flush to get the data.id
             
-            # Create file links
-            for file_id in file_ids:
-                # Verify file exists
-                file = session.query(File).filter(File.id == file_id).first()
-                if not file:
-                    session.rollback()
-                    raise HTTPException(status_code=404, detail=f"File with id {file_id} not found")
-                
-                # Create link
-                data_file = DataFile(data_id=data.id, file_id=file_id)
-                session.add(data_file)
+            # Link data to files
+            files = session.query(File).filter(File.id.in_(file_ids)).all()
+            if len(files) != len(file_ids):
+                missing_ids = set(file_ids) - {file.id for file in files}
+                session.rollback()
+                raise HTTPException(status_code=404, detail=f"Files with ids {missing_ids} not found")
             
+            data.files.extend(files)
             session.commit()
             return data
             
@@ -49,7 +45,7 @@ class DBDataManagerService:
             raise HTTPException(status_code=500, detail=f"Error modifying data: {str(e)}")
 
     @staticmethod
-    def link_data(session: Session, file_ids: List[int], data_id: int) -> List[DataFile]:
+    def link_data(session: Session, file_ids: List[int], data_id: int) -> List[File]:
         """Link existing data to additional files"""
         try:
             # Verify data exists
