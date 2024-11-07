@@ -3,49 +3,151 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 import os
 import base64
-from typing import Dict, Any
+from typing import Dict, List, Optional, Tuple, Any, AsyncGenerator
 import zipfile
-import io
+import mimetypes
+import re
+from io import BytesIO
+import asyncio
+from fastapi import BackgroundTasks
 
 from app.services.db_file import DBFileService
 from app.services.file_system import FileSystemService
-from app.services.file import FileService
-from app.api.routers.models import FileUploadItem
+from app.database.models import File, Folder
+from app.api.routers.models import FileUploadItem, FileUploadRequest, FileUploadProgress, FileNode
 from app.services.llama_index import LlamaIndexService
+from app.services.generate import GenerateService
 
 class FileManagerService:
     def __init__(self):
         self.llama_index = LlamaIndexService()
         self.file_system = FileSystemService()
-        self.file_service = FileService()
 
-    async def process_upload_item(self, session: Session, item: FileUploadItem):
+    async def upload_files(self, request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:
+        total = len(request.items)
+        processed = []
+        skipped = []
+        file_paths = []
+        
+        print(f"Uploading {total} files")
+        
+        try:
+            for idx, item in enumerate(request.items, 1):
+                try:
+                    print(f"Uploading file {idx}/{total}: {item.path}")
+                    
+                    result = await self.upload_file(session, item, file_paths)
+                    if result:
+                        processed.append(result)
+
+                    yield {
+                        "event": "message",
+                        "data": FileUploadProgress(
+                            total=total,
+                            current=idx,
+                            processed_items=processed + skipped,
+                            status="processing"
+                        ).model_dump_json()
+                    }
+                    
+                    await asyncio.sleep(0.1)
+                    
+                except Exception as e:
+                    print(f"Error uploading file: {str(e)}")
+                    error_message = str(e)
+                    yield {
+                        "event": "message",
+                        "data": FileUploadProgress(
+                            total=total,
+                            current=idx,
+                            processed_items=processed + skipped,
+                            status="error",
+                            error=f"Error uploading {item.path}: {error_message}"
+                        ).model_dump_json()
+                    }
+                    return
+
+            # Trigger generate endpoint after successful upload only for files (not folders)
+            if file_paths:
+                background_tasks.add_task(
+                    GenerateService.generate_embeddings,
+                    file_paths
+                )
+            
+            # Final success message
+            yield {
+                "event": "message",
+                "data": FileUploadProgress(
+                    total=total,
+                    current=total,
+                    processed_items=processed + skipped,
+                    status="completed"
+                ).model_dump_json()
+            }
+
+        except Exception as e:
+            yield {
+                "event": "message",
+                "data": FileUploadProgress(
+                    total=total,
+                    current=0,
+                    processed_items=[],
+                    status="error",
+                    error=f"Upload failed: {str(e)}"
+                ).model_dump_json()
+            }
+
+    async def upload_file(self, session: Session, item: FileUploadItem, file_paths: list[str]) -> str:
         """Process a single upload item (file or folder)"""
         try:
+            # Store full path for filesystem operations
+            full_path = Path(convert_db_path_to_filesystem_path(item.path))
+            
+            # Get relative path for database operations
+            db_path = item.path
+            
+            # Check if path already exists
+            if DBFileService.path_exists(session, db_path):
+                # Delete existing file/folder if it exists
+                if item.is_folder:
+                    folder = session.query(Folder).filter(Folder.path == db_path).first()
+                    if folder:
+                        DBFileService.delete_folder(session, folder.id)
+                        await self.file_system.delete_folder(db_path)
+                else:
+                    file = session.query(File).filter(File.path == db_path).first()
+                    if file:
+                        DBFileService.delete_file(session, file.id)
+                        await self.file_system.delete_file(db_path)
+            
+            # Now proceed with the upload
             if item.is_folder:
-                # Create folder structure
-                await self.file_system.create_folder(item.path)
-                DBFileService.create_folder_path(session, item.path)
+                os.makedirs(str(full_path), exist_ok=True)
+                DBFileService.create_folder_path(session, db_path)
             else:
-                # Process and save file
-                file_data = base64.b64decode(item.content.split(',')[1])
-                await self.file_system.save_file(item.path, file_data)
+                # Process and save file to disk
+                os.makedirs(str(full_path.parent), exist_ok=True)
+                file_data, _ = _preprocess_base64_file(item.content)
+                await self.file_system.write_file(str(full_path), file_data)
+                
+                # Store file path for generation
+                file_paths.append(db_path)
                 
                 # Create folder structure and file in database
-                path_obj = Path(item.path)
-                parent_path = str(path_obj.parent)
-                parent_path = parent_path if parent_path != '.' else ''
-                
-                folder = None if not parent_path else DBFileService.create_folder_path(session, parent_path)
+                parent_path = str(Path(db_path).parent)
+                folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
                 
                 DBFileService.create_file(
                     session=session,
                     name=item.name,
-                    path=item.path,
+                    path=db_path,
                     folder_id=folder.id if folder else None,
                     original_created_at=item.original_created_at,
-                    original_modified_at=item.original_modified_at,
+                    original_modified_at=item.original_modified_at
                 )
+                
+                return f"Uploaded file: {item.path}"
+                
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to process upload: {str(e)}")
 
@@ -137,7 +239,7 @@ class FileManagerService:
                 raise HTTPException(status_code=404, detail="Folder not found")
             
             # Create a memory buffer for the zip file
-            zip_buffer = io.BytesIO()
+            zip_buffer = BytesIO()
             
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 # Get all files recursively
@@ -183,3 +285,17 @@ def convert_filesystem_path_to_db_path(full_path: str | Path) -> str:
 def convert_db_path_to_filesystem_path(path: str) -> str:
     from app.config import DATA_DIR
     return str(Path(DATA_DIR) / path)
+
+def _sanitize_file_name(file_name: str) -> str:
+    """
+    Sanitize the file name by replacing all non-alphanumeric characters with underscores
+    """
+    sanitized_name = re.sub(r"[^a-zA-Z0-9.]", "_", file_name)
+    return sanitized_name
+
+def _preprocess_base64_file(base64_content: str) -> Tuple[bytes, str | None]:
+    header, data = base64_content.split(",", 1)
+    mime_type = header.split(";")[0].split(":", 1)[1]
+    extension = mimetypes.guess_extension(mime_type).lstrip(".")
+    # File data as bytes
+    return base64.b64decode(data), extension
