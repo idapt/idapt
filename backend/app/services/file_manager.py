@@ -18,6 +18,9 @@ from app.api.routers.models import FileUploadItem, FileUploadRequest, FileUpload
 from app.services.llama_index import LlamaIndexService
 from app.services.generate import GenerateService
 
+import logging
+logger = logging.getLogger(__name__)
+
 class FileManagerService:
     def __init__(self):
         self.llama_index = LlamaIndexService()
@@ -117,7 +120,9 @@ class FileManagerService:
                 else:
                     file = session.query(File).filter(File.path == db_path).first()
                     if file:
-                        DBFileService.delete_file(session, file.id)
+                        result = await DBFileService.delete_file(session, file.id)
+                        if not result:
+                            logger.warning(f"Failed to delete file from database for id: {file.id}")
                         await self.file_system.delete_file(db_path)
             
             # Now proceed with the upload
@@ -190,10 +195,14 @@ class FileManagerService:
         await self.file_system.delete_file(filesystem_path)
         
         # Delete from database
-        DBFileService.delete_file(session, file_id)
+        result = await DBFileService.delete_file(session, file_id)
+        if not result:
+            logger.warning(f"Failed to delete file from database for id: {file_id}")
 
         # Remove from LlamaIndex
-        await self.llama_index.remove_document(filesystem_path)
+        result = await self.llama_index.remove_document(filesystem_path)
+        if result is None:
+            logger.warning(f"Failed to delete document from LlamaIndex for path: {filesystem_path}")
 
     async def delete_folder(self, session: Session, folder_id: int):
         folder = DBFileService.get_folder(session, folder_id)
