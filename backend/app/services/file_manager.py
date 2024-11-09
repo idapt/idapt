@@ -17,6 +17,8 @@ from app.database.models import File, Folder
 from app.api.routers.models import FileUploadItem, FileUploadRequest, FileUploadProgress, FileNode
 from app.services.llama_index import LlamaIndexService
 from app.services.generate import GenerateService
+from app.services.data_generation import DataGenerationService
+from app.engine.pipelines.zettlekasten_pipeline import ZettlekastenPipeline
 
 import logging
 logger = logging.getLogger(__name__)
@@ -25,6 +27,7 @@ class FileManagerService:
     def __init__(self):
         self.llama_index = LlamaIndexService()
         self.file_system = FileSystemService()
+        self.data_generation_service = DataGenerationService()
 
     async def upload_files(self, request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:
         total = len(request.items)
@@ -32,12 +35,12 @@ class FileManagerService:
         skipped = []
         file_paths = []
         
-        print(f"Uploading {total} files")
+        logger.info(f"Uploading {total} files")
         
         try:
             for idx, item in enumerate(request.items, 1):
                 try:
-                    print(f"Uploading file {idx}/{total}: {item.path}")
+                    logger.info(f"Uploading file {idx}/{total}: {item.path}")
                     
                     result = await self.upload_file(session, item, file_paths)
                     if result:
@@ -56,7 +59,7 @@ class FileManagerService:
                     await asyncio.sleep(0.1)
                     
                 except Exception as e:
-                    print(f"Error uploading file: {str(e)}")
+                    logger.error(f"Error uploading file {item.path}: {str(e)}")
                     error_message = str(e)
                     yield {
                         "event": "message",
@@ -89,6 +92,7 @@ class FileManagerService:
             }
 
         except Exception as e:
+            logger.error(f"Error during file upload process: {str(e)}")
             yield {
                 "event": "message",
                 "data": FileUploadProgress(
@@ -103,6 +107,9 @@ class FileManagerService:
     async def upload_file(self, session: Session, item: FileUploadItem, file_paths: list[str]) -> str:
         """Process a single upload item (file or folder)"""
         try:
+            # Log the start of the upload process
+            logger.info(f"Starting upload for file: {item.name}")
+
             # Store full path for filesystem operations
             full_path = Path(convert_db_path_to_filesystem_path(item.path))
             
@@ -142,7 +149,7 @@ class FileManagerService:
                 parent_path = str(Path(db_path).parent)
                 folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
                 
-                DBFileService.create_file(
+                file = DBFileService.create_file(
                     session=session,
                     name=item.name,
                     path=db_path,
@@ -150,11 +157,23 @@ class FileManagerService:
                     original_created_at=item.original_created_at,
                     original_modified_at=item.original_modified_at
                 )
+
+                # Log the file creation
+                logger.info(f"File created with ID: {file.id}")
+
+                # Generate Zettlekasten notes from file
+                logger.info("Starting Zettlekasten note generation")
+                await self.data_generation_service.generate_data_from_file(
+                    session=session,
+                    file_id=file.id,
+                    pipeline=ZettlekastenPipeline
+                )
                 
                 return f"Uploaded file: {item.path}"
                 
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to process upload: {str(e)}")
+            logger.error(f"Error during file upload: {str(e)}")
+            raise
 
     async def download_file(self, session: Session, file_id: int) -> Dict[str, str]:
         try:
@@ -180,7 +199,7 @@ class FileManagerService:
             }
             
         except Exception as e:
-            print(f"Error downloading file: {str(e)}")
+            logger.error(f"Error downloading file: {str(e)}")
             raise
 
     async def delete_file(self, session: Session, file_id: int):
@@ -275,7 +294,7 @@ class FileManagerService:
             }
             
         except Exception as e:
-            print(f"Error creating folder zip: {str(e)}")
+            logger.error(f"Error creating folder zip: {str(e)}")
             raise
 
 def convert_filesystem_path_to_db_path(full_path: str | Path) -> str:

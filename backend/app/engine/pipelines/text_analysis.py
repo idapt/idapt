@@ -1,15 +1,17 @@
-from typing import Dict, Any
-from app.engine.pipelines.base import GenerateDataPipeline
+from typing import List
+from app.engine.pipelines.base import GenerateDataPipeline, BaseData
 
 class TextAnalysisPipeline(GenerateDataPipeline):
     """Example pipeline that performs basic text analysis"""
     
-    async def generate(self, content: str) -> Dict[str, Any]:
+    async def generate(self, source_file_ids: List[int], content: str) -> List[BaseData]:
         # This is just an example implementation
         word_count = len(content.split())
         char_count = len(content)
         
-        return {
+        return [BaseData(
+            source_file_ids=source_file_ids,
+            content={
             "analysis": {
                 "word_count": word_count,
                 "character_count": char_count,
@@ -17,6 +19,7 @@ class TextAnalysisPipeline(GenerateDataPipeline):
             },
             "metadata": {
                 "pipeline": "text_analysis",
-                "version": "1.0"
-            }
-        } 
+                    "version": "1.0"
+                }
+            } 
+        )]

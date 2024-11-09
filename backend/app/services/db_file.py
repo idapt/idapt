@@ -33,7 +33,7 @@ class DBFileService:
                 ).first()
             
             if not folder:
-                print(f"Creating new folder: {part} with path {current_path}")
+                logger.info(f"Creating new folder: {part} with path {current_path}")
                 folder = Folder(
                     name=part,
                     path=current_path,
@@ -44,7 +44,7 @@ class DBFileService:
                     session.commit()
                 except Exception as e:
                     session.rollback()
-                    print(f"Error creating folder: {str(e)}")
+                    logger.error(f"Error creating folder: {str(e)}")
                     raise
             
             current_folder = folder
@@ -77,7 +77,7 @@ class DBFileService:
             session.commit()
         except Exception as e:
             session.rollback()
-            print(f"Error creating file: {str(e)}")
+            logger.error(f"Error creating file: {str(e)}")
             raise
         return file
 
@@ -173,7 +173,7 @@ class DBFileService:
                 return True
             except Exception as e:
                 session.rollback()
-                print(f"Error deleting file: {str(e)}")
+                logger.error(f"Error deleting file: {str(e)}")
                 raise
         return False
 
@@ -203,7 +203,7 @@ class DBFileService:
                 return True
             except Exception as e:
                 session.rollback()
-                print(f"Error deleting folder: {str(e)}")
+                logger.error(f"Error deleting folder: {str(e)}")
                 return False
         return False
 

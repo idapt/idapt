@@ -4,7 +4,7 @@ from typing import Dict, Any
 
 from app.database.connection import get_db_session
 from app.services.data_generation import DataGenerationService
-from app.engine.pipelines.text_analysis import TextAnalysisPipeline
+from app.engine.pipelines.zettlekasten_pipeline import ZettlekastenPipeline
 
 data_generation_router = r = APIRouter()
 data_generation_service = DataGenerationService()
@@ -14,12 +14,12 @@ async def generate_data(
     file_id: int,
     session: Session = Depends(get_db_session)
 ) -> Dict[str, Any]:
-    """Generate structured data from a file"""
+    """Generate Zettlekasten notes from a file"""
     try:
         data = await data_generation_service.generate_data_from_file(
             session=session,
             file_id=file_id,
-            pipeline=TextAnalysisPipeline
+            pipeline=ZettlekastenPipeline
         )
         return data
     except Exception as e:

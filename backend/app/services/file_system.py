@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from fastapi import HTTPException
 import shutil
+from app.config import DATA_DIR
 
 class FileSystemService:
     def __init__(self):
@@ -55,3 +56,7 @@ class FileSystemService:
                 shutil.rmtree(str(full_path))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
+
+    def get_full_path(self, db_path: str) -> str:
+        """Convert a database path to a full filesystem path."""
+        return str(Path(DATA_DIR) / db_path)

@@ -43,3 +43,8 @@ def get_index(config: IndexConfig = None):
 
     logger.info("Finished load index from vector store.")
     return index
+
+def refresh_index():
+    global index
+    index = None  # Force reinitialization
+    return get_index()
