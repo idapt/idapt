@@ -38,15 +38,11 @@ else:
     logging.getLogger('alembic').setLevel(logging.WARNING)
 
 import uvicorn
-from app.api.routers import api_router
-from app.observability import init_observability
-from app.settings import init_settings
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from app.database.init_db import initialize_database
-from app.pull_ollama_models import pull_models
 
 logger.info("Starting application initialization")
 
@@ -54,8 +50,13 @@ def create_app() -> FastAPI:
     app = FastAPI()
     
     # Initialize core components
+    from app.settings import init_settings
+    from app.observability import init_observability
     init_settings()
     init_observability()
+
+    # Initialize the database
+    from app.database.init_db import initialize_database
     initialize_database()
     
     # Configure CORS
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     mount_static_files(app)
     
     # Include API router
+    from app.api.routers import api_router
     app.include_router(api_router, prefix="/api")
     
     return app
@@ -119,10 +121,11 @@ app = create_app()
 if __name__ == "__main__":
     # Pull Ollama models if needed
     if os.getenv("MODEL_PROVIDER") == "ollama":
+        from app.pull_ollama_models import pull_models
         threading.Thread(target=pull_models, daemon=True).start()
         
     app_host = os.getenv("APP_HOST", "0.0.0.0")
     app_port = int(os.getenv("APP_PORT", "8000"))
     reload = environment == "dev"
     
-    uvicorn.run(app="main:app", host=app_host, port=app_port, reload=reload)
+    uvicorn.run(app="main:app", host=app_host, port=app_port, reload=reload, log_level="info")
