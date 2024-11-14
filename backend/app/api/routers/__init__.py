@@ -6,7 +6,6 @@ from .chat_config import config_router  # noqa: F401
 from .upload import file_upload_router  # noqa: F401
 from .generate import generate_router  # noqa: F401
 from .file_manager import file_manager_router  # noqa: F401
-from .data_generation import data_generation_router  # noqa: F401
 
 api_router = APIRouter()
 api_router.include_router(health_router, prefix="/health", tags=["health"])
@@ -15,7 +14,6 @@ api_router.include_router(config_router, prefix="/chat/config", tags=["chat-conf
 api_router.include_router(file_upload_router, prefix="/chat/upload", tags=["chat-upload"])
 api_router.include_router(generate_router, prefix="/generate", tags=["generate"])
 api_router.include_router(file_manager_router, prefix="/file-manager", tags=["file-manager"])
-api_router.include_router(data_generation_router, prefix="/data-generation", tags=["data-generation"])
 
 # Dynamically adding additional routers if they exist
 try:

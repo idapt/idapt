@@ -5,14 +5,6 @@ from pgvector.sqlalchemy import Vector
 
 Base = declarative_base()
 
-# Association table for the many-to-many relationship
-data_file_association = Table(
-    'data_file_association',
-    Base.metadata,
-    Column('data_id', Integer, ForeignKey('data.id'), primary_key=True),
-    Column('file_id', Integer, ForeignKey('files.id'), primary_key=True)
-)
-
 class Folder(Base):
     __tablename__ = 'folders'
     
@@ -51,16 +43,3 @@ class File(Base):
     # Relationships
     folder_id = Column(Integer, ForeignKey('folders.id'))
     folder = relationship("Folder", back_populates="files")
-    
-    # Many-to-many relationship with Data
-    data = relationship("Data", secondary=data_file_association, back_populates="files")
-
-# Table containing the processed / extracted data from the files
-class Data(Base):
-    __tablename__ = 'data'
-    
-    id = Column(Integer, primary_key=True)
-    data = Column(JSON, nullable=False)
-    
-    # Many-to-many relationship with File
-    files = relationship("File", secondary=data_file_association, back_populates="data")
