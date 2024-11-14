@@ -40,6 +40,11 @@ async def update_settings(settings: AppSettingsModel):
         # Update llama index settings after changing model settings
         from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
         update_llama_index_llm_and_embed_models_from_app_settings()
+
+        # Pull Ollama models currently set in app settings if needed
+        if AppSettings.model_provider == "ollama":
+            from app.pull_ollama_models import pull_ollama_models
+            threading.Thread(target=pull_ollama_models, args=[AppSettings.model, AppSettings.embedding_model], daemon=True).start()
         
         return {"status": "success"}
     except ImportError as e:

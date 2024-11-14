@@ -51,12 +51,12 @@ def create_app() -> FastAPI:
     
     # Initialize the application settings, this will load settings from file.
     from app.settings.app_settings import AppSettings
-    
-    # Pull Ollama models if needed
-    if AppSettings.model_provider == "ollama":
-        from app.pull_ollama_models import pull_models
-        threading.Thread(target=pull_models, daemon=True).start()
 
+    # Pull Ollama models currently set in app settings if needed
+    if AppSettings.model_provider == "ollama":
+        from app.pull_ollama_models import pull_ollama_models
+        threading.Thread(target=pull_ollama_models, args=[AppSettings.model, AppSettings.embedding_model], daemon=True).start()
+        
     # Initialize core components
     from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
     update_llama_index_llm_and_embed_models_from_app_settings()
