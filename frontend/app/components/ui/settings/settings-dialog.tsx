@@ -1,9 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "../button";
-import { useGenerate } from "./hooks/use-generate";
-import { useState } from "react";
+import { Input } from "../input";
+import { Textarea } from "../textarea";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../select";
+import { AppSettings, MODEL_PROVIDER_OPTIONS } from "@/app/types/settings";
+import { getSettings, updateSettings } from "@/app/api/settings";
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -11,60 +22,133 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { generate, isGenerating } = useGenerate();
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleGenerate = async () => {
+  useEffect(() => {
+    if (isOpen) {
+      getSettings()
+        .then(setSettings)
+        .catch(error => setError(error.message));
+    }
+  }, [isOpen]);
+
+  const handleSave = async () => {
+    if (!settings) return;
+    
     try {
       setError(null);
-      const result = await generate();
-      if (result.status === 'success') {
-        alert('Data generated successfully!');
-        onClose();
-      }
+      setIsSaving(true);
+      await updateSettings(settings);
+      onClose();
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to generate data');
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      setError(`Failed to update settings: ${errorMessage}`);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !settings) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/50"
         onClick={onClose}
         aria-hidden="true"
       />
       
-      {/* Dialog */}
-      <div className="relative bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+      <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold m-0">Settings</h2>
+          <h2 className="text-xl font-semibold">Settings</h2>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
           >
             <X className="h-5 w-5" />
             <span className="sr-only">Close</span>
           </Button>
         </div>
-        
-        {/* Add settings content here */}
+
         <div className="space-y-4">
           {error && (
             <div className="text-red-500 text-sm">{error}</div>
           )}
-          <Button 
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="w-full"
-          >
-            {isGenerating ? 'Generating...' : 'Generate Data'}
-          </Button>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Model Provider</label>
+            <Select
+              value={settings.model_provider}
+              onValueChange={(value) => setSettings({...settings, model_provider: value})}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a model provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {MODEL_PROVIDER_OPTIONS.map((provider) => (
+                    <SelectItem key={provider} value={provider}>
+                      {provider}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Model</label>
+            <Input
+              value={settings.model}
+              onChange={(e) => setSettings({...settings, model: e.target.value})}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Embedding Model</label>
+            <Input
+              value={settings.embedding_model}
+              onChange={(e) => setSettings({...settings, embedding_model: e.target.value})}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Embedding Dimensions</label>
+            <Input
+              value={settings.embedding_dim}
+              onChange={(e) => setSettings({...settings, embedding_dim: e.target.value})}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Top K Results</label>
+            <Input
+              type="number"
+              value={settings.top_k}
+              onChange={(e) => setSettings({...settings, top_k: parseInt(e.target.value)})}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">System Prompt</label>
+            <Textarea
+              value={settings.system_prompt}
+              onChange={(e) => setSettings({...settings, system_prompt: e.target.value})}
+              rows={4}
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
