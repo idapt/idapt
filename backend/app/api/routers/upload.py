@@ -25,9 +25,9 @@ def upload_file(request: FileUploadRequest) -> DocumentFile:
     """
     try:
         logger.info(f"Processing file: {request.name}")
-        return FileService.process_private_file(
-            request.name, request.base64, request.params
-        )
+        return None#FileService.process_private_file(
+        #    request.name, request.base64, request.params
+        #)
     except Exception as e:
         logger.error(f"Error processing file: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error processing file")

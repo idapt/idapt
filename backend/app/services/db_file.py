@@ -240,3 +240,9 @@ class DBFileService:
         file_exists = session.query(File).filter(File.path == path).first() is not None
         folder_exists = session.query(Folder).filter(Folder.path == path).first() is not None
         return file_exists or folder_exists
+
+    @staticmethod
+    def get_file_id(session: Session, path: str) -> int | None:
+        """Get the ID of a file by path"""
+        file = session.query(File).filter(File.path == path).first()
+        return file.id if file else None

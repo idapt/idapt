@@ -1,17 +1,20 @@
-from typing import List
-from pydantic import BaseModel, Field
+from typing import Dict, Any, List
+from pydantic import BaseModel, Field, ValidationError
+import json
+import re
+#import asyncio
+
 from llama_index.core.schema import Document
-from app.engine.pipelines.base import BaseData
+from llama_index.core.extractors import BaseExtractor
+from llama_index.core.llms import ChatMessage
+from llama_index.core.settings import Settings
 
 import logging
 logger = logging.getLogger(__name__)
 
-note_json_schema = """{
-    "zettlekasten_atomic_note_title": "",
-    "zettlekasten_atomic_note_markdown_content_strictly_about_title": "",
-    "questions_this_note_answers": ["..."],
-    "tags_keywords_this_note_is_about": ["..."]
-}"""
+class ZettlekastenNoteTitleList(BaseModel):
+    """Model for a list of Zettlekasten note titles"""
+    titles: List[str] = Field(..., description="List of Zettlekasten note titles")
 
 class ZettlekastenNote(BaseModel):
     """Model for a Zettlekasten note"""
@@ -19,180 +22,208 @@ class ZettlekastenNote(BaseModel):
     zettlekasten_atomic_note_markdown_content_strictly_about_title: str = Field(..., description="Main content of the note")
     questions_this_note_answers: List[str] = Field(..., description="Questions that this note helps answer")
     tags_keywords_this_note_is_about: List[str] = Field(..., description="Tags or keywords that this note is about")
-    # Dont but the source file ids here as it will be filled by the llm and managed externally
 
-    @classmethod
-    def to_base_data(cls, zettlekasten_note: 'ZettlekastenNote', source_file_ids: List[int]) -> BaseData:
-        """Convert a single note to a BaseData object"""
+
+class ZettlekastenExtractor(BaseExtractor):
+
+    def _extract_titles(self, content: str, num_attempts: int = 10) -> List[str]:
         try:
-            return BaseData(
-                # Just convert the note to a json string and put it in the content field
-                source_file_ids=source_file_ids,
-                content=zettlekasten_note.model_dump_json()
-            )
-        except Exception as e:
-            logger.error(f"Error converting ZettlekastenNote to BaseData: {e}")
-            return None
+            # Create the structured LLM with the output ZettlekastenNoteTitleList pydantic object
+            sllm = get_ollama_sllm().as_structured_llm(output_cls=ZettlekastenNoteTitleList)
 
-from typing import Dict, Any, List
-from llama_index.core import Settings
-import json
-import re
-
-from app.engine.pipelines.base import GenerateDataPipeline
-from llama_index.core.settings import Settings
-from app.engine.index import get_index
-
-class ZettlekastenPipeline(GenerateDataPipeline):
-    def __init__(self):
-        self.similarity_threshold = 0.85
-        self.index = get_index()
-
-    async def extract_titles(self, content: str) -> List[str]:
-        try:
+            # Create the prompt
             prompt = (
                 "Extract a list of potential Titles for Zettlekasten Atomic Notes from the following Journaling Entry. "
-                "The output should be a JSON object with a \"titles\" array containing strings.\n\n"
+                #"The output should be a JSON object with a \"titles\" array containing strings.\n\n"
                 f"Journaling Entry:\n{content}\n\n"
-                "Expected JSON format:\n{\"titles\": [\"Title 1\", \"Title 2\", ...]}\n\n"
+                #"Expected JSON format:\n{\"titles\": [\"Title 1\", \"Title 2\", ...]}\n\n"
                 "Generated JSON:"
             )
-            num_attempts = 0
-            while num_attempts < 10:
-                num_attempts += 1
-                
-                logger.info("Generating titles with LLM")
-                response = await Settings.llm.acomplete(prompt)
-                response_text = response.text.strip()
 
+            input_msg = ChatMessage.from_str(prompt)
+            
+            # Try to generate the titles
+            for attempt in range(num_attempts):
                 try:
-                    # Find the first { and last } in the response
-                    start_index = response_text.find('{')
-                    end_index = response_text.rfind('}') + 1
-                    
-                    if start_index == -1 or end_index == 0:
-                        logger.error("No JSON object found in response")
-                        continue
-                        
-                    # Extract just the JSON part and clean it
-                    json_str = response_text[start_index:end_index]
-                    # Clean the JSON string
-                    json_str = (json_str
-                        .replace('\n', ' ')  # Replace newlines with spaces as this is title generation
-                        .replace('```', '')  # Remove any code blocks
-                    )
-                    
-                    logger.info(f"LLM generated titles response: {response_text}")
+                    logger.info(f"Generating titles with LLM, attempt {attempt}")
+                    # Generate the titles using the LLM
+                    output = sllm.chat([input_msg])
+                    # Get the structured output pydantic object
+                    output_obj = output.raw
 
-                    # Parse the JSON and extract titles
-                    data = json.loads(json_str)
-                    if isinstance(data, dict) and 'titles' in data:
-                        return data['titles']
+                    # Validate the output
+                    if isinstance(output_obj, ZettlekastenNoteTitleList):
+                        ZettlekastenNoteTitleList.model_validate(output_obj)
                     else:
-                        logger.error("Response missing 'titles' key")
-                        continue
+                        raise Exception("LLM did not return a ZettlekastenNoteTitleList object")
 
-                except json.JSONDecodeError as e:
-                    logger.error(f"Error parsing JSON in the titles response, retrying: {e}")
+                    return output_obj.titles
+
+                except ValidationError as e:
+                    logger.error(f"Invalid output from LLM, retrying...")
+                    continue
+
+                except Exception as e:
+                    logger.error(f"Error generating titles with LLM, attempt {attempt}: {e}")
                     continue
 
         except Exception as e:
             logger.error(f"Error extracting titles: {e}")
             return []
 
-    async def update_or_create_note(
-        self, title: str, content: str, similar_note: str = None
-    ) -> ZettlekastenNote:
+    def _extract_note(self, title: str, content: str, num_attempts_per_note: int = 10) -> ZettlekastenNote:
         try:
-            if similar_note:
-                prompt = (
-                    f"Rewrite the following Zettlekasten Existing Atomic Note strictly on the subject of the Title, gather all new relevant information on the subject from the New Content.\n\n"
-                    f"Title:\n{title}\n\n"
-                    f"Zettlekasten Existing Atomic Note:\n{similar_note}\n\n"
-                    f"New Content:\n{content}\n\n"
-                    f"JSON Schema to fill:\n{note_json_schema}\n\n"
-                    f"Filled JSON Schema:\n"
-                )
-            else:
-                prompt = (
-                    f"Fill the JSON Schema by creating a Zettlekasten Atomic Note strictly on the subject of the Title, gather all relevant information on the subject from the Content.\n\n"
-                    f"Title:\n{title}\n\n"
-                    f"Content:\n{content}\n\n"
-                    f"JSON Schema to fill:\n{note_json_schema}\n\n"
-                    f"Filled JSON Schema:\n"
-                )
-            #logger.info(f"Prompt: {prompt}")
+            #if similar_note:
+            #    prompt = (
+            #        f"Rewrite the following Zettlekasten Existing Atomic Note strictly on the subject of the Title, gather all new relevant information on the subject from the New #Content.\n\n"
+            #        f"Title:\n{title}\n\n"
+            #        f"Zettlekasten Existing Atomic Note:\n{similar_note}\n\n"
+            #        f"New Content:\n{content}\n\n"
+            #        f"JSON Schema to fill:\n{note_json_schema}\n\n"
+            #        f"Filled JSON Schema:\n"
+            #    )
+            #else:
 
-            num_attempts = 0
-            while num_attempts < 10:
-                num_attempts += 1
-                
-                logger.info(f"Generating note for title: {title} with LLM, attempt {num_attempts}")
+            # Create the structured LLM with the output ZettlekastenNote pydantic object
+            sllm = get_ollama_sllm().as_structured_llm(output_cls=ZettlekastenNote)
 
-                response = await Settings.llm.acomplete(prompt)
-                response_text = response.text.strip()
-                                
+            prompt = (
+                f"Create a comprehensive Zettlekasten Atomic Note that deeply explores the subject of the Title. "
+                f"Extract and synthesize ALL relevant information from the Content that relates to this topic. "
+                f"The note should be detailed and self-contained, explaining the core concepts and their relationships. "
+                f"Include specific examples and insights from the Content when relevant.\n\n"
+                f"Title:\n{title}\n\n"
+                f"Content:\n{content}\n\n"
+                f"Fill the following schema with your comprehensive note:\n"
+                f"- zettlekasten_atomic_note_title: The given title\n"
+                f"- zettlekasten_atomic_note_markdown_content_strictly_about_title: A detailed exploration of the topic\n"
+                f"- questions_this_note_answers: Key questions this note addresses (at least 3)\n"
+                f"- tags_keywords_this_note_is_about: Important concepts and themes (at least 4)\n\n"
+                f"Generated Note:"
+            )
+
+            #print(f"Prompt:\n{prompt}")
+
+            # Create the input message
+            input_msg = ChatMessage.from_str(prompt)
+            
+            for attempt in range(num_attempts_per_note):
                 try:
-                    # Find the first { and last } in the response
-                    start_index = response_text.find('{')
-                    end_index = response_text.rfind('}') + 1
-                    
-                    if start_index == -1 or end_index == 0:
-                        logger.error("No JSON object found in response")
-                        return None
+                    logger.info(f"Generating note for title: {title} with LLM, attempt {attempt}")
+                    # Generate the note using the LLM
+                    output = sllm.chat([input_msg])
+                    #print(f"Output:\n{output}")
 
-                    # Extract just the JSON part
-                    json_str = response_text[start_index:end_index]
+                    # Get the structured output pydantic object
+                    output_obj = output.raw
 
-                    logger.info(f"LLM generated note JSON: {json_str}")
+                    # Validate the output
+                    if isinstance(output_obj, ZettlekastenNote):
+                        ZettlekastenNote.model_validate(output_obj)
+                    else:
+                        raise Exception("LLM did not return a ZettlekastenNote object")
+
+                    return output_obj
                     
-                    # Parse the JSON
-                    note_data = json.loads(json_str, strict=False)
-                    
-                    # Create the note from the json data
-                    note = ZettlekastenNote(
-                        zettlekasten_atomic_note_title=str(note_data["zettlekasten_atomic_note_title"]).strip(),
-                        zettlekasten_atomic_note_markdown_content_strictly_about_title=str(note_data["zettlekasten_atomic_note_markdown_content_strictly_about_title"]).strip(),
-                        questions_this_note_answers=[str(q).strip() for q in note_data["questions_this_note_answers"]],
-                        tags_keywords_this_note_is_about=[str(t).strip() for t in note_data["tags_keywords_this_note_is_about"]]
-                    )
-                    return note
-                    
-                except json.JSONDecodeError as e:
-                    logger.error(f"Failed to parse JSON from LLM response: {e}\nJSON string: {json_str}\n Retrying...")
-                    
+                except ValidationError as e:
+                    logger.error(f"Invalid output from LLM for note {title}, attempt {attempt}: {e}")
+                    continue
+                except Exception as e:
+                    logger.error(f"Error generating note for title: {title} with LLM, attempt {attempt}: {e}")
+                    continue
+
         except Exception as e:
-            logger.error(f"Error in update_or_create_note: {e}")
+            logger.error(f"Error in _extract_note: {e}")
             return None
 
-    async def generate(self, source_file_ids: List[int], content: str) -> List[BaseData]:
+
+    def _separate_nodes_by_ref_id(self, nodes) -> Dict:
         try:
-            titles = await self.extract_titles(content)
-            base_data_list = []
+            separated_items = {}
 
-            for title in titles:
-                #similar_notes_info = None #await self.search_similar_notes(title)
-                #if similar_notes_info:
-                #    similar_notes = similar_notes_info.get("similar_notes", [])
-                #    similarity_score = similar_notes_info.get("similarity_score", 0)
-#
-                #    if similarity_score >= self.similarity_threshold and similar_notes:
-                #        similar_note = similar_notes[0]
-                #        note = await self.update_or_create_note(title, content, similar_note)
-                #    else:
-                #        note = await self.update_or_create_note(title, content)
-                #else:
-                note = await self.update_or_create_note(title, content)
-                
-                if note:                
-                    # Convert the note to a BaseData object 
-                    base_data = ZettlekastenNote.to_base_data(note, source_file_ids)
-                    # Add the base data to the list of data to return
-                    base_data_list.append(base_data)
+            for node in nodes:
+                key = node.ref_doc_id
+                if key not in separated_items:
+                    separated_items[key] = []
+                separated_items[key].append(node)
 
-            # Return the list of base data
-            return base_data_list
+            return separated_items
+        except Exception as e:
+            logger.error(f"Error in _separate_nodes_by_ref_id: {e}")
+            return {}
+            
+
+
+    async def aextract(self, nodes) -> List[Dict]:
+        try:
+            if not nodes:
+                logger.warning("No nodes provided to ZettlekastenExtractor")
+                return []
+
+            nodes_by_doc_id = self._separate_nodes_by_ref_id(nodes)
+            # Dict of list of notes for each document access by document id
+            #notes_list_by_doc_id = {}
+            # A special dict to store the json dump of the notes for each document for metadata addition at the end
+            notes_json_list_by_doc_id = {}
+            # For each document
+            for key, nodes in nodes_by_doc_id.items():
+                # For each node of this document
+                for node in nodes:
+                    # Extract the titles for this node content
+                    titles = self._extract_titles(node.text)
+
+                    # For each title extracted
+                    for title in titles:
+                        #similar_notes_info = None #await self.search_similar_notes(title)
+                        #if similar_notes_info:
+                        #    similar_notes = similar_notes_info.get("similar_notes", [])
+                        #    similarity_score = similar_notes_info.get("similarity_score", 0)
+                        #
+                        #    if similarity_score >= self.similarity_threshold and similar_notes:
+                        #        similar_note = similar_notes[0]
+                        #        note = await self.update_or_create_note(title, content, similar_note)
+                        #    else:
+                        #        note = await self.update_or_create_note(title, content)
+                        #else:
+                        # Create a zettlekasten note for this title
+                        note = self._extract_note(title, node.text)
+                        if note:
+                            # Add the note to the list of notes for this document
+                            #notes_list_by_doc_id[key].append(note)
+                            # Add the note to the list of json dumps for this document
+                            if key not in notes_json_list_by_doc_id:
+                                notes_json_list_by_doc_id[key] = []
+                            notes_json_list_by_doc_id[key].append(note.model_dump_json())
+                        else:
+                            logger.error(f"Error in _extract_note for title: {title}, skipping this note")
+
+            # Return the new extracted metadata as a list of zettlekasten note json objects strings                        
+            return [{"document_zettlekasten_notes": notes_json_list_by_doc_id[node.ref_doc_id]} for node in nodes]
 
         except Exception as e:
-            logger.error(f"Error in ZettlekastenPipeline generate: {e}")
+            logger.error(f"Error in ZettlekastenExtractor: {e}")
             return []
+
+    # Temporary function to get the Ollama instance for the Zettlekasten pipeline with special settings for structured output.
+def get_ollama_sllm():
+    import os
+    try:
+        from llama_index.embeddings.ollama import OllamaEmbedding
+        from llama_index.llms.ollama.base import DEFAULT_REQUEST_TIMEOUT, Ollama
+    except ImportError:
+        raise ImportError(
+            "Ollama support is not installed. Please install it with `poetry add llama-index-llms-ollama` and `poetry add llama-index-embeddings-ollama`"
+        )
+    base_url = "http://" + os.getenv("OLLAMA_HOST", "ollama") + ":" + os.getenv("OLLAMA_PORT", "11434")
+    request_timeout = float(
+        os.getenv("OLLAMA_REQUEST_TIMEOUT", DEFAULT_REQUEST_TIMEOUT)
+    )
+
+    return Ollama(
+        base_url=base_url, 
+        model=os.getenv("MODEL"), 
+        request_timeout=request_timeout,
+        json_mode=True,  # Useful for sllm otherwise it complains about not using a tool
+        is_function_calling_model=True,  # Enable function calling
+        temperature=0.7  # Lower temperature for more consistent structured output
+    )

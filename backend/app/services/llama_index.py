@@ -1,5 +1,5 @@
 from typing import Dict
-from app.engine.index import get_index
+#from app.engine.index import get_global_index
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,7 +9,7 @@ class LlamaIndexService:
         pass
         #try:    
         #    # Get the vector store and document store
-        #    index = get_index()
+        #    index = get_global_index()
         #    
         #    # Delete from vector store and document store
         #    index.delete_ref_doc(document_id, delete_from_docstore=True)

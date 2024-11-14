@@ -50,14 +50,15 @@ class FileService:
         Store the uploaded file and index it if necessary.
         """
         try:
-            from app.engine.index import IndexConfig, get_index
+            from app.engine.index import IndexConfig, create_index
         except ImportError as e:
-            raise ValueError("IndexConfig or get_index is not found") from e
+            raise ValueError("IndexConfig or create_index is not found") from e
         if params is None:
             params = {}
         # Add the nodes to the index and persist it
         index_config = IndexConfig(**params)
-        index = get_index(index_config)
+        # Create new separate index ?
+        index = create_index(index_config)
         # Preprocess and store the file
         file_data, extension = cls._preprocess_base64_file(base64_content)
         document_file = cls.save_file(
