@@ -3,6 +3,7 @@ from typing import List
 
 from app.engine.index import IndexConfig, create_index
 from app.engine.tools import ToolFactory
+from app.settings.app_settings import AppSettings
 from llama_index.core.agent import AgentRunner
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.settings import Settings
@@ -11,8 +12,8 @@ from llama_index.core.tools.query_engine import QueryEngineTool
 
 
 def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
-    system_prompt = os.getenv("SYSTEM_PROMPT")
-    top_k = int(os.getenv("TOP_K", 6))
+    system_prompt = AppSettings.system_prompt
+    top_k = int(AppSettings.top_k)
     tools: List[BaseTool] = []
     callback_manager = CallbackManager(handlers=event_handlers or [])
 

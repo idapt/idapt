@@ -49,10 +49,19 @@ logger.info("Starting application initialization")
 def create_app() -> FastAPI:
     app = FastAPI()
     
+    # Initialize the application settings, this will load settings from file.
+    from app.settings.app_settings import AppSettings
+    
+    # Pull Ollama models if needed
+    if AppSettings.model_provider == "ollama":
+        from app.pull_ollama_models import pull_models
+        threading.Thread(target=pull_models, daemon=True).start()
+
     # Initialize core components
-    from app.settings import init_settings
+    from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
+    update_llama_index_llm_and_embed_models_from_app_settings()
+
     from app.observability import init_observability
-    init_settings()
     init_observability()
 
     # Initialize the database
@@ -119,10 +128,6 @@ app = create_app()
 
 # Only run these in the main process, not in reloaded processes
 if __name__ == "__main__":
-    # Pull Ollama models if needed
-    if os.getenv("MODEL_PROVIDER") == "ollama":
-        from app.pull_ollama_models import pull_models
-        threading.Thread(target=pull_models, daemon=True).start()
         
     app_host = os.getenv("APP_HOST", "0.0.0.0")
     app_port = int(os.getenv("APP_PORT", "8000"))

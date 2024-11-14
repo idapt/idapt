@@ -9,6 +9,8 @@ from llama_index.core.extractors import BaseExtractor
 from llama_index.core.llms import ChatMessage
 from llama_index.core.settings import Settings
 
+from app.settings.app_settings import AppSettings
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -221,7 +223,7 @@ def get_ollama_sllm():
 
     return Ollama(
         base_url=base_url, 
-        model=os.getenv("MODEL"), 
+        model=AppSettings.model, 
         request_timeout=request_timeout,
         json_mode=True,  # Useful for sllm otherwise it complains about not using a tool
         is_function_calling_model=True,  # Enable function calling

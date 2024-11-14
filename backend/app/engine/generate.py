@@ -10,7 +10,7 @@ from llama_index.core.storage import StorageContext
 from app.engine.loaders import get_documents, get_file_documents_from_paths
 from app.engine.vectordb import get_vector_store
 from app.engine.docdb import get_postgres_document_store
-from app.settings import init_settings
+from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
 from typing import List
 
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +38,7 @@ def run_pipeline(docstore, vector_store, documents):
 def generate_files_embeddings(file_paths: List[str] = None):
     """Generate embeddings for specified files or all files if none specified"""
     
-    init_settings()
+    update_llama_index_llm_and_embed_models_from_app_settings()
 
     logger.info(f"Generate embeddings for files: {file_paths if file_paths else 'all'}")
     

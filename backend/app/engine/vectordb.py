@@ -2,6 +2,7 @@ import os
 from llama_index.vector_stores.postgres import PGVectorStore
 from urllib.parse import urlparse
 from app.database.connection import get_connection_string
+from app.settings.app_settings import AppSettings
 
 PGVECTOR_SCHEMA = "public"
 PGVECTOR_TABLE = "embeddings"
@@ -35,7 +36,7 @@ def get_vector_store():
         async_connection_string=async_conn_string,
         schema_name=PGVECTOR_SCHEMA,
         table_name=PGVECTOR_TABLE,
-        embed_dim=int(os.environ.get("EMBEDDING_DIM", 1024)),
+        embed_dim=int(AppSettings.embedding_dim),
         #hybrid_search=True,
         #text_search_config="english",
         #perform_setup=True
