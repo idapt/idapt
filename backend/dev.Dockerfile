@@ -1,3 +1,4 @@
+# Container build script
 FROM python:3.11
 
 # Install all the poetry dependencies in a separate directory
@@ -20,9 +21,14 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python
 COPY ./pyproject.toml ./poetry.lock* /poetry-install/
 RUN poetry install
 
-
 # Set the working directory to the backend directory.
 WORKDIR /backend
 
-# Keep the container running
-CMD ["tail", "-f", "/dev/null"]
+
+# Run at built container start
+
+# Run the dev backend server
+CMD ["python", "main.py"]
+
+# Keep the container running, you can use this if you want to manually exec into the container for dev.
+#CMD ["tail", "-f", "/dev/null"]

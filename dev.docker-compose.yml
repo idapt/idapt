@@ -5,7 +5,7 @@ services:
     container_name: ollama
     image: ollama/ollama:latest
     ports:
-      - "11434:11434" # Allow access to ollama from outside for dev.
+      - "11434:11434" # Allow access to ollama from outside for dev. # TODO Make it pass through nginx
     networks:
       - idapt-backend-network
     deploy:
@@ -27,8 +27,10 @@ services:
     build:
       context: ./postgres
       dockerfile: ./Dockerfile
-    ports:
-      - "5432:5432" # Allow access to the database from outside for dev.
+    #ports:
+    #  - "5432:5432" # Allow access to the database from outside for dev.
+    expose:
+      - "5432"
     networks:
       - idapt-backend-network
     volumes:
@@ -40,6 +42,8 @@ services:
       interval: 2s
       timeout: 5s
       retries: 20
+    restart: always
+
 
   # The backend is the main service of the application.
   idapt-backend:
@@ -47,14 +51,22 @@ services:
       context: ./backend
       dockerfile: dev.Dockerfile 
     container_name: idapt-backend
-    ports:
-      - "8000:8000" # Allow access to the backend from outside for dev.
+    #ports:
+    #  - "8000:8000" # Allow access to the backend from outside for dev.
+    expose:
+      - "8000"
     networks:
       - idapt-backend-network
-      - idapt-frontend-network
     depends_on:
       postgres:
         condition: service_healthy
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     env_file:
       - ./postgres/.env # Used to get the default superuser password and other variables.
       - ./backend/.env
@@ -62,7 +74,8 @@ services:
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - idapt_data:/idapt_data # The volume where the data is stored.
-      
+    restart: always
+
   # Use a node container to develop the frontend application.
   idapt-frontend:
     build:
@@ -73,24 +86,31 @@ services:
       - "3000"
     networks:
       - idapt-frontend-network
+    depends_on:
+      idapt-backend:
+        condition: service_healthy
     env_file:
       - ./frontend/.env
       - ./dev.env # To pass the dev variable.
     volumes:
       - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
+    restart: always
 
   # Use a separate container to use nginx to do like in the production environment.
   nginx:
     image: nginx:alpine
     container_name: nginx
     ports:
-      - "3030:3030"
+      - "127.0.0.1:3030:3030" # Expose the port on the host machine only. 127.0.0.1 prevents access from outside the host pc and dont forward ports into the host firewall. Remove it if you want external access for dev.
     volumes:
       - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
     networks:
       - idapt-frontend-network
+      - idapt-backend-network
     depends_on:
       - idapt-frontend
+
+    restart: always
 
 volumes:
   postgres_data:

@@ -1,3 +1,4 @@
+# Build the backend image
 FROM python:3.11 AS build
 
 WORKDIR /backend
@@ -20,8 +21,13 @@ COPY ./pyproject.toml ./poetry.lock* /backend/
 RUN poetry install --no-root --no-cache --only main
 
 # ====================================
+# Release image
+# ====================================
 FROM build AS release
 
 COPY . .
 
+# Run at built container start
+
+# Run the backend
 CMD ["python", "main.py"]

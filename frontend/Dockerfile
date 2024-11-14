@@ -20,4 +20,6 @@ COPY --from=build /frontend/out /usr/share/nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
+# Run at built container start
+# Run the nginx server to serve the built next.js application
 CMD ["nginx", "-g", "daemon off;"]
