@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from .service import DatabaseService
+from sqlalchemy.orm import sessionmaker, Session
+from contextlib import contextmanager
 
 def get_connection_string() -> str:
     """Get the database connection string from environment variables"""
@@ -13,10 +13,40 @@ def get_connection_string() -> str:
     
     return f"postgresql://{user}:{password}@{host}:{port}/{db}"
 
-# Create global engine and session factory
-engine = create_engine(get_connection_string())
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Create engine
+sync_engine = create_engine(get_connection_string())
 
-# Create database service singleton
-db_service = DatabaseService(SessionLocal)
-get_db_session = db_service.get_db
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
+
+@contextmanager
+def get_db():
+    """Context manager for database sessions"""
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+async def get_db_session():
+    """FastAPI dependency for database sessions"""
+    with get_db() as session:
+        yield session
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
+async def get_async_db_session() -> AsyncSession:
+    async_engine = create_async_engine(
+        get_connection_string(),
+        echo=True,
+    )
+    async_session = sessionmaker(
+        async_engine, class_=AsyncSession, expire_on_commit=False
+    )
+    async with async_session() as session:
+        yield session
