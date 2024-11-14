@@ -20,6 +20,11 @@ if environment == "dev":
         format='%(levelname)s: %(message)s'
     )
     logger.setLevel(logging.INFO)
+    # Set log levels for other specific loggers
+    logging.getLogger('uvicorn').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
+    logging.getLogger('alembic').setLevel(logging.WARNING)
+
 else:
     # Keep detailed logging for production for now
     logging.basicConfig(
@@ -27,6 +32,10 @@ else:
         format='%(levelname)s: %(message)s'
     )
     logger.setLevel(logging.INFO)
+    # Set log levels for specific loggers
+    logging.getLogger('uvicorn').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
+    logging.getLogger('alembic').setLevel(logging.WARNING)
 
 import uvicorn
 from app.api.routers import api_router
