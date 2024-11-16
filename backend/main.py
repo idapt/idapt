@@ -37,6 +37,11 @@ else:
     logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
     logging.getLogger('alembic').setLevel(logging.WARNING)
 
+# Filter out health check logs from uvicorn
+logging.getLogger("uvicorn.access").addFilter(
+    lambda record: "/api/health" not in record.getMessage()
+)
+
 import uvicorn
 
 from fastapi import FastAPI
