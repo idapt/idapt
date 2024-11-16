@@ -6,9 +6,9 @@ from contextlib import contextmanager
 def get_connection_string() -> str:
     """Get the database connection string from environment variables"""
     user = os.getenv("POSTGRES_USER", "postgres")
-    password = os.getenv("POSTGRES_PASSWORD", "defaultpassword")
-    host = os.getenv("POSTGRES_HOST", "localhost")
-    port = os.getenv("POSTGRES_PORT", "5432")
+    password = os.getenv("POSTGRES_PASSWORD")
+    host = os.getenv("POSTGRES_HOST")
+    port = os.getenv("POSTGRES_PORT")
     db = os.getenv("POSTGRES_DB", "postgres")
     
     return f"postgresql://{user}:{password}@{host}:{port}/{db}"
