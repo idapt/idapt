@@ -11,10 +11,11 @@ def pull_ollama_models(models: list[str]):
     """
     Pull Ollama model
     """
-    
-    ollama_host = os.getenv('OLLAMA_HOST', 'localhost')
-    ollama_port = os.getenv('OLLAMA_PORT', '11434')
-    base_url = f"http://{ollama_host}:{ollama_port}"
+    from app.settings.app_settings import AppSettings
+    if AppSettings.model_provider == "integrated_ollama":
+        base_url = "http://idapt-nginx:3030/integrated-ollama"
+    else:
+        base_url = "http://idapt-nginx:3030/local-ollama" # Used for now as using $custom_ollama_host as variable into proxy_pass does not work and gives a 502 error.
 
     for model in models:
         model = model.strip()

@@ -10,6 +10,7 @@ from llama_index.core.llms import ChatMessage
 from llama_index.core.settings import Settings
 
 from app.settings.app_settings import AppSettings
+from app.settings.llama_index_settings import get_integrated_ollama_sllm, get_custom_ollama_sllm
 
 import logging
 logger = logging.getLogger(__name__)
@@ -31,7 +32,10 @@ class ZettlekastenExtractor(BaseExtractor):
     def _extract_titles(self, content: str, num_attempts: int = 10) -> List[str]:
         try:
             # Create the structured LLM with the output ZettlekastenNoteTitleList pydantic object
-            sllm = get_ollama_sllm().as_structured_llm(output_cls=ZettlekastenNoteTitleList)
+            if AppSettings.model_provider == "custom_ollama":
+                sllm = get_custom_ollama_sllm().as_structured_llm(output_cls=ZettlekastenNoteTitleList)
+            else:
+                sllm = get_integrated_ollama_sllm().as_structured_llm(output_cls=ZettlekastenNoteTitleList)
 
             # Create the prompt
             prompt = (
@@ -87,7 +91,10 @@ class ZettlekastenExtractor(BaseExtractor):
             #else:
 
             # Create the structured LLM with the output ZettlekastenNote pydantic object
-            sllm = get_ollama_sllm().as_structured_llm(output_cls=ZettlekastenNote)
+            if AppSettings.model_provider == "custom_ollama":
+                sllm = get_integrated_ollama_sllm().as_structured_llm(output_cls=ZettlekastenNote)
+            else:
+                sllm = get_integrated_ollama_sllm().as_structured_llm(output_cls=ZettlekastenNote)
 
             prompt = (
                 f"Create a comprehensive Zettlekasten Atomic Note that deeply explores the subject of the Title. "
@@ -205,27 +212,3 @@ class ZettlekastenExtractor(BaseExtractor):
         except Exception as e:
             logger.error(f"Error in ZettlekastenExtractor: {e}")
             return []
-
-    # Temporary function to get the Ollama instance for the Zettlekasten pipeline with special settings for structured output.
-def get_ollama_sllm():
-    import os
-    try:
-        from llama_index.embeddings.ollama import OllamaEmbedding
-        from llama_index.llms.ollama.base import DEFAULT_REQUEST_TIMEOUT, Ollama
-    except ImportError:
-        raise ImportError(
-            "Ollama support is not installed. Please install it with `poetry add llama-index-llms-ollama` and `poetry add llama-index-embeddings-ollama`"
-        )
-    base_url = "http://" + os.getenv("OLLAMA_HOST", "ollama") + ":" + os.getenv("OLLAMA_PORT", "11434")
-    request_timeout = float(
-        os.getenv("OLLAMA_REQUEST_TIMEOUT", DEFAULT_REQUEST_TIMEOUT)
-    )
-
-    return Ollama(
-        base_url=base_url, 
-        model=AppSettings.model, 
-        request_timeout=request_timeout,
-        json_mode=True,  # Useful for sllm otherwise it complains about not using a tool
-        is_function_calling_model=True,  # Enable function calling
-        temperature=0.7  # Lower temperature for more consistent structured output
-    )

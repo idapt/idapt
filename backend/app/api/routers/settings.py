@@ -11,6 +11,8 @@ class AppSettingsModel(BaseModel):
     embedding_dim: str
     top_k: int
     system_prompt: str
+    custom_ollama_host: str
+    ollama_request_timeout: float
 
 @r.get("")
 async def get_settings() -> AppSettingsModel:
@@ -21,7 +23,9 @@ async def get_settings() -> AppSettingsModel:
         embedding_model=AppSettings.embedding_model,
         embedding_dim=AppSettings.embedding_dim,
         top_k=AppSettings.top_k,
-        system_prompt=AppSettings.system_prompt
+        system_prompt=AppSettings.system_prompt,
+        custom_ollama_host=AppSettings.custom_ollama_host,
+        ollama_request_timeout=AppSettings.ollama_request_timeout
     )
 
 @r.post("")
@@ -34,18 +38,11 @@ async def update_settings(settings: AppSettingsModel):
             embedding_model=settings.embedding_model,
             embedding_dim=settings.embedding_dim,
             top_k=settings.top_k,
-            system_prompt=settings.system_prompt
+            system_prompt=settings.system_prompt,
+            custom_ollama_host=settings.custom_ollama_host,
+            ollama_request_timeout=settings.ollama_request_timeout
         )
-        
-        # Update llama index settings after changing model settings
-        from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
-        update_llama_index_llm_and_embed_models_from_app_settings()
 
-        # Pull Ollama models currently set in app settings if needed
-        if AppSettings.model_provider == "ollama":
-            from app.pull_ollama_models import pull_ollama_models
-            threading.Thread(target=pull_ollama_models, args=[AppSettings.model, AppSettings.embedding_model], daemon=True).start()
-        
         return {"status": "success"}
     except ImportError as e:
         raise HTTPException(status_code=400, detail=str(e))

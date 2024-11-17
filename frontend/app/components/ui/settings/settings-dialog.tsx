@@ -98,6 +98,16 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               </SelectContent>
             </Select>
           </div>
+          {/* Only show the custom ollama host input if the model provider is custom_ollama */}
+          {settings.model_provider === "custom_ollama" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Custom Ollama Host</label>
+              <Input
+                value={settings.custom_ollama_host}
+                onChange={(e) => setSettings({...settings, custom_ollama_host: e.target.value})}
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Model</label>
@@ -140,6 +150,18 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               rows={4}
             />
           </div>
+
+          {/* Only show the ollama request timeout input if the model provider is integrated_ollama or custom_ollama */}
+          {(settings.model_provider === "integrated_ollama" || settings.model_provider === "custom_ollama") && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Ollama Request Timeout (ms)</label>
+              <Input
+                type="number"
+                value={settings.ollama_request_timeout}
+                onChange={(e) => setSettings({...settings, ollama_request_timeout: parseInt(e.target.value)})}
+              />
+            </div>
+          )}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={onClose}>

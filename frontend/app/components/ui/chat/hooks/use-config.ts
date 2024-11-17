@@ -5,14 +5,12 @@ export interface ChatConfig {
 }
 
 function getBackendOrigin(): string {
-  // We use nginx to route requests to the backend container via the docker network.
-  // This is done to secure the backend behind a reverse proxy and avoid cross-origin issues with the frontend, it will see the backend adress as localhost and not cause problems.
+  // This code is executed on the client side / machine.
   // Use the current frontend origin as the backend is hosted at the same address, only with /api after as specified in the nginx.conf file.
-  if (typeof window !== "undefined") {
+  if ( typeof window !== 'undefined') {
     return window.location.origin;
   }
-  // Default to localhost but this should never happen.
-  return "http://localhost:3030";
+  return "http://localhost:3030"; // TODO : Find a better way as this will not work.
 }
 
 export function useClientConfig(): ChatConfig {

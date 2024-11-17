@@ -13,8 +13,10 @@ def update_llama_index_llm_and_embed_models_from_app_settings():
             init_openai()
         case "groq":
             init_groq()
-        case "ollama":
-            init_ollama()
+        case "integrated_ollama":
+            init_integrated_ollama()
+        case "custom_ollama":
+            init_custom_ollama()
         case "anthropic":
             init_anthropic()
         case "gemini":
@@ -34,7 +36,7 @@ def update_llama_index_llm_and_embed_models_from_app_settings():
     Settings.chunk_overlap = int(os.getenv("CHUNK_OVERLAP", "20"))
 
 
-def init_ollama():
+def init_integrated_ollama():
     try:
         from llama_index.embeddings.ollama import OllamaEmbedding
         from llama_index.llms.ollama.base import DEFAULT_REQUEST_TIMEOUT, Ollama
@@ -42,19 +44,75 @@ def init_ollama():
         raise ImportError(
             "Ollama support is not installed. Please install it with `poetry add llama-index-llms-ollama` and `poetry add llama-index-embeddings-ollama`"
         )
+    # Access it through the docker network
+    base_url = "http://idapt-nginx:3030/integrated-ollama"
 
-    base_url = "http://" + os.getenv("OLLAMA_HOST", "ollama") + ":" + os.getenv("OLLAMA_PORT", "11434")
-    request_timeout = float(
-        os.getenv("OLLAMA_REQUEST_TIMEOUT", DEFAULT_REQUEST_TIMEOUT)
-    )
     Settings.embed_model = OllamaEmbedding(
         base_url=base_url,
         model_name=AppSettings.embedding_model,
     )
     Settings.llm = Ollama(
-        base_url=base_url, model=AppSettings.model, request_timeout=request_timeout
+        base_url=base_url, model=AppSettings.model, request_timeout=AppSettings.ollama_request_timeout
     )
 
+# Temporary function to get the Ollama instance for the Zettlekasten pipeline with special settings for structured output.
+def get_integrated_ollama_sllm():
+    try:
+        from llama_index.llms.ollama.base import Ollama
+    except ImportError:
+        raise ImportError(
+            "Ollama support is not installed. Please install it with `poetry add llama-index-llms-ollama` and `poetry add llama-index-embeddings-ollama`"
+        )
+    base_url = "http://idapt-nginx:3030/integrated-ollama"
+    
+    return Ollama(
+        base_url=base_url, 
+        model=AppSettings.model, 
+        request_timeout=AppSettings.ollama_request_timeout,
+        json_mode=True,  # Useful for sllm otherwise it complains about not using a tool
+        is_function_calling_model=True,  # Enable function calling
+        temperature=0.7  # Lower temperature for more consistent structured output
+    )
+
+def init_custom_ollama():
+    try:
+        from llama_index.embeddings.ollama import OllamaEmbedding
+        from llama_index.llms.ollama.base import Ollama
+    except ImportError:
+        raise ImportError(
+            "Ollama support is not installed. Please install it with `poetry add llama-index-llms-ollama` and `poetry add llama-index-embeddings-ollama`"
+        )
+    # Use the nginx proxy URL, it is set to redirect to the real ollama host via the set-ollama-host endpoint
+    base_url = "http://idapt-nginx:3030/local-ollama" # TODO : Fix and use ollama/ endpoint.
+
+    Settings.embed_model = OllamaEmbedding(
+        base_url=base_url,
+        model_name=AppSettings.embedding_model,
+    )
+    Settings.llm = Ollama(
+        base_url=base_url,
+        model=AppSettings.model,
+        request_timeout=AppSettings.ollama_request_timeout,
+    )
+
+# Temporary function to get the Ollama instance for the Zettlekasten pipeline with special settings for structured output.
+def get_custom_ollama_sllm():
+    try:
+        from llama_index.llms.ollama.base import Ollama
+    except ImportError:
+        raise ImportError(
+            "Ollama support is not installed. Please install it with `poetry add llama-index-llms-ollama` and `poetry add llama-index-embeddings-ollama`"
+        )
+    base_url = "http://idapt-nginx:3030/local-ollama"
+    
+    return Ollama(
+        base_url=base_url, 
+        model=AppSettings.model, 
+        request_timeout=AppSettings.ollama_request_timeout,
+        json_mode=True,  # Useful for sllm otherwise it complains about not using a tool
+        is_function_calling_model=True,  # Enable function calling
+        temperature=0.7  # Lower temperature for more consistent structured output
+    )
 
 def init_openai():
     from llama_index.core.constants import DEFAULT_TEMPERATURE

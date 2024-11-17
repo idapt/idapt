@@ -58,9 +58,9 @@ def create_app() -> FastAPI:
     from app.settings.app_settings import AppSettings
 
     # Pull Ollama models currently set in app settings if needed
-    if AppSettings.model_provider == "ollama":
+    if AppSettings.model_provider == "integrated_ollama" or AppSettings.model_provider == "custom_ollama":
         from app.pull_ollama_models import pull_ollama_models
-        threading.Thread(target=pull_ollama_models, args=[AppSettings.model, AppSettings.embedding_model], daemon=True).start()
+        threading.Thread(target=pull_ollama_models, args=[[AppSettings.model, AppSettings.embedding_model]], daemon=True).start()
         
     # Initialize core components
     from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
@@ -99,7 +99,7 @@ def configure_cors(app: FastAPI):
         async def redirect_to_docs():
             return RedirectResponse(url="/docs")
     else:
-        default_origins = ["http://idapt-backend:8000"]
+        default_origins = ["http://idapt-backend:8000", "http://idapt-nginx:3030"]
         trusted_origins = os.getenv("TRUSTED_ORIGINS", "").split(",")
         all_origins = default_origins + [o.strip() for o in trusted_origins if o.strip()]
         

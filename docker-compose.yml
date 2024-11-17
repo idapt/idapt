@@ -1,46 +1,60 @@
 name: idapt
 services:
-  # Ollama is used as the LLM model provider for the backend.
-  ollama:
-    container_name: ollama
+
+  # Integrated Ollama instance
+  idapt-ollama:
+    container_name: idapt-ollama
     image: ollama/ollama:latest
-    ports:
-      - "11434:11434" # Allow access to ollama from outside for dev. # TODO Make it pass through nginx
+    expose:
+      - "11434"
     networks:
-      - idapt-backend-network
-    deploy:
+      idapt-ollama-network:
+        ipv4_address: 172.23.0.15
+    runtime: nvidia # Remove this if you don't want to use GPU for ollama.
+    deploy: # Remove this if you don't want to use GPU for ollama.
       resources:
         reservations:
           devices:
             - driver: nvidia
               capabilities: ["gpu"]
               count: all
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
     volumes:
       - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
+    security_opt:
+      - no-new-privileges:true
     restart: always
-    runtime: nvidia
 
-  # Postgres is used as the database for the backend.
-  postgres:
+
+
+  idapt-postgres:
     image: postgres:latest
-    container_name: postgres
+    container_name: idapt-postgres
     build:
       context: ./postgres
       dockerfile: ./Dockerfile
     expose:
       - "5432"
     networks:
-      - idapt-backend-network
+      idapt-postgres-network:
+        ipv4_address: 172.24.0.15
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Store the database data in a volume so that we don't lose it at each rebuild
+      - postgres_data:/var/lib/postgresql/data # Store the database data in a volume
     env_file:
       - ./postgres/.env
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost || exit 1"]
-      interval: 2s
+      interval: 1s
       timeout: 5s
-      retries: 20
+      retries: 30
+    security_opt:
+      - no-new-privileges:true
     restart: always
+
 
 
   # The backend is the main service of the application.
@@ -52,27 +66,34 @@ services:
     expose:
       - "8000"
     networks:
-      - idapt-backend-network
+      idapt-backend-network:
+        ipv4_address: 172.21.0.15
+      idapt-postgres-network: # Temporarily access database container directly # TODO Use nginx
+        ipv4_address: 172.24.0.14
     depends_on:
-      postgres:
+      idapt-postgres:
         condition: service_healthy
-      ollama:
+      idapt-ollama:
         condition: service_started
+      idapt-nginx:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 10s
+      interval: 1s
       timeout: 5s
-      retries: 5
+      retries: 30
     env_file:
       - ./postgres/.env # Used to get the default superuser password and other variables.
       - ./backend/.env
       - ./.env
     volumes:
-      - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - idapt_data:/idapt_data # The volume where the data is stored.
+    security_opt:
+      - no-new-privileges:true
     restart: always
 
-  # Use a node container to develop the frontend application.
+
+
   idapt-frontend:
     build:
       context: ./frontend
@@ -81,44 +102,88 @@ services:
     expose:
       - "3000"
     networks:
-      - idapt-frontend-network
+      idapt-frontend-network:
+        ipv4_address: 172.22.0.15
     depends_on:
       idapt-backend:
         condition: service_healthy
     env_file:
       - ./frontend/.env
       - ./.env
-    volumes:
-      - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
+    security_opt:
+      - no-new-privileges:true
     restart: always
 
-  # Use a separate container to use nginx to do like in the production environment.
-  nginx:
+
+
+# Nginx to manage every communication between containers and also outside world.
+  idapt-nginx:
     image: nginx:alpine
-    container_name: nginx
+    container_name: idapt-nginx
     ports:
-      - "127.0.0.1:3030:3030" # Expose the port on the host machine only. 127.0.0.1 prevents access from outside the host pc and dont forward ports into the host firewall. Remove it if you want external access.
+      - "3030:3030" # Expose the port 3030. The security of this is done at the nginx configuration. As ngix is a proxy, it can secure the access to the app. # TODO : Update this to use 127.0.0.1 ? This way it don't open the port on the host machine firewall ?
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    # Nginx has access to every container via their own network for routing.
     networks:
       - idapt-frontend-network
       - idapt-backend-network
-    depends_on:
-      - idapt-frontend
-
+      - idapt-ollama-network
+      - idapt-postgres-network
+    extra_hosts: # Expose the host machine to the nginx container at host.docker.internal to be able to reach the ollama custom host if it is running on the host machine.
+      - "host.docker.internal:host-gateway"
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+      - /var/cache/nginx
     restart: always
+
 
 volumes:
   postgres_data:
   ollama_data:
   idapt_data:
 
+
+# One network for each service to keep them isolated and routed through nginx. Each network has its own subnet ip range. Each container is assigned a static ip address on its network to control origins at th nginx level.
 networks:
   idapt-backend-network:
     attachable: false
     name: idapt-backend-network
-    driver: bridge # Change to not allow external access later ?
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
   idapt-frontend-network:
-    attachable: true
+    attachable: false
     name: idapt-frontend-network
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+  idapt-ollama-network:
+    attachable: false
+    name: idapt-ollama-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+  idapt-postgres-network:
+    attachable: false
+    name: idapt-postgres-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/16
