@@ -31,7 +31,7 @@ export function useFileUpload() {
         original_modified_at: file.lastModified.toString()
       }], true);
 
-      // Generate index for the uploaded file
+      // Add this file to the generate queue
       await generate([filePath]);
       
       options?.onComplete?.();

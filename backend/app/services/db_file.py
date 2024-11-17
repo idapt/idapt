@@ -7,6 +7,9 @@ import mimetypes
 import os
 from typing import List
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DBFileService:
     @staticmethod

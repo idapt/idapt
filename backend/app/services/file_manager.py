@@ -17,28 +17,27 @@ from app.database.models import File, Folder
 from app.api.routers.models import FileUploadItem, FileUploadRequest, FileUploadProgress, FileNode
 from app.services.llama_index import LlamaIndexService
 
+import logging
 
-#logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 class FileManagerService:
     def __init__(self):
-        import logging
-        self.logger = logging.getLogger(__name__)
         self.llama_index = LlamaIndexService()
         self.file_system = FileSystemService()
 
     async def upload_files(self, request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:
-        total = len(request.items)
-        processed = []
-        skipped = []
-        file_paths = []
-        
-        self.logger.info(f"Uploading {total} files")
-        
         try:
+            total = len(request.items)
+            processed = []
+            skipped = []
+            file_paths = []
+            
+            logger.info(f"Uploading {total} files")
+            
             for idx, item in enumerate(request.items, 1):
                 try:
-                    self.logger.info(f"Uploading file {idx}/{total}: {item.path}")
+                    logger.info(f"Uploading file {idx}/{total}: {item.path}")
                     
                     result = await self.upload_file(session, item, file_paths)
                     if result:
@@ -57,7 +56,7 @@ class FileManagerService:
                     await asyncio.sleep(0.1)
                     
                 except Exception as e:
-                    self.logger.error(f"Error uploading file {item.path}: {str(e)}")
+                    logger.error(f"Error uploading file {item.path}: {str(e)}")
                     error_message = str(e)
                     yield {
                         "event": "message",
@@ -84,7 +83,7 @@ class FileManagerService:
             }
 
         except Exception as e:
-            self.logger.error(f"Error during file upload process: {str(e)}")
+            logger.error(f"Error during file upload process: {str(e)}")
             yield {
                 "event": "message",
                 "data": FileUploadProgress(
@@ -100,7 +99,7 @@ class FileManagerService:
         """Process a single upload item (file or folder)"""
         try:
             # Log the start of the upload process
-            self.logger.info(f"Starting upload for file: {item.name}")
+            logger.info(f"Starting upload for file: {item.name}")
 
             # Store full path for filesystem operations
             full_path = Path(convert_db_path_to_filesystem_path(item.path))
@@ -111,27 +110,39 @@ class FileManagerService:
             # Check if path already exists
             if DBFileService.path_exists(session, db_path):
                 # Delete existing file/folder if it exists
+                # If it is a folder
                 if item.is_folder:
+                    # Get folder from database
                     folder = session.query(Folder).filter(Folder.path == db_path).first()
                     if folder:
+                        # Delete from database
                         DBFileService.delete_folder(session, folder.id)
+                        # Delete from filesystem
                         await self.file_system.delete_folder(db_path)
+                # If it is a file
                 else:
+                    # Get file from database
                     file = session.query(File).filter(File.path == db_path).first()
                     if file:
+                        # Delete from database
                         result = await DBFileService.delete_file(session, file.id)
                         if not result:
-                            self.logger.warning(f"Failed to delete file from database for id: {file.id}")
+                            logger.warning(f"Failed to delete file from database for id: {file.id}")
+                        # Delete from filesystem
                         await self.file_system.delete_file(db_path)
             
             # Now proceed with the upload
             if item.is_folder:
+                # Create folder on filesystem
                 os.makedirs(str(full_path), exist_ok=True)
+                # Create folder in database
                 DBFileService.create_folder_path(session, db_path)
             else:
-                # Process and save file to disk
+                # Create all parent directories on filesystem
                 os.makedirs(str(full_path.parent), exist_ok=True)
+                # Process file # Why ?
                 file_data, _ = _preprocess_base64_file(item.content)
+                # Write file to filesystem
                 await self.file_system.write_file(str(full_path), file_data)
                 
                 # Store file path for generation
@@ -139,8 +150,9 @@ class FileManagerService:
                 
                 # Create folder structure and file in database
                 parent_path = str(Path(db_path).parent)
+                # Create parent folder in database if it exists
                 folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
-                
+                # Create file in database
                 file = DBFileService.create_file(
                     session=session,
                     name=item.name,
@@ -151,12 +163,12 @@ class FileManagerService:
                 )
 
                 # Log the file creation
-                self.logger.info(f"File created with ID: {file.id}")
+                logger.info(f"File created with ID: {file.id}")
                 
                 return f"Uploaded file: {item.path}"
                 
         except Exception as e:
-            self.logger.error(f"Error during file upload: {str(e)}")
+            logger.error(f"Error during file upload: {str(e)}")
             raise
 
     async def download_file(self, session: Session, file_id: int) -> Dict[str, str]:
@@ -183,7 +195,7 @@ class FileManagerService:
             }
             
         except Exception as e:
-            self.logger.error(f"Error downloading file: {str(e)}")
+            logger.error(f"Error downloading file: {str(e)}")
             raise
 
     async def delete_file(self, session: Session, file_id: int):
@@ -200,12 +212,12 @@ class FileManagerService:
         # Delete from database
         result = await DBFileService.delete_file(session, file_id)
         if not result:
-            self.logger.warning(f"Failed to delete file from database for id: {file_id}")
+            logger.warning(f"Failed to delete file from database for id: {file_id}")
 
         # Remove from LlamaIndex
         result = await self.llama_index.remove_document(filesystem_path)
         if result is None:
-            self.logger.warning(f"Failed to delete document from LlamaIndex for path: {filesystem_path}")
+            logger.warning(f"Failed to delete document from LlamaIndex for path: {filesystem_path}")
 
     async def delete_folder(self, session: Session, folder_id: int):
         folder = DBFileService.get_folder(session, folder_id)
@@ -278,7 +290,7 @@ class FileManagerService:
             }
             
         except Exception as e:
-            self.logger.error(f"Error creating folder zip: {str(e)}")
+            logger.error(f"Error creating folder zip: {str(e)}")
             raise
 
 def convert_filesystem_path_to_db_path(full_path: str | Path) -> str:
@@ -295,8 +307,12 @@ def convert_filesystem_path_to_db_path(full_path: str | Path) -> str:
     return str(full_path).replace(str(DATA_DIR), '').lstrip('/')
 
 def convert_db_path_to_filesystem_path(path: str) -> str:
-    from app.config import DATA_DIR
-    return str(Path(DATA_DIR) / path)
+    try:
+        from app.config import DATA_DIR
+        return str(Path(DATA_DIR) / path)
+    except Exception as e:
+        logger.error(f"Error converting db path to filesystem path: {str(e)}")
+        raise
 
 def _sanitize_file_name(file_name: str) -> str:
     """
