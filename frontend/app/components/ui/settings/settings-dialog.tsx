@@ -143,6 +143,15 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           </div>
 
           <div className="space-y-2">
+            <label className="text-sm font-medium">Max Agent Iterations</label>
+            <Input
+              type="number"
+              value={settings.max_iterations}
+              onChange={(e) => setSettings({...settings, max_iterations: parseInt(e.target.value)})}
+            />
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium">System Prompt</label>
             <Textarea
               value={settings.system_prompt}

@@ -7,6 +7,7 @@ export interface AppSettings {
   embedding_dim: string;
   top_k: number;
   system_prompt: string;
+  max_iterations: number;
 }
 
 export const MODEL_PROVIDER_OPTIONS = [

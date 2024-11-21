@@ -32,6 +32,7 @@ class _AppSettings:
         "You have access to the user personal journaling notes via the personal_notes_query_engine tool. "
         "Use it to answer user questions."
     )
+    max_iterations: int = 10
     # The system prompt for the AI model.
     #SYSTEM_PROMPT="You are a DuckDuckGo search agent. 
     #You can use the duckduckgo search tool to get information from the web to answer user questions.

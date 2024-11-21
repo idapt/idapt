@@ -13,6 +13,7 @@ class AppSettingsModel(BaseModel):
     system_prompt: str
     custom_ollama_host: str
     ollama_request_timeout: float
+    max_iterations: int
 
 @r.get("")
 async def get_settings() -> AppSettingsModel:
@@ -25,7 +26,8 @@ async def get_settings() -> AppSettingsModel:
         top_k=AppSettings.top_k,
         system_prompt=AppSettings.system_prompt,
         custom_ollama_host=AppSettings.custom_ollama_host,
-        ollama_request_timeout=AppSettings.ollama_request_timeout
+        ollama_request_timeout=AppSettings.ollama_request_timeout,
+        max_iterations=AppSettings.max_iterations
     )
 
 @r.post("")
@@ -40,7 +42,8 @@ async def update_settings(settings: AppSettingsModel):
             top_k=settings.top_k,
             system_prompt=settings.system_prompt,
             custom_ollama_host=settings.custom_ollama_host,
-            ollama_request_timeout=settings.ollama_request_timeout
+            ollama_request_timeout=settings.ollama_request_timeout,
+            max_iterations=settings.max_iterations
         )
 
         return {"status": "success"}

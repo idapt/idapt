@@ -78,6 +78,11 @@ def create_app() -> FastAPI:
     
     # Mount static files
     mount_static_files(app)
+
+    # Initialize the Generate Service
+    from app.services.generate import GenerateService
+    GenerateService.get_instance()
+    logger.info("Initialized Generate Service")
     
     # Include API router
     from app.api.routers import api_router
