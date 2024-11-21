@@ -110,6 +110,8 @@ services:
     env_file:
       - ./frontend/.env
       - ./.env
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     security_opt:
       - no-new-privileges:true
     restart: always
