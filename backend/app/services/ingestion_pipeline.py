@@ -5,12 +5,21 @@ from sqlalchemy.orm import Session
 from llama_index.core.ingestion import IngestionPipeline, DocstoreStrategy
 from llama_index.core.readers import SimpleDirectoryReader
 from llama_index.core.settings import Settings
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.extractors import (
+    SummaryExtractor,
+    QuestionsAnsweredExtractor,
+    TitleExtractor,
+    #KeywordExtractor,
+)
+#from llama_index.extractors.entity import EntityExtractor
 
 from app.services.file_system import FileSystemService
-from app.engine.pipelines.zettlekasten_pipeline import ZettlekastenExtractor
+#from app.engine.pipelines.zettlekasten_pipeline import ZettlekastenExtractor
 #from app.engine.index import get_global_index
 from app.engine.vectordb import get_vector_store
 from app.engine.docdb import get_postgres_document_store
+
 
 import nest_asyncio
 nest_asyncio.apply()
@@ -27,12 +36,37 @@ class IngestionPipelineService:
         vector_store = get_vector_store()
         docstore = get_postgres_document_store()
 
+        # TODO : Add custom user pipeline creation with specified transformations and llm settings to personalise the ingestion pipeline and make it match the user files better, also add a way to save and load these pipelines, and a generation management. Also allow proper deletion and regeneration of documents from llama index file_index.
+
+        #ingestion_llm =  # TODO : Add custom ingestion llm, for now use the default Settings.llm
+
+        transformations = [
+            SentenceSplitter(), # TODO : Use a better node parser https://docs.llamaindex.ai/en/stable/api_reference/node_parsers/
+            TitleExtractor(
+                nodes=5,
+                #llm=ingestion_llm
+            ),
+            QuestionsAnsweredExtractor(
+                questions=3,
+                #llm=ingestion_llm
+            ),
+            SummaryExtractor(
+                summaries=["prev", "self"],
+                #llm=ingestion_llm
+            ),
+            #KeywordExtractor( # Using this extractors lead to an empty node list and so no embeddings, so it is disabled for now
+            #    keywords=10,
+            #    #llm=ingestion_llm
+            #),
+            #EntityExtractor(prediction_threshold=0.5),
+            #ZettlekastenExtractor(),
+            # Embed the nodes so they can be used by the query engine
+            Settings.embed_model,
+        ]
+
         logger.info(f"Creating zettlekasten ingestion pipeline")
         ingestion_pipeline = IngestionPipeline(
-            transformations=[
-                ZettlekastenExtractor(),
-                Settings.embed_model,
-            ],
+            transformations=transformations,
             vector_store=vector_store,
             docstore=docstore,
             docstore_strategy=DocstoreStrategy.UPSERTS_AND_DELETE,  # type: ignore
