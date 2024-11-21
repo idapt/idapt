@@ -28,17 +28,15 @@ class _AppSettings:
     embedding_dim: str = "1024"
     top_k: int = 6
     system_prompt: str = (
-        "You are an helpful personal assistant. "
-        "You have access to the user personal journaling notes via the personal_notes_query_engine tool. "
-        "Use it to answer user questions."
+        "You are an helpful personal assistant.\n"
+        "You can use tools to answer user questions.\n"
+        "Strictly answer to the user question, do not go off topic."
     )
     max_iterations: int = 10
-    # The system prompt for the AI model.
-    #SYSTEM_PROMPT="You are a DuckDuckGo search agent. 
-    #You can use the duckduckgo search tool to get information from the web to answer user questions.
-    #For better results, you can specify the region parameter to get results from a specific region but it's optional.
-    #You are a Wikipedia agent. You help users to get information from Wikipedia.
-    #If user request for a report or a post, use document generator tool to create a file and reply with the link to the file.
+    files_tool_description: str = (
+        "This tool provides information about the user files.\n"
+        "Use a detailed plain text question as input to the tool."
+    )
 
     def __post_init__(self):
         """Load settings from file right after instance creation"""

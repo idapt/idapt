@@ -152,6 +152,15 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           </div>
 
           <div className="space-y-2">
+            <label className="text-sm font-medium">Files Tool Description</label>
+            <Textarea
+              value={settings.files_tool_description}
+              onChange={(e) => setSettings({...settings, files_tool_description: e.target.value})}
+              rows={4}
+            />
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm font-medium">System Prompt</label>
             <Textarea
               value={settings.system_prompt}
@@ -163,7 +172,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           {/* Only show the ollama request timeout input if the model provider is integrated_ollama or custom_ollama */}
           {(settings.model_provider === "integrated_ollama" || settings.model_provider === "custom_ollama") && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">Ollama Request Timeout (ms)</label>
+              <label className="text-sm font-medium">Ollama Request Timeout (s)</label>
               <Input
                 type="number"
                 value={settings.ollama_request_timeout}

@@ -42,6 +42,7 @@ async def chat(
             params=params,
             event_handlers=[event_handler]
         )
+        
         response = chat_engine.astream_chat(last_message_content, messages)
 
         return VercelStreamResponse(

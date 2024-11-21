@@ -14,6 +14,7 @@ class AppSettingsModel(BaseModel):
     custom_ollama_host: str
     ollama_request_timeout: float
     max_iterations: int
+    files_tool_description: str
 
 @r.get("")
 async def get_settings() -> AppSettingsModel:
@@ -27,7 +28,8 @@ async def get_settings() -> AppSettingsModel:
         system_prompt=AppSettings.system_prompt,
         custom_ollama_host=AppSettings.custom_ollama_host,
         ollama_request_timeout=AppSettings.ollama_request_timeout,
-        max_iterations=AppSettings.max_iterations
+        max_iterations=AppSettings.max_iterations,
+        files_tool_description=AppSettings.files_tool_description
     )
 
 @r.post("")
@@ -43,7 +45,8 @@ async def update_settings(settings: AppSettingsModel):
             system_prompt=settings.system_prompt,
             custom_ollama_host=settings.custom_ollama_host,
             ollama_request_timeout=settings.ollama_request_timeout,
-            max_iterations=settings.max_iterations
+            max_iterations=settings.max_iterations,
+            files_tool_description=settings.files_tool_description
         )
 
         return {"status": "success"}

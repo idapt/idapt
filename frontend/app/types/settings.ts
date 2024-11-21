@@ -8,6 +8,7 @@ export interface AppSettings {
   top_k: number;
   system_prompt: string;
   max_iterations: number;
+  files_tool_description: string;
 }
 
 export const MODEL_PROVIDER_OPTIONS = [

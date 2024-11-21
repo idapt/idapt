@@ -52,7 +52,10 @@ def init_integrated_ollama():
         model_name=AppSettings.embedding_model,
     )
     Settings.llm = Ollama(
-        base_url=base_url, model=AppSettings.model, request_timeout=AppSettings.ollama_request_timeout
+        base_url=base_url, 
+        model=AppSettings.model, 
+        request_timeout=AppSettings.ollama_request_timeout,
+        system_prompt=AppSettings.system_prompt
     )
 
 # Temporary function to get the Ollama instance for the Zettlekasten pipeline with special settings for structured output.
@@ -69,6 +72,7 @@ def get_integrated_ollama_sllm():
         base_url=base_url, 
         model=AppSettings.model, 
         request_timeout=AppSettings.ollama_request_timeout,
+        system_prompt=AppSettings.system_prompt,
         json_mode=True,  # Useful for sllm otherwise it complains about not using a tool
         is_function_calling_model=True,  # Enable function calling
         temperature=0.7  # Lower temperature for more consistent structured output
@@ -93,6 +97,7 @@ def init_custom_ollama():
         base_url=base_url,
         model=AppSettings.model,
         request_timeout=AppSettings.ollama_request_timeout,
+        system_prompt=AppSettings.system_prompt
     )
 
 # Temporary function to get the Ollama instance for the Zettlekasten pipeline with special settings for structured output.
@@ -109,6 +114,7 @@ def get_custom_ollama_sllm():
         base_url=base_url, 
         model=AppSettings.model, 
         request_timeout=AppSettings.ollama_request_timeout,
+        system_prompt=AppSettings.system_prompt,
         json_mode=True,  # Useful for sllm otherwise it complains about not using a tool
         is_function_calling_model=True,  # Enable function calling
         temperature=0.7  # Lower temperature for more consistent structured output
@@ -124,6 +130,7 @@ def init_openai():
         model=AppSettings.model,
         temperature=float(os.getenv("LLM_TEMPERATURE", DEFAULT_TEMPERATURE)),
         max_tokens=int(max_tokens) if max_tokens is not None else None,
+        system_prompt=AppSettings.system_prompt
     )
 
     dimensions = AppSettings.embedding_dim
@@ -161,6 +168,7 @@ def init_azure_openai():
         model=AppSettings.model,
         max_tokens=int(max_tokens) if max_tokens is not None else None,
         temperature=float(temperature),
+        system_prompt=AppSettings.system_prompt,
         deployment_name=llm_deployment,
         **azure_config,
     )
@@ -206,7 +214,7 @@ def init_groq():
             "Groq support is not installed. Please install it with `poetry add llama-index-llms-groq`"
         )
 
-    Settings.llm = Groq(model=AppSettings.model)
+    Settings.llm = Groq(model=AppSettings.model, system_prompt=AppSettings.system_prompt)
     # Groq does not provide embeddings, so we use FastEmbed instead
     init_fastembed()
 
@@ -227,7 +235,7 @@ def init_anthropic():
         "claude-instant-1.2": "claude-instant-1.2",
     }
 
-    Settings.llm = Anthropic(model=model_map[AppSettings.model])
+    Settings.llm = Anthropic(model=model_map[AppSettings.model], system_prompt=AppSettings.system_prompt)
     # Anthropic does not provide embeddings, so we use FastEmbed instead
     init_fastembed()
 
@@ -252,5 +260,5 @@ def init_mistral():
     from llama_index.embeddings.mistralai import MistralAIEmbedding
     from llama_index.llms.mistralai import MistralAI
 
-    Settings.llm = MistralAI(model=AppSettings.model)
+    Settings.llm = MistralAI(model=AppSettings.model, system_prompt=AppSettings.system_prompt)
     Settings.embed_model = MistralAIEmbedding(model_name=AppSettings.embedding_model)
