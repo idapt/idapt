@@ -8,8 +8,8 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.settings import Settings
 from llama_index.core.storage import StorageContext
 from app.engine.loaders import get_documents, get_file_documents_from_paths
-from app.engine.vectordb import get_vector_store
-from app.engine.docdb import get_postgres_document_store
+from app.engine.vectordb import VectorStoreSingleton
+from app.engine.docdb import DocStoreSingleton
 from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
 from typing import List
 
@@ -53,10 +53,10 @@ def generate_files_embeddings(file_paths: List[str] = None):
         doc.metadata["private"] = "false"
 
     # Get the document store
-    docstore = get_postgres_document_store()
+    docstore = DocStoreSingleton().doc_store
 
     # Get the vector store
-    vector_store = get_vector_store()
+    vector_store = VectorStoreSingleton().vector_store
 
     # Run the ingestion pipeline
     _ = run_pipeline(docstore, vector_store, documents)

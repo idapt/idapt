@@ -1,19 +1,29 @@
 from llama_index.storage.docstore.postgres import PostgresDocumentStore
 from app.database.connection import get_connection_string
+import asyncio
 
-# Singleton document store instance to avoid creating multiple instances
-#postgres_document_store: PostgresDocumentStore = None
+class SingletonMeta(type):
+    _instances = {}
 
-def get_postgres_document_store() -> PostgresDocumentStore:
-    """Get the Postgres document store"""
-    # Return cached document store if it exists
- #   global postgres_document_store
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
 
-    # Get the connection string
-    connection_string = get_connection_string()
-    
-    # Build the PostgresDocumentStore
-    postgres_document_store = PostgresDocumentStore.from_uri(connection_string)
+class DocStoreSingleton(metaclass=SingletonMeta):
+    def __init__(self):
+        self._doc_store = None
+        self._loop = None
 
-    # Return the PostgresDocumentStore
-    return postgres_document_store
+    @property
+    def doc_store(self):
+        current_loop = asyncio.get_event_loop()
+        
+        if self._loop is not None and self._loop != current_loop:
+            self._doc_store = None
+            
+        if self._doc_store is None:
+            self._loop = current_loop
+            connection_string = get_connection_string()
+            self._doc_store = PostgresDocumentStore.from_uri(connection_string)
+        return self._doc_store

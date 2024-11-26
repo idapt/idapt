@@ -48,17 +48,17 @@ class FileService:
     ) -> DocumentFile:
         """
         Store the uploaded file and index it if necessary.
+        This will mark the file as private. It should only be used for this chat and deleted after the chat is over.
         """
+        # TODO : Implement a private file deletion after the chat is over
         try:
-            from app.engine.index import IndexConfig, create_index
+            from app.engine.index import IndexSingleton
         except ImportError as e:
-            raise ValueError("IndexConfig or create_index is not found") from e
+            raise ValueError("IndexSingleton is not found") from e
         if params is None:
             params = {}
-        # Add the nodes to the index and persist it
-        index_config = IndexConfig(**params)
         # Create new separate index ?
-        index = create_index(index_config)
+        index = IndexSingleton().get_global_index()
         # Preprocess and store the file
         file_data, extension = cls._preprocess_base64_file(base64_content)
         document_file = cls.save_file(
