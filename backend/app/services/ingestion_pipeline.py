@@ -65,14 +65,14 @@ class IngestionPipelineService:
         ]
 
         logger.info(f"Creating zettlekasten ingestion pipeline")
-        ingestion_pipeline = IngestionPipeline(
-            transformations=transformations,
-            vector_store=vector_store,
-            docstore=docstore,
-            docstore_strategy=DocstoreStrategy.UPSERTS_AND_DELETE,  # type: ignore
-        )
+            ingestion_pipeline = IngestionPipeline(
+                transformations=transformations,
+                docstore=docstore, # This allow the pipeline to add the documents to the docstore
+                vector_store=vector_store, # This allow the pipeline to add nodes to the vector store
+                docstore_strategy=DocstoreStrategy.UPSERTS, # UPSERTS_AND_DELETE causes a deletion of all previous documents in the docstore and vector store when the pipeline is ran
+            )
 
-        # Load the cache from the pipeline storage # TODO dont use local file storage ?
+            # Load the cache from the pipeline storage # TODO dont use local file storage ?
         try:
             ingestion_pipeline.load("./output/pipeline_storage")
         except Exception as e:
