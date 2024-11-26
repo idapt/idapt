@@ -34,7 +34,22 @@ class DatabaseInitializer:
             logger.debug("Database already initialized, skipping")
     
     def _setup_password(self):
+        # Ensure the password file path exists
         self.password_manager.ensure_password_file()
+        # Generate a password if not already set
+        if not self.password_manager.read_stored_password():
+            password = self.password_manager.generate_password()
+            self.password_manager.write_password(password)
+            logger.info("Generated and stored a new database password")
+
+            # Update the database password
+            self.password_manager.update_database_password(password)
+        else:
+            logger.info("Database password already set")
+        
+        #
+        
+
     
     def _run_migrations(self):
         self.migration_manager.run_migrations()
