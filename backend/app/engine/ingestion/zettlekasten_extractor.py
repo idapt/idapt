@@ -1,31 +1,15 @@
-from typing import Dict, Any, List
-from pydantic import BaseModel, Field, ValidationError
-import json
-import re
-#import asyncio
+from typing import Dict, List
+from pydantic import ValidationError
 
-from llama_index.core.schema import Document
 from llama_index.core.extractors import BaseExtractor
 from llama_index.core.llms import ChatMessage
-from llama_index.core.settings import Settings
 
 from app.settings.app_settings import AppSettings
 from app.settings.llama_index_settings import get_integrated_ollama_sllm, get_custom_ollama_sllm
+from backend.app.engine.ingestion.types import ZettlekastenNoteTitleList, ZettlekastenNote
 
 import logging
 logger = logging.getLogger(__name__)
-
-class ZettlekastenNoteTitleList(BaseModel):
-    """Model for a list of Zettlekasten note titles"""
-    titles: List[str] = Field(..., description="List of Zettlekasten note titles")
-
-class ZettlekastenNote(BaseModel):
-    """Model for a Zettlekasten note"""
-    zettlekasten_atomic_note_title: str = Field(..., description="Title of the note")
-    zettlekasten_atomic_note_markdown_content_strictly_about_title: str = Field(..., description="Main content of the note")
-    questions_this_note_answers: List[str] = Field(..., description="Questions that this note helps answer")
-    tags_keywords_this_note_is_about: List[str] = Field(..., description="Tags or keywords that this note is about")
-
 
 class ZettlekastenExtractor(BaseExtractor):
 

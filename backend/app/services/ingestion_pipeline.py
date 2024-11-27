@@ -15,7 +15,7 @@ from llama_index.core.extractors import (
 #from llama_index.extractors.entity import EntityExtractor
 
 from app.services.file_system import FileSystemService
-#from app.engine.pipelines.zettlekasten_pipeline import ZettlekastenExtractor
+from backend.app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 from app.engine.vectordb import VectorStoreSingleton
 from app.engine.docdb import DocStoreSingleton
 from app.engine.index import IndexSingleton
