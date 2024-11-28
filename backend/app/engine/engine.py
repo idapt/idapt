@@ -24,7 +24,7 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         # Create separate index ? # TODO : Only set the callback manager at index query time so that we avoid multiple chat issues
         index_singleton = IndexSingleton()
         # Get the global index
-        files_index = index_singleton.get_global_index()
+        files_index = index_singleton.global_index
         # Set the callback manager for the index to the chat engine callback manager
         files_index._callback_manager = callback_manager
 

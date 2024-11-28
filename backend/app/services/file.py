@@ -58,7 +58,7 @@ class FileService:
         if params is None:
             params = {}
         # Create new separate index ?
-        index = IndexSingleton().get_global_index()
+        index = IndexSingleton().global_index
         # Preprocess and store the file
         file_data, extension = cls._preprocess_base64_file(base64_content)
         document_file = cls.save_file(

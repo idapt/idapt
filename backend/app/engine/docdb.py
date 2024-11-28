@@ -25,5 +25,9 @@ class DocStoreSingleton(metaclass=SingletonMeta):
         if self._doc_store is None:
             self._loop = current_loop
             connection_string = get_connection_string()
-            self._doc_store = PostgresDocumentStore.from_uri(connection_string)
+            self._doc_store = PostgresDocumentStore.from_uri(
+                connection_string,
+                schema_name="public",
+                table_name="docstore"
+            )
         return self._doc_store

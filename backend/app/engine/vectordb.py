@@ -5,8 +5,6 @@ from app.database.connection import get_connection_string
 from app.settings.app_settings import AppSettings
 import asyncio
 
-PGVECTOR_SCHEMA = "public"
-PGVECTOR_TABLE = "embeddings"
 
 class SingletonMeta(type):
     _instances = {}
@@ -45,8 +43,8 @@ class VectorStoreSingleton(metaclass=SingletonMeta):
             self._vector_store = PGVectorStore(
                 connection_string=conn_string,
                 async_connection_string=async_conn_string,
-                schema_name=PGVECTOR_SCHEMA,
-                table_name=PGVECTOR_TABLE,
+                schema_name="public",
+                table_name="embeddings",
                 embed_dim=int(AppSettings.embedding_dim),
             )
         return self._vector_store

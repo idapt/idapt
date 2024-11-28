@@ -26,27 +26,19 @@ class IndexSingleton(metaclass=SingletonMeta):
     @property
     def global_index(self):
         if self._global_index is None:
-            self._global_index = self.create_index(self.callback_manager)
-            logger.info("Created index.")
-        return self._global_index
+            try:
+                document_store = DocStoreSingleton().doc_store
 
-    def get_global_index(self):
-        return self.global_index
+                vector_store = VectorStoreSingleton().vector_store
 
-    def create_index(self, callback_manager: Optional[CallbackManager] = None):
-        try:
-            document_store = DocStoreSingleton().doc_store
-
-            vector_store = VectorStoreSingleton().vector_store
-
-            index = VectorStoreIndex.from_vector_store(
-                vector_store,
-                docstore=document_store,
-                callback_manager=callback_manager,
-            )
+                self._global_index = VectorStoreIndex.from_vector_store(
+                    vector_store,
+                    docstore=document_store,
+                    callback_manager=self.callback_manager,
+                )
+                logger.info("Created index.")
+            except Exception as e:
+                logger.error(f"Error creating index: {e}")
+                raise e
             
-            return index
-        except Exception as e:
-            logger.error(f"Error creating index: {e}")
-            raise e
-
+        return self._global_index
