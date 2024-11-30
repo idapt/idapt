@@ -26,13 +26,15 @@ class _AppSettings:
     model: str = "llama3.1:8b"
     embedding_model: str = "bge-m3"
     embedding_dim: str = "1024"
-    top_k: int = 6
+    top_k: int = 15
     system_prompt: str = (
         "You are an helpful personal assistant.\n"
         "You can use tools to answer user questions.\n"
-        "Strictly answer to the user question, do not go off topic."
+        "You can access to the files of the user containing personal information about the user, you can use it to answer personal questions.\n"
+        "When the user is talking at the first person, he is talking about himself. Use the tool to get personal information needed to answer.\n"
+        "In your final answer strictly answer to the user question, do not go off topic or talk about tools used."
     )
-    max_iterations: int = 10
+    max_iterations: int = 20
     files_tool_description: str = (
         "This tool provides information about the user files.\n"
         "Use a detailed plain text question as input to the tool."
