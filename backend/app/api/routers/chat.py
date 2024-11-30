@@ -31,7 +31,8 @@ async def chat(
         messages = data.get_history_messages()
 
         doc_ids = data.get_chat_document_ids()
-        filters = generate_filters(doc_ids)
+        #filters = generate_filters(doc_ids)
+        filters = None # Do not use filters as we now use the zettelkasten index
         params = data.data or {}
         logger.info(
             f"Creating chat engine with filters: {str(filters)}",

@@ -11,6 +11,7 @@ from app.services.ingestion_pipeline import IngestionPipelineService
 import logging
 logger = logging.getLogger(__name__)
 
+# TODO : Add a way to handle LLM unavailability and retry the queue processing
 class GenerateService:
     # Singleton instance
     _instance = None

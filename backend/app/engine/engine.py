@@ -1,6 +1,7 @@
 from typing import List
 
-from app.engine.index import IndexSingleton
+#from app.engine.index import IndexSingleton
+from app.engine.ingestion.zettlekasten_index import ZettelkastenIndexSingleton
 #from app.engine.tools import ToolFactory
 from app.settings.app_settings import AppSettings
 from llama_index.core.agent import AgentRunner
@@ -9,6 +10,7 @@ from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool, ToolMetadata
 from llama_index.core.tools.query_engine import QueryEngineTool
 from llama_index.postprocessor.colbert_rerank import ColbertRerank
+from llama_index.core.indices import VectorStoreIndex
 
 import logging
 logger = logging.getLogger(__name__)
@@ -22,9 +24,11 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         callback_manager = CallbackManager(handlers=event_handlers or [])
 
         # Create separate index ? # TODO : Only set the callback manager at index query time so that we avoid multiple chat issues
-        index_singleton = IndexSingleton()
-        # Get the global index
-        files_index = index_singleton.global_index
+        # Get the global index # Recreate the index at each new engine creation # TODO : Add index store
+        files_index = VectorStoreIndex.from_vector_store(
+            vector_store=ZettelkastenIndexSingleton().vector_store,
+            docstore=ZettelkastenIndexSingleton().doc_store,
+        )
         # Set the callback manager for the index to the chat engine callback manager
         files_index._callback_manager = callback_manager
 
@@ -43,7 +47,8 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         )
         # Build the query engine for the index
         files_query_engine = files_index.as_query_engine(
-            filters=filters, **({"similarity_top_k": top_k*2} if top_k != 0 else {}),
+            filters=filters, 
+            **({"similarity_top_k": top_k*2} if top_k != 0 else {}),
             node_postprocessors=[colbert_reranker]
         )
         # Build the tool for the query engine
