@@ -24,8 +24,8 @@ class _AppSettings:
     # Set to big by default to avoid timeouts
     ollama_request_timeout: float = 2000
     model: str = "llama3.1:8b"
-    embedding_model: str = "bge-m3"
-    embedding_dim: str = "1024"
+    embedding_model: str = "Losspost/stella_en_1.5b_v5"
+    embedding_dim: str = "1536"
     top_k: int = 15
     system_prompt: str = (
         "You are an helpful personal assistant.\n"
