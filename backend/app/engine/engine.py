@@ -1,10 +1,11 @@
 from typing import List
+import os
 
 #from app.engine.index import IndexSingleton
 from app.engine.ingestion.zettlekasten_index import ZettelkastenIndexSingleton
 #from app.engine.tools import ToolFactory
 from app.settings.app_settings import AppSettings
-from llama_index.core.agent import AgentRunner
+from llama_index.core.agent.react import ReActAgent, ReActChatFormatter
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool, ToolMetadata
@@ -67,13 +68,27 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         #configured_tools: List[BaseTool] = ToolFactory.from_env()
         #tools.extend(configured_tools)
 
+        # Get the directory where the current module (engine.py) is located
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Construct the path to the prompt file
+        prompt_file_path = os.path.join(current_dir, "react_agent_system_prompt.md")
+        # Read the prompt file
+        react_agent_system_prompt = open(prompt_file_path, "r").read()
+        # Add the user system prompt to it
+        react_agent_system_prompt = AppSettings.system_prompt + "\n\n" + react_agent_system_prompt
+
         # This creates the most appropriate agent for this llm
-        return AgentRunner.from_llm(
+        return ReActAgent.from_llm(
             llm=Settings.llm,
             tools=tools,
             callback_manager=callback_manager,
             verbose=True,
-            max_iterations=AppSettings.max_iterations
+            max_iterations=AppSettings.max_iterations,
+            react_chat_formatter=ReActChatFormatter(
+                system_header=react_agent_system_prompt,
+                context=""
+            )
+
         )
     
     except Exception as e:
