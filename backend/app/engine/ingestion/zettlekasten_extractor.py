@@ -112,6 +112,23 @@ class ZettlekastenExtractor(BaseExtractor):
                 logger.warning("No unique information extracted from node")
                 return
 
+            # Temp list of nodes to add to the zettelkasten index
+            nodes_to_add_to_zettelkasten_index = []
+            # Build nodes from the extracted unique information
+            for unique_information in extracted_unique_information:
+                # Create a new node with the unique information
+                new_node = TextNode(
+                    text=unique_information,
+                    metadata=node.metadata, # Keep the metadata from the node parser
+                )
+                # Add the new node to temp list
+                nodes_to_add_to_zettelkasten_index.append(new_node)
+
+            # Run the zettlekasten ingestion pipeline on the temp list of nodes
+            self._zettlekasten_ingestion_pipeline.run(nodes=nodes_to_add_to_zettelkasten_index)
+
+            return
+        
             # For each extracted unique information 
             for unique_information_number, unique_information in enumerate(extracted_unique_information):
                 # Do an index search for the most similar existing notes to the unique information
@@ -209,7 +226,7 @@ class ZettlekastenExtractor(BaseExtractor):
             )
 
         except Exception as e:
-            logger.error(f"Error in _preprocess_and_filter_noise_from_this_text_to_keep_only_important_textual_information_in_well_formed_sentences: {e}")
+            logger.error(f"Error in _preprocess_and_filter_noise_from_node_text: {e}")
             return None
 
     def _extract_unique_atomic_informations(self, node: BaseNode, num_attempts: int = 10) -> List[str]:
@@ -427,12 +444,12 @@ class ZettlekastenExtractor(BaseExtractor):
             
             for attempt in range(num_attempts):
                 try:
-                    logger.warning(f"Executing LLM interaction, attempt {attempt}")
+                    #logger.warning(f"Executing LLM interaction, attempt {attempt}")
                     output = sllm.chat([input_msg])
                     output_obj = output.raw
-                    logger.warning(f"Function name error_msg: {error_msg}")
-                    logger.warning(f"Prompt: {prompt}")
-                    logger.warning(f"Raw LLM output: {output_obj}")
+                    #logger.warning(f"Function name error_msg: {error_msg}")
+                    #logger.warning(f"Prompt: {prompt}")
+                    #logger.warning(f"Raw LLM output: {output_obj}")
                     
                     if isinstance(output_obj, output_model):
                         output_model.model_validate(output_obj)

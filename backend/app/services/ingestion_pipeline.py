@@ -48,7 +48,7 @@ class IngestionPipelineService:
             transformations = [
                 # Node parser
                 SentenceSplitter(
-                    chunk_size=256,
+                    chunk_size=256, # Use small chunks so that the llm dont have too much input and always extract most of the important information
                     chunk_overlap=32,
                 ), # TODO : Use a better node parser https://docs.llamaindex.ai/en/stable/api_reference/node_parsers/
                 ## Metadata extractors
