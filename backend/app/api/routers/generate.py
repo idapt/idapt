@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 import logging
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.services.generate import GenerateService
 from app.services.file_system import FileSystemService
 from app.database.connection import get_db_session
@@ -12,7 +12,10 @@ logger = logging.getLogger(__name__)
 file_system_service = FileSystemService()
 
 class GenerateRequest(BaseModel):
-    file_paths: List[str]
+    files: List[dict] = Field(..., example=[{
+        "path": "path/to/file.txt",
+        "transformations_stack_name_list": ["default", "titles"]
+    }])
 
 class BatchGenerateRequest(BaseModel):
     file_ids: List[int]
@@ -29,15 +32,19 @@ async def generate(
     Returns immediately with queue status.
     """
     try:
-        # Convert to full paths
-        file_paths = [file_system_service.get_full_path(file_path) for file_path in request.file_paths]
+        # Convert to full paths and maintain transformation stack names
+        files = [{
+            "path": file_system_service.get_full_path(file["path"]),
+            "transformations_stack_name_list": file.get("transformations_stack_name_list", "default")
+        } for file in request.files]
+        
         # Add to queue
-        background_tasks.add_task(GenerateService.add_batch_to_queue, file_paths)
+        background_tasks.add_task(GenerateService.add_batch_to_queue, files)
 
         return {
             "status": "queued",
-            "message": f"Added {len(request.file_paths)} files to generation queue",
-            "total_files": len(request.file_paths)
+            "message": f"Added {len(request.files)} files to generation queue",
+            "total_files": len(request.files)
         }
     except Exception as e:
         logger.error(f"Error in generate endpoint: {str(e)}")

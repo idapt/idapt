@@ -340,6 +340,7 @@ class FileUploadItem(BaseModel):
     mime_type: Optional[str] = None
     original_created_at: Optional[datetime] = None
     original_modified_at: Optional[datetime] = None
+    transformations_stack_name: Optional[str] = "default"
 
 
 class FileUploadRequest(BaseModel):

@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import HTTPException
 
 from llama_index.core.ingestion import IngestionPipeline, DocstoreStrategy
@@ -8,12 +9,12 @@ from llama_index.core.extractors import (
     SummaryExtractor,
     QuestionsAnsweredExtractor,
     TitleExtractor,
-    #KeywordExtractor,
+    KeywordExtractor,
 )
 #from llama_index.extractors.entity import EntityExtractor
 
 from app.services.file_system import FileSystemService
-from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
+#from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 from app.engine.storage_context import StorageContextSingleton
         
 
@@ -30,66 +31,94 @@ class IngestionPipelineService:
     This only takes care of the llama index part
     """
 
+    # List of avaliable transformations stacks with their name and transformations
+    TRANSFORMATIONS_STACKS = {
+        "default": [
+            SentenceSplitter(
+                chunk_size=2048,
+                chunk_overlap=256,
+            ),
+            Settings.embed_model,
+        ],
+        "ss1": [
+            SentenceSplitter(
+                chunk_size=1024,
+                chunk_overlap=128,
+            ),
+            Settings.embed_model,
+        ],
+        "ss2": [
+            SentenceSplitter(
+                chunk_size=512,
+                chunk_overlap=64,
+            ),
+            Settings.embed_model,
+        ],
+        "ss3": [
+            SentenceSplitter(
+                chunk_size=256,
+                chunk_overlap=32,
+            ),
+            Settings.embed_model,
+        ],
+        "ss4": [
+            SentenceSplitter(
+                chunk_size=128,
+                chunk_overlap=16,
+            ),
+            Settings.embed_model,
+        ],
+        "ss5": [
+            SentenceSplitter(
+                chunk_size=64,
+                chunk_overlap=8,
+            ),
+            Settings.embed_model,
+        ],
+        "titles": [
+            TitleExtractor(
+                nodes=5,
+            ),
+        ],
+        "questions": [
+            QuestionsAnsweredExtractor(
+                questions=3,
+            ),
+        ],
+        "summary": [
+            SummaryExtractor(
+                summaries=["prev", "self"],
+            ),
+        ],
+        "keywords": [
+            KeywordExtractor(
+                keywords=10,
+            ),
+        ],
+        #"entities": [
+        #    EntityExtractor(prediction_threshold=0.5),
+        #],
+        #"zettlekasten": [
+        #    ZettlekastenExtractor(
+        #        similar_notes_top_k=5
+        #    ),
+        #],
+    }
+
     def _create_ingestion_pipeline(self) -> IngestionPipeline:
         try:        
             logger.info(f"Getting vector store and docstore to create ingestion pipeline")
 
             # TODO : Add custom user pipeline creation with specified transformations and llm settings to personalise the ingestion pipeline and make it match the user files better, also add a way to save and load these pipelines, and a generation management. Also allow proper deletion and regeneration of documents from llama index file_index.
 
-            #ingestion_llm =  # TODO : Add custom ingestion llm, for now use the default Settings.llm
-
-            transformations = [
-                # Node parser
-                SentenceSplitter(
-                    chunk_size=256, # Use small chunks so that the llm dont have too much input and always extract most of the important information
-                    chunk_overlap=32,
-                ), # TODO : Use a better node parser https://docs.llamaindex.ai/en/stable/api_reference/node_parsers/
-                ## Metadata extractors
-                #TitleExtractor(
-                #    nodes=5,
-                #    #llm=ingestion_llm
-                #    node_template=  """\
-                #        Context: {context_str}. Give a title that summarizes all of \
-                #        the unique entities, titles or themes found in the context. Title: """
-                #    ,
-                #    combine_template="""\
-                #        {context_str}. Based on the above candidate titles and content, \
-                #        what is the comprehensive title for this document? Title: """
-                #    ,
-                #),
-                #QuestionsAnsweredExtractor(
-                #    questions=3,
-                #    
-                #    #llm=ingestion_llm
-                #),
-                #SummaryExtractor(
-                #    summaries=["prev", "self"],
-                #    #llm=ingestion_llm
-                #),
-                #KeywordExtractor( # Using this extractors lead to an empty node list and so no embeddings, so it is disabled for now
-                #    keywords=10,
-                #    #llm=ingestion_llm
-                #    prompt_template=  = """\
-                #        {context_str}. Give {keywords} unique keywords for this \
-                #        document. Format as comma separated. Keywords: """
-                #),
-                #EntityExtractor(prediction_threshold=0.5),
-                #ZettlekastenExtractor(
-                #    similar_notes_top_k=5
-                #),
-                # Embed the nodes so they can be used by the query engine
-                Settings.embed_model,
-            ]
-
             logger.info(f"Creating ingestion pipeline")
             ingestion_pipeline = IngestionPipeline(
-                transformations=transformations,
                 docstore=StorageContextSingleton().doc_store, # This allow the pipeline to add the documents to the docstore
                 vector_store=StorageContextSingleton().vector_store, # This allow the pipeline to add nodes to the vector store
-                docstore_strategy=DocstoreStrategy.UPSERTS, # UPSERTS_AND_DELETE causes a deletion of all previous documents in the docstore and vector store when the pipeline is ran
+                docstore_strategy=DocstoreStrategy.DUPLICATES_ONLY, # DUPLICATES_ONLY as we insert multiple times nodes with the same red_doc_id when we augment them
             )
 
-            # Load the cache from the pipeline storage # TODO : Dont use local file storage ?
+            # Load the cache from the pipeline storage
             try:
                 ingestion_pipeline.load("./output/pipeline_storage")
             except Exception as e:
@@ -108,7 +137,7 @@ class IngestionPipelineService:
         self.ingestion_pipeline = self._create_ingestion_pipeline()
 
 
-    async def ingest_file(self, full_file_path: str, logger: logging.Logger):
+    async def ingest_file(self, full_file_path: str, logger: logging.Logger, transformations_stack_name_list: List[str]):
         try:
             logger.info(f"Starting ingestion pipeline for file {full_file_path}")
             
@@ -121,28 +150,36 @@ class IngestionPipelineService:
             )
             documents = reader.load_data()
 
-            # Set private=false to mark the document as public (required for filtering)
+            # Set the origin metadata of the document
             for doc in documents:
-                doc.metadata["private"] = "false"
+                doc.metadata["origin"] = "upload"
+            
+            # For each transformations stack we need to apply
+            for transformations_stack_name in transformations_stack_name_list:
+                # Get the transformations stack
+                transformations = self.TRANSFORMATIONS_STACKS[transformations_stack_name]
+                # Set the transformations for the ingestion pipeline
+                self.ingestion_pipeline.transformations = transformations
+                # Set the transformations stack name for the documents
+                for doc in documents:
+                    doc.metadata["transformations_stack_name"] = transformations_stack_name
 
-            logger.error(f"Running ingestion pipeline")
-            # Now run the user specified ingestion pipeline on this document
-            # This will add the documents to the vector store and docstore in the expected llama index way
-            nodes = await self.ingestion_pipeline.arun(
-                documents=documents,
-                show_progress=True
-                #num_workers=1
-            )
+                logger.info(f"Running ingestion pipeline with transformations stack {transformations_stack_name}")
+                # This will add the documents to the vector store and docstore in the expected llama index way
+                nodes = await self.ingestion_pipeline.arun(
+                    documents=documents,
+                    show_progress=True
+                )
 
-            # Get the index from the storage context
-            index = StorageContextSingleton().index
-            # Add the nodes to the index
-            index.insert_nodes(nodes)
+                # Get the index from the storage context
+                index = StorageContextSingleton().index
+                # Add the nodes to the index
+                index.insert_nodes(nodes)
 
-            # Save the cache to storage #TODO Add cache management to delete when too big with  cache.clear()
-            #self.ingestion_pipeline.persist("./output/pipeline_storage")
+            # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
+            self.ingestion_pipeline.persist("./output/pipeline_storage")
 
-            logger.error(f"Ingested {len(documents)} documents")
+            logger.info(f"Ingested {len(documents)} documents")
 
         except Exception as e:
             logger.error(f"Error in ingestion pipeline: {str(e)}")

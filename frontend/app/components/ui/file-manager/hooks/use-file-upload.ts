@@ -31,8 +31,10 @@ export function useFileUpload() {
         original_modified_at: file.lastModified.toString()
       }], true);
 
-      // Add this file to the generate queue
-      await generate([filePath]);
+      await generate([{
+        path: filePath,
+        transformations_stack_name_list: ["default", "ss1", "ss2", "ss3", "ss4", "ss5"]  // Can be extended to support multiple transformations
+      }]);
       
       options?.onComplete?.();
     } catch (error) {

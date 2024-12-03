@@ -1,5 +1,5 @@
 import { useUpload } from "../../chat/hooks/use-upload";
-import { useGenerate } from "../hooks/use-generate";
+import { useGenerate, GenerateFile } from "../hooks/use-generate";
 
 interface FolderUploadOptions {
   onProgress?: (progress: number) => void;
@@ -63,7 +63,13 @@ export function useFolderUpload() {
       
       // Generate index for uploaded files
       if (filePaths.length > 0) {
-        await generate(filePaths);
+        // List of GenerateFile objects
+        const generateFiles: GenerateFile[] = filePaths.map(filePath => ({
+          path: filePath,
+          transformations_stack_name_list: ["default", "ss1", "ss2", "ss3", "ss4", "ss5"]  // Can be extended to support multiple transformations
+        }));
+
+        await generate(generateFiles);
       }
       
       options?.onComplete?.();

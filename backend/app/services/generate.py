@@ -89,13 +89,16 @@ class GenerateService:
         return cls._instance
 
     @classmethod
-    async def add_to_queue(cls, full_file_path: str):
+    async def add_to_queue(cls, full_file_path: str, transformations_stack_name_list: List[str] = ["default"]):
         """Add a single file to the generation queue"""
         try:
             instance = cls.get_instance()
-            instance._queue.put_nowait(full_file_path)
+            instance._queue.put_nowait({
+                "path": full_file_path,
+                "transformations_stack_name_list": transformations_stack_name_list
+            })
             instance._save_queue_to_disk()
-            logger.info(f"Added file {full_file_path} to generation queue")
+            logger.info(f"Added file {full_file_path} to generation queue with stacks {transformations_stack_name_list}")
             return
 
         except Exception as e:
@@ -103,59 +106,53 @@ class GenerateService:
             raise e
 
     @classmethod
-    async def add_batch_to_queue(cls, full_file_paths: List[str]):
+    async def add_batch_to_queue(cls, files: List[dict]):
         """Add multiple files to the generation queue"""
-        
         try:
             instance = cls.get_instance()
-            for full_file_path in full_file_paths:
-                instance._queue.put_nowait(full_file_path)
+            for file in files:
+                instance._queue.put_nowait({
+                    "path": file["path"],
+                    "transformations_stack_name_list": file.get("transformations_stack_name_list", ["default"])
+                })
             instance._save_queue_to_disk()
-            logger.info(f"Added batch of {len(full_file_paths)} files to generation queue")
+            logger.info(f"Added batch of {len(files)} files to generation queue")
             
             return
 
         except Exception as e:
-            logger.error(f"Error adding batch of {len(full_file_paths)} files to generation queue: {str(e)}")
+            logger.error(f"Error adding batch of files to generation queue: {str(e)}")
             raise e
 
     async def _process_queue(self):
         """Process items in the queue one at a time"""        
-        # Process the queue indefinitely
-        # Setup the logger for this thread
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.setLevel(logging.INFO)
-
         while True:
-
             try:
-                
                 if self._queue.empty():
-                    #logger.info("Generation queue is empty, waiting for new files")
                     await asyncio.sleep(1)
                     continue
 
                 # Get the next file from the queue
-                full_file_path = await self._queue.get()
-                logger.info(f"Processing file {full_file_path} from generation queue")
+                queue_item = await self._queue.get()
+                full_file_path = queue_item["path"]
+                transformations_stack_name_list = queue_item.get("transformations_stack_name_list", ["default"])
+                
+                logger.info(f"Processing file {full_file_path} from generation queue with stacks {transformations_stack_name_list}")
 
-                # Run the ingestion pipeline on the file
+                # Run the ingestion pipeline on the file with multiple transformation stacks
                 await self.ingestion_pipeline_service.ingest_file(
                     full_file_path=full_file_path,
-                    logger=logger
+                    logger=logger,
+                    transformations_stack_name_list=transformations_stack_name_list
                 )
 
-                # Mark the file as processed in the queue
                 self._queue.task_done()
-                # Save updated queue to disk
                 self._save_queue_to_disk()
                     
                 logger.info(f"Successfully processed file {full_file_path}")
             except Exception as e:
                 logger.error(f"Error processing file {full_file_path}: {str(e)}")
 
-            # Small delay to prevent resource hogging
             await asyncio.sleep(0.1)
 
 

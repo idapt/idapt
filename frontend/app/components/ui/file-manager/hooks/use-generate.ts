@@ -1,11 +1,16 @@
 import { useClientConfig } from "../../chat/hooks/use-config";
 import { useState } from "react";
 
+export interface GenerateFile {
+  path: string;
+  transformations_stack_name_list?: string[];
+}
+
 export function useGenerate() {
   const { backend } = useClientConfig();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const generate = async (filePaths: string[]) => {
+  const generate = async (files: GenerateFile[]) => {
     try {
       setIsGenerating(true);
       const response = await fetch(`${backend}/api/generate`, {
@@ -13,7 +18,7 @@ export function useGenerate() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ file_paths: filePaths }),
+        body: JSON.stringify({ files }),
       });
       
       const data = await response.json();
