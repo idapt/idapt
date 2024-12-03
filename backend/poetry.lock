@@ -1629,6 +1629,21 @@ llama-index-core = ">=0.12.0,<0.13.0"
 llama-index-storage-kvstore-postgres = ">=0.3.0,<0.4.0"
 
 [[package]]
+name = "llama-index-storage-index-store-postgres"
+version = "0.4.0"
+description = "llama-index index_store postgres integration"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "llama_index_storage_index_store_postgres-0.4.0-py3-none-any.whl", hash = "sha256:8f129ba1e00e2300385e75e6bbfd9926bbbf5cd6ae6803daf883a9b6479670a3"},
+    {file = "llama_index_storage_index_store_postgres-0.4.0.tar.gz", hash = "sha256:5eb74284dad694103c383ecabfc85a5b400be42366e4bd49fe8495be325fc42e"},
+]
+
+[package.dependencies]
+llama-index-core = ">=0.12.0,<0.13.0"
+llama-index-storage-kvstore-postgres = ">=0.3.0,<0.4.0"
+
+[[package]]
 name = "llama-index-storage-kvstore-postgres"
 version = "0.3.0"
 description = "llama-index kvstore postgres integration"
@@ -4701,4 +4716,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "a5b8bb4658896d1c0a0ef85735345961c8d073664aa071dd07ada7485e420db9"
+content-hash = "4cede1b2598a3450fda55e3cf8fb9367fbde144bfd9a10fb64c874fd24b10d7f"

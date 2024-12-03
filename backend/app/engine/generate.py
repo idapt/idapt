@@ -6,10 +6,8 @@ import os
 from llama_index.core.ingestion import DocstoreStrategy, IngestionPipeline
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.settings import Settings
-from llama_index.core.storage import StorageContext
 from app.engine.loaders import get_documents, get_file_documents_from_paths
-from app.engine.vectordb import VectorStoreSingleton
-from app.engine.docdb import DocStoreSingleton
+from app.engine.storage_context import StorageContextSingleton
 from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
 from typing import List
 
@@ -52,19 +50,11 @@ def generate_files_embeddings(file_paths: List[str] = None):
     for doc in documents:
         doc.metadata["private"] = "false"
 
-    # Get the document store
-    docstore = DocStoreSingleton().doc_store
-
-    # Get the vector store
-    vector_store = VectorStoreSingleton().vector_store
-
     # Run the ingestion pipeline
-    _ = run_pipeline(docstore, vector_store, documents)
-
-    # Build the index and persist storage #? Useful ?
-    storage_context = StorageContext.from_defaults(
-        docstore=docstore,
-        vector_store=vector_store,
+    _ = run_pipeline(
+        StorageContextSingleton().doc_store,
+        StorageContextSingleton().vector_store,
+        documents
     )
 
     logger.info("Finished generating the index")

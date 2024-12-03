@@ -1,17 +1,16 @@
 from typing import List
 import os
 
-#from app.engine.index import IndexSingleton
-from app.engine.ingestion.zettlekasten_index import ZettelkastenIndexSingleton
-#from app.engine.tools import ToolFactory
-from app.settings.app_settings import AppSettings
 from llama_index.core.agent.react import ReActAgent, ReActChatFormatter
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool, ToolMetadata
 from llama_index.core.tools.query_engine import QueryEngineTool
 from llama_index.postprocessor.colbert_rerank import ColbertRerank
-from llama_index.core.indices import VectorStoreIndex
+
+#from app.engine.tools import ToolFactory
+from app.engine.storage_context import StorageContextSingleton
+from app.settings.app_settings import AppSettings
 
 import logging
 logger = logging.getLogger(__name__)
@@ -24,13 +23,9 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         # Used to display the index events in the steps ui
         callback_manager = CallbackManager(handlers=event_handlers or [])
 
-        # Create separate index ? # TODO : Only set the callback manager at index query time so that we avoid multiple chat issues
-        # Get the global index # Recreate the index at each new engine creation # TODO : Add index store
-        files_index = VectorStoreIndex.from_vector_store(
-            vector_store=ZettelkastenIndexSingleton().vector_store,
-            docstore=ZettelkastenIndexSingleton().doc_store,
-        )
-        # Set the callback manager for the index to the chat engine callback manager
+        # TODO : Only set the callback manager at index query time so that we avoid multiple chat issues
+        files_index = StorageContextSingleton().index
+        # Set the callback manager for the index to the chat engine callback manager so that we can display the index events in the steps ui
         files_index._callback_manager = callback_manager
 
         # Check if the index exists

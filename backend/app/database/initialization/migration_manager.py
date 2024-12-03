@@ -10,7 +10,7 @@ import time
 logger = logging.getLogger(__name__)
 
 # Ignore tables managed by llama index
-TABLES_TO_IGNORE = ["data_docstore", "data_embeddings", "data_zettelkasten_docstore", "data_zettelkasten_vectorstore"]
+TABLES_TO_IGNORE = ["data_docstore", "data_embeddings", "data_index", "data_zettelkasten_docstore", "data_zettelkasten_vectorstore"]
 
 def include_object(object, name, type_, reflected, compare_to):
     """Should you include this table or not?"""

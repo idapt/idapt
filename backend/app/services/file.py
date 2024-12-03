@@ -52,13 +52,13 @@ class FileService:
         """
         # TODO : Implement a private file deletion after the chat is over
         try:
-            from app.engine.index import IndexSingleton
+            from app.engine.storage_context import StorageContextSingleton
         except ImportError as e:
-            raise ValueError("IndexSingleton is not found") from e
+            raise ValueError("StorageContextSingleton is not found") from e
         if params is None:
             params = {}
         # Create new separate index ?
-        index = IndexSingleton().global_index
+        index = StorageContextSingleton().index
         # Preprocess and store the file
         file_data, extension = cls._preprocess_base64_file(base64_content)
         document_file = cls.save_file(
