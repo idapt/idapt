@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional, Sequence, Type
+from app.settings.model_initialization import init_llm
 from pydantic import ValidationError, BaseModel, Field
 
 from llama_index.core.extractors import BaseExtractor
@@ -32,8 +33,14 @@ class ZettlekastenExtractor(BaseExtractor):
             vector_store=ZettelkastenIndexSingleton().vector_store, # This allow the pipeline to add nodes to the vector store
             docstore_strategy=DocstoreStrategy.UPSERTS, # UPSERTS_AND_DELETE causes a deletion of all previous documents in the docstore and vector store when the pipeline is ran
         )
+        
         # Use the llm passed in the kwargs or the default one
-        self._sllm_llm = kwargs.get("sllm_llm", get_sllm_llm())
+        sllm_llm = init_llm()
+        sllm_llm.temperature = 0.7
+        sllm_llm.system_prompt = ""
+        sllm_llm.json_mode = True
+        sllm_llm.is_function_calling_model = False
+        self._sllm_llm = kwargs.get("sllm_llm", sllm_llm)
         # Use the llm passed in the kwargs or the default one
         self._retriever_query_llm = kwargs.get("retriever_query_llm", get_llm())
         # Get it from the passed kwarfs or default to 5

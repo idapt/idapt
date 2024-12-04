@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../select";
-import { AppSettings, MODEL_PROVIDER_OPTIONS } from "@/app/types/settings";
+import { AppSettings, MODEL_PROVIDER_OPTIONS, EMBEDDING_PROVIDER_OPTIONS } from "@/app/types/settings";
 import { getSettings, updateSettings } from "@/app/api/settings";
 
 interface SettingsDialogProps {
@@ -109,12 +109,45 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </div>
           )}
 
+          {/* Only show the OpenAI API key input if the model provider is openai */}
+          {settings.model_provider === "openai" && (  
+            <div className="space-y-2">
+              <label className="text-sm font-medium">OpenAI API Key</label>
+              <Input
+                type="password"
+                value={settings.openai_api_key}
+                onChange={(e) => setSettings({...settings, openai_api_key: e.target.value})}
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Model</label>
             <Input
               value={settings.model}
               onChange={(e) => setSettings({...settings, model: e.target.value})}
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Embedding Model Provider</label>
+            <Select
+              value={settings.embedding_model_provider}
+              onValueChange={(value) => setSettings({...settings, embedding_model_provider: value})}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select an embedding provider" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {EMBEDDING_PROVIDER_OPTIONS.map((provider) => (
+                    <SelectItem key={provider} value={provider}>
+                      {provider}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

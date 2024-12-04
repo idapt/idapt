@@ -63,8 +63,8 @@ def create_app() -> FastAPI:
         threading.Thread(target=pull_ollama_models, args=[[AppSettings.model, AppSettings.embedding_model]], daemon=True).start()
         
     # Initialize core components
-    from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
-    update_llama_index_llm_and_embed_models_from_app_settings()
+    from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
+    update_llama_index_settings_from_app_settings()
 
     from app.observability import init_observability
     init_observability()

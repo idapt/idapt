@@ -18,15 +18,17 @@ SETTINGS_FILE = APP_CONFIG_DIR / "app-settings.json"
 class _AppSettings:
     """Application settings with JSON persistence."""
     
-    model_provider: str = "integrated_ollama"
+    model_provider: str = "openai"
+    model: str = "gpt-4o"
     # Used when model_provider is custom_ollama defaults to localhost
     custom_ollama_host: str = "http://localhost:11434"
     # Set to big by default to avoid timeouts
     ollama_request_timeout: float = 2000
-    model: str = "llama3.1:8b"
+    embedding_model_provider: str = "integrated_ollama"
     embedding_model: str = "Losspost/stella_en_1.5b_v5"
     embedding_dim: str = "1536"
     top_k: int = 15
+    openai_api_key: str = ""
     system_prompt: str = (
         "You are an helpful personal assistant.\n"
         "You can use tools to answer user questions.\n"
@@ -34,7 +36,7 @@ class _AppSettings:
         "When the user is talking at the first person, he is talking about himself. Use the tool to get personal information needed to answer.\n"
         "In your final answer strictly answer to the user question, do not go off topic or talk about tools used."
     )
-    max_iterations: int = 20
+    max_iterations: int = 14
     files_tool_description: str = (
         "This tool provides information about the user files.\n"
         "Use a detailed plain text question as input to the tool."
@@ -91,8 +93,8 @@ class _AppSettings:
         NginxProxy.set_custom_ollama_host(self.custom_ollama_host)
 
         # Update llama index settings after changing model settings
-        from app.settings.llama_index_settings import update_llama_index_llm_and_embed_models_from_app_settings
-        update_llama_index_llm_and_embed_models_from_app_settings()
+        from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
+        update_llama_index_settings_from_app_settings()
 
         # Pull Ollama models currently set in app settings if needed
         if self.model_provider == "integrated_ollama" or self.model_provider == "custom_ollama":
