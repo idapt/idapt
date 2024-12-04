@@ -1,6 +1,7 @@
 from typing import List
 import os
 
+from app.engine.tools.filtered_query_engine import FilteredQueryEngineTool
 from llama_index.core.agent.react import ReActAgent, ReActChatFormatter
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.settings import Settings
@@ -28,10 +29,6 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         # Set the callback manager for the index to the chat engine callback manager so that we can display the index events in the steps ui
         files_index._callback_manager = callback_manager
 
-        # Check if the index exists
-        if files_index is None:
-            raise ValueError("No index found")
-
         # Only return the top k results
         top_k = int(AppSettings.top_k)
 
@@ -49,7 +46,7 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         )
         # Build the tool for the query engine
         # This will be used by the agent to answer questions
-        files_query_engine_tool = QueryEngineTool(
+        files_query_engine_tool = FilteredQueryEngineTool(
             query_engine=files_query_engine,
             metadata=ToolMetadata(
                 name="files_query_engine",
