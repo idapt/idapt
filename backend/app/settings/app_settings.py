@@ -18,8 +18,18 @@ SETTINGS_FILE = APP_CONFIG_DIR / "app-settings.json"
 class _AppSettings:
     """Application settings with JSON persistence."""
     
-    model_provider: str = "text-generation-inference"
-    model: str = "meta-llama/Llama-3.1-8B"
+    model_provider: str = "integrated_ollama"
+    
+    # Model names for each provider
+    ollama_model: str = "llama3.1:8b"
+    openai_model: str = "gpt-3.5-turbo"
+    anthropic_model: str = "claude-3-sonnet"
+    groq_model: str = "mixtral-8x7b-v0.1"
+    gemini_model: str = "gemini-pro"
+    mistral_model: str = "mistral-medium"
+    azure_openai_model: str = "gpt-4"
+    tgi_model: str = "llama3.1"
+    
     # Used when model_provider is custom_ollama defaults to localhost
     custom_ollama_host: str = "http://localhost:11434"
     # Used when model_provider is text-generation-inference
@@ -27,8 +37,16 @@ class _AppSettings:
     # Set to big by default to avoid timeouts
     ollama_request_timeout: float = 2000
     tgi_request_timeout: float = 500
+    
+    # Embedding model settings
     embedding_model_provider: str = "integrated_ollama"
-    embedding_model: str = "Losspost/stella_en_1.5b_v5"
+    ollama_embedding_model: str = "Losspost/stella_en_1.5b_v5"
+    openai_embedding_model: str = "text-embedding-3-large"
+    azure_openai_embedding_model: str = "text-embedding-ada-002"
+    gemini_embedding_model: str = "embedding-001"
+    mistral_embedding_model: str = "mistral-embed"
+    fastembed_embedding_model: str = "all-MiniLM-L6-v2"
+    
     embedding_dim: str = "1536"
     top_k: int = 15
     openai_api_key: str = ""
@@ -101,9 +119,8 @@ class _AppSettings:
 
         # Pull Ollama models currently set in app settings if needed
         if self.model_provider == "integrated_ollama" or self.model_provider == "custom_ollama":
-            from app.pull_ollama_models import pull_ollama_models
-            import threading
-            threading.Thread(target=pull_ollama_models, args=[[self.model, self.embedding_model]], daemon=True).start()
+            from app.pull_ollama_models import start_ollama_pull_thread
+            start_ollama_pull_thread()
 
 # Create the singleton instance - settings will be loaded from file during initialization
 AppSettings = _AppSettings() 

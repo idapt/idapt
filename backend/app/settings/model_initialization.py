@@ -53,3 +53,15 @@ def init_embedding_model():
             return init_fastembed_embedding()
         case _:
             raise ValueError(f"Invalid embedding model provider: {provider}") 
+
+def get_current_model_name():
+    """Get the current model name based on the provider"""
+    provider = AppSettings.model_provider
+    model_attr = f"{provider.replace('-', '_')}_model"
+    return getattr(AppSettings, model_attr)
+
+def get_current_embedding_model_name():
+    """Get the current embedding model name based on the provider"""
+    provider = AppSettings.embedding_model_provider
+    model_attr = f"{provider.replace('-', '_')}_embedding_model"
+    return getattr(AppSettings, model_attr) 

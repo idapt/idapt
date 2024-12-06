@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../select";
-import { AppSettings, MODEL_PROVIDER_OPTIONS, EMBEDDING_PROVIDER_OPTIONS } from "@/app/types/settings";
+import { AppSettings, MODEL_PROVIDER_OPTIONS, EMBEDDING_PROVIDER_OPTIONS, MODEL_OPTIONS, EMBEDDING_MODEL_OPTIONS } from "@/app/types/settings";
 import { getSettings, updateSettings } from "@/app/api/settings";
 
 interface SettingsDialogProps {
@@ -21,10 +21,20 @@ interface SettingsDialogProps {
   onClose: () => void;
 }
 
+const isCustomEmbeddingModel = (provider: string, modelName: string): boolean => {
+  const predefinedModels = EMBEDDING_MODEL_OPTIONS[provider] || [];
+  return !predefinedModels.includes(modelName) || modelName === "custom";
+};
+
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  const isCustomModel = (provider: string, modelName: string): boolean => {
+    const predefinedModels = MODEL_OPTIONS[provider] || [];
+    return !predefinedModels.includes(modelName) || modelName === "custom";
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -134,10 +144,112 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Model</label>
-            <Input
-              value={settings.model}
-              onChange={(e) => setSettings({...settings, model: e.target.value})}
-            />
+            <Select
+              value={
+                settings.model_provider === "integrated_ollama" ? (isCustomModel(settings.model_provider, settings.ollama_model) ? "custom" : settings.ollama_model) :
+                settings.model_provider === "custom_ollama" ? (isCustomModel(settings.model_provider, settings.ollama_model) ? "custom" : settings.ollama_model) :
+                settings.model_provider === "openai" ? (isCustomModel(settings.model_provider, settings.openai_model) ? "custom" : settings.openai_model) :
+                settings.model_provider === "anthropic" ? (isCustomModel(settings.model_provider, settings.anthropic_model) ? "custom" : settings.anthropic_model) :
+                settings.model_provider === "groq" ? (isCustomModel(settings.model_provider, settings.groq_model) ? "custom" : settings.groq_model) :
+                settings.model_provider === "gemini" ? (isCustomModel(settings.model_provider, settings.gemini_model) ? "custom" : settings.gemini_model) :
+                settings.model_provider === "mistral" ? (isCustomModel(settings.model_provider, settings.mistral_model) ? "custom" : settings.mistral_model) :
+                settings.model_provider === "azure-openai" ? (isCustomModel(settings.model_provider, settings.azure_openai_model) ? "custom" : settings.azure_openai_model) :
+                settings.model_provider === "text-generation-inference" ? (isCustomModel(settings.model_provider, settings.tgi_model) ? "custom" : settings.tgi_model) :
+                ""
+              }
+              onValueChange={(value) => {
+                const modelKey = 
+                  settings.model_provider === "integrated_ollama" ? "ollama_model" :
+                  settings.model_provider === "custom_ollama" ? "ollama_model" :
+                  settings.model_provider === "openai" ? "openai_model" :
+                  settings.model_provider === "anthropic" ? "anthropic_model" :
+                  settings.model_provider === "groq" ? "groq_model" :
+                  settings.model_provider === "gemini" ? "gemini_model" :
+                  settings.model_provider === "mistral" ? "mistral_model" :
+                  settings.model_provider === "azure-openai" ? "azure_openai_model" :
+                  settings.model_provider === "text-generation-inference" ? "tgi_model" :
+                  null;
+                
+                if (modelKey) {
+                  // If selecting "custom", don't change the actual model value yet
+                  if (value === "custom") {
+                    setSettings({
+                      ...settings,
+                      [modelKey]: value
+                    });
+                  } else {
+                    setSettings({
+                      ...settings,
+                      [modelKey]: value
+                    });
+                  }
+                }
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {MODEL_OPTIONS[settings.model_provider]?.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            {isCustomModel(settings.model_provider, 
+              settings.model_provider === "integrated_ollama" ? settings.ollama_model :
+              settings.model_provider === "custom_ollama" ? settings.ollama_model :
+              settings.model_provider === "openai" ? settings.openai_model :
+              settings.model_provider === "anthropic" ? settings.anthropic_model :
+              settings.model_provider === "groq" ? settings.groq_model :
+              settings.model_provider === "gemini" ? settings.gemini_model :
+              settings.model_provider === "mistral" ? settings.mistral_model :
+              settings.model_provider === "azure-openai" ? settings.azure_openai_model :
+              settings.model_provider === "text-generation-inference" ? settings.tgi_model :
+              ""
+            ) && (
+              <div className="mt-2">
+                <Input
+                  placeholder="Enter custom model name"
+                  value={
+                    settings.model_provider === "integrated_ollama" ? settings.ollama_model :
+                    settings.model_provider === "custom_ollama" ? settings.ollama_model :
+                    settings.model_provider === "openai" ? settings.openai_model :
+                    settings.model_provider === "anthropic" ? settings.anthropic_model :
+                    settings.model_provider === "groq" ? settings.groq_model :
+                    settings.model_provider === "gemini" ? settings.gemini_model :
+                    settings.model_provider === "mistral" ? settings.mistral_model :
+                    settings.model_provider === "azure-openai" ? settings.azure_openai_model :
+                    settings.model_provider === "text-generation-inference" ? settings.tgi_model :
+                    ""
+                  }
+                  onChange={(e) => {
+                    const modelKey = 
+                      settings.model_provider === "integrated_ollama" ? "ollama_model" :
+                      settings.model_provider === "custom_ollama" ? "ollama_model" :
+                      settings.model_provider === "openai" ? "openai_model" :
+                      settings.model_provider === "anthropic" ? "anthropic_model" :
+                      settings.model_provider === "groq" ? "groq_model" :
+                      settings.model_provider === "gemini" ? "gemini_model" :
+                      settings.model_provider === "mistral" ? "mistral_model" :
+                      settings.model_provider === "azure-openai" ? "azure_openai_model" :
+                      settings.model_provider === "text-generation-inference" ? "tgi_model" :
+                      null;
+                    
+                    if (modelKey) {
+                      setSettings({
+                        ...settings,
+                        [modelKey]: e.target.value
+                      });
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -163,10 +275,101 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Embedding Model</label>
-            <Input
-              value={settings.embedding_model}
-              onChange={(e) => setSettings({...settings, embedding_model: e.target.value})}
-            />
+            <Select
+              value={
+                settings.embedding_model_provider === "integrated_ollama" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.ollama_embedding_model) ? "custom" : settings.ollama_embedding_model) :
+                settings.embedding_model_provider === "custom_ollama" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.ollama_embedding_model) ? "custom" : settings.ollama_embedding_model) :
+                settings.embedding_model_provider === "openai" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.openai_embedding_model) ? "custom" : settings.openai_embedding_model) :
+                settings.embedding_model_provider === "azure-openai" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.azure_openai_embedding_model) ? "custom" : settings.azure_openai_embedding_model) :
+                settings.embedding_model_provider === "gemini" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.gemini_embedding_model) ? "custom" : settings.gemini_embedding_model) :
+                settings.embedding_model_provider === "mistral" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.mistral_embedding_model) ? "custom" : settings.mistral_embedding_model) :
+                settings.embedding_model_provider === "fastembed" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.fastembed_embedding_model) ? "custom" : settings.fastembed_embedding_model) :
+                ""
+              }
+              onValueChange={(value) => {
+                const modelKey = 
+                  settings.embedding_model_provider === "integrated_ollama" ? "ollama_embedding_model" :
+                  settings.embedding_model_provider === "custom_ollama" ? "ollama_embedding_model" :
+                  settings.embedding_model_provider === "openai" ? "openai_embedding_model" :
+                  settings.embedding_model_provider === "azure-openai" ? "azure_openai_embedding_model" :
+                  settings.embedding_model_provider === "gemini" ? "gemini_embedding_model" :
+                  settings.embedding_model_provider === "mistral" ? "mistral_embedding_model" :
+                  settings.embedding_model_provider === "fastembed" ? "fastembed_embedding_model" :
+                  null;
+                
+                if (modelKey) {
+                  if (value === "custom") {
+                    setSettings({
+                      ...settings,
+                      [modelKey]: value
+                    });
+                  } else {
+                    setSettings({
+                      ...settings,
+                      [modelKey]: value
+                    });
+                  }
+                }
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {EMBEDDING_MODEL_OPTIONS[settings.embedding_model_provider]?.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+
+            {isCustomEmbeddingModel(settings.embedding_model_provider,
+              settings.embedding_model_provider === "integrated_ollama" ? settings.ollama_embedding_model :
+              settings.embedding_model_provider === "custom_ollama" ? settings.ollama_embedding_model :
+              settings.embedding_model_provider === "openai" ? settings.openai_embedding_model :
+              settings.embedding_model_provider === "azure-openai" ? settings.azure_openai_embedding_model :
+              settings.embedding_model_provider === "gemini" ? settings.gemini_embedding_model :
+              settings.embedding_model_provider === "mistral" ? settings.mistral_embedding_model :
+              settings.embedding_model_provider === "fastembed" ? settings.fastembed_embedding_model :
+              ""
+            ) && (
+              <div className="mt-2">
+                <Input
+                  placeholder="Enter custom embedding model name"
+                  value={
+                    settings.embedding_model_provider === "integrated_ollama" ? (settings.ollama_embedding_model === "custom" ? "" : settings.ollama_embedding_model) :
+                    settings.embedding_model_provider === "custom_ollama" ? (settings.ollama_embedding_model === "custom" ? "" : settings.ollama_embedding_model) :
+                    settings.embedding_model_provider === "openai" ? (settings.openai_embedding_model === "custom" ? "" : settings.openai_embedding_model) :
+                    settings.embedding_model_provider === "azure-openai" ? (settings.azure_openai_embedding_model === "custom" ? "" : settings.azure_openai_embedding_model) :
+                    settings.embedding_model_provider === "gemini" ? (settings.gemini_embedding_model === "custom" ? "" : settings.gemini_embedding_model) :
+                    settings.embedding_model_provider === "mistral" ? (settings.mistral_embedding_model === "custom" ? "" : settings.mistral_embedding_model) :
+                    settings.embedding_model_provider === "fastembed" ? (settings.fastembed_embedding_model === "custom" ? "" : settings.fastembed_embedding_model) :
+                    ""
+                  }
+                  onChange={(e) => {
+                    const modelKey = 
+                      settings.embedding_model_provider === "integrated_ollama" ? "ollama_embedding_model" :
+                      settings.embedding_model_provider === "custom_ollama" ? "ollama_embedding_model" :
+                      settings.embedding_model_provider === "openai" ? "openai_embedding_model" :
+                      settings.embedding_model_provider === "azure-openai" ? "azure_openai_embedding_model" :
+                      settings.embedding_model_provider === "gemini" ? "gemini_embedding_model" :
+                      settings.embedding_model_provider === "mistral" ? "mistral_embedding_model" :
+                      settings.embedding_model_provider === "fastembed" ? "fastembed_embedding_model" :
+                      null;
+                    
+                    if (modelKey) {
+                      setSettings({
+                        ...settings,
+                        [modelKey]: e.target.value
+                      });
+                    }
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

@@ -1,6 +1,4 @@
-from typing import Dict
 import os
-from llama_index.core.settings import Settings
 from llama_index.core.constants import DEFAULT_TEMPERATURE
 from app.settings.app_settings import AppSettings
 
@@ -23,21 +21,21 @@ def init_integrated_ollama_embedding():
     OllamaEmbedding, _ = _get_ollama_imports()
     return OllamaEmbedding(
         base_url=INTEGRATED_OLLAMA_URL,
-        model_name=AppSettings.embedding_model,
+        model_name=AppSettings.ollama_embedding_model,
     )
 
 def init_custom_ollama_embedding():
     OllamaEmbedding, _ = _get_ollama_imports()
     return OllamaEmbedding(
         base_url=CUSTOM_OLLAMA_URL,
-        model_name=AppSettings.embedding_model,
+        model_name=AppSettings.ollama_embedding_model,
     )
 
 def init_integrated_ollama_llm():
     _, Ollama = _get_ollama_imports()
     return Ollama(
         base_url=INTEGRATED_OLLAMA_URL,
-        model=AppSettings.model,
+        model=AppSettings.ollama_model,
         request_timeout=AppSettings.ollama_request_timeout,
         system_prompt=AppSettings.system_prompt
     )
@@ -46,7 +44,7 @@ def init_custom_ollama_llm():
     _, Ollama = _get_ollama_imports()
     return Ollama(
         base_url=CUSTOM_OLLAMA_URL,
-        model=AppSettings.model,
+        model=AppSettings.ollama_model,
         request_timeout=AppSettings.ollama_request_timeout,
         system_prompt=AppSettings.system_prompt
     )
@@ -67,7 +65,7 @@ def init_openai_embedding():
     dimensions = AppSettings.embedding_dim
     os.environ["OPENAI_API_KEY"] = AppSettings.openai_api_key
     return OpenAIEmbedding(
-        model=AppSettings.embedding_model,
+        model=AppSettings.openai_embedding_model,
         dimensions=int(dimensions) if dimensions is not None else None,
     )
 
@@ -76,7 +74,7 @@ def init_openai_llm():
     max_tokens = os.getenv("LLM_MAX_TOKENS")
     os.environ["OPENAI_API_KEY"] = AppSettings.openai_api_key
     return OpenAI(
-        model=AppSettings.model,
+        model=AppSettings.openai_model,
         temperature=float(os.getenv("LLM_TEMPERATURE", DEFAULT_TEMPERATURE)),
         max_tokens=int(max_tokens) if max_tokens is not None else None,
         system_prompt=AppSettings.system_prompt
@@ -107,7 +105,7 @@ def init_azure_openai_embedding():
     dimensions = AppSettings.embedding_dim
     
     return AzureOpenAIEmbedding(
-        model=AppSettings.embedding_model,
+        model=AppSettings.azure_openai_embedding_model,
         dimensions=int(dimensions) if dimensions is not None else None,
         deployment_name=embedding_deployment,
         **_get_azure_config(),
@@ -120,7 +118,7 @@ def init_azure_openai_llm():
     temperature = os.getenv("LLM_TEMPERATURE", DEFAULT_TEMPERATURE)
     
     return AzureOpenAI(
-        model=AppSettings.model,
+        model=AppSettings.azure_openai_model,
         max_tokens=int(max_tokens) if max_tokens is not None else None,
         temperature=float(temperature),
         system_prompt=AppSettings.system_prompt,
@@ -136,16 +134,10 @@ def init_fastembed_embedding():
             "FastEmbed support is not installed. Please install it with `poetry add llama-index-embeddings-fastembed`"
         )
 
-    embed_model_map: Dict[str, str] = {
-        "all-MiniLM-L6-v2": "sentence-transformers/all-MiniLM-L6-v2",
-        "paraphrase-multilingual-mpnet-base-v2": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-    }
-
-    embedding_model = AppSettings.embedding_model
     if embedding_model is None:
         raise ValueError("embedding_model is not set")
 
-    return FastEmbedEmbedding(model_name=embed_model_map[embedding_model])
+    return FastEmbedEmbedding(model_name=AppSettings.fastembed_embedding_model)
 
 def init_groq_llm():
     try:
@@ -154,7 +146,7 @@ def init_groq_llm():
         raise ImportError(
             "Groq support is not installed. Please install it with `poetry add llama-index-llms-groq`"
         )
-    return Groq(model=AppSettings.model, system_prompt=AppSettings.system_prompt)
+    return Groq(model=AppSettings.groq_model, system_prompt=AppSettings.system_prompt)
 
 def init_anthropic_llm():
     try:
@@ -164,15 +156,7 @@ def init_anthropic_llm():
             "Anthropic support is not installed. Please install it with `poetry add llama-index-llms-anthropic`"
         )
 
-    model_map: Dict[str, str] = {
-        "claude-3-opus": "claude-3-opus-20240229",
-        "claude-3-sonnet": "claude-3-sonnet-20240229",
-        "claude-3-haiku": "claude-3-haiku-20240307",
-        "claude-2.1": "claude-2.1",
-        "claude-instant-1.2": "claude-instant-1.2",
-    }
-
-    return Anthropic(model=model_map[AppSettings.model], system_prompt=AppSettings.system_prompt)
+    return Anthropic(model=AppSettings.anthropic_model, system_prompt=AppSettings.system_prompt)
 
 def _get_gemini_imports():
     """Helper function to import Gemini-related modules"""
@@ -187,13 +171,11 @@ def _get_gemini_imports():
 
 def init_gemini_embedding():
     GeminiEmbedding, _ = _get_gemini_imports()
-    embed_model_name = f"models/{AppSettings.embedding_model}"
-    return GeminiEmbedding(model_name=embed_model_name)
+    return GeminiEmbedding(model_name=AppSettings.gemini_embedding_model)
 
 def init_gemini_llm():
     _, Gemini = _get_gemini_imports()
-    model_name = f"models/{AppSettings.model}"
-    return Gemini(model=model_name)
+    return Gemini(model=AppSettings.gemini_model)
 
 def _get_mistral_imports():
     """Helper function to import Mistral-related modules"""
@@ -208,11 +190,11 @@ def _get_mistral_imports():
 
 def init_mistral_embedding():
     MistralAIEmbedding, _ = _get_mistral_imports()
-    return MistralAIEmbedding(model_name=AppSettings.embedding_model)
+    return MistralAIEmbedding(model_name=AppSettings.mistral_embedding_model)
 
 def init_mistral_llm():
     _, MistralAI = _get_mistral_imports()
-    return MistralAI(model=AppSettings.model, system_prompt=AppSettings.system_prompt)
+    return MistralAI(model=AppSettings.mistral_model, system_prompt=AppSettings.system_prompt)
 
 def _get_tgi_imports():
     """Helper function to import TGI-related modules"""
@@ -229,7 +211,7 @@ def init_tgi_llm():
     TextGenerationInference = _get_tgi_imports()
     return TextGenerationInference(
         model_url=AppSettings.tgi_host,
-        model_name=AppSettings.model,
+        model_name=AppSettings.tgi_model,
         timeout=AppSettings.tgi_request_timeout,
         system_prompt=AppSettings.system_prompt,
     )

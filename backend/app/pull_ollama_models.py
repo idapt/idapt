@@ -1,23 +1,30 @@
-import os
+import threading
 import requests
-import yaml
 import json
 import logging
 from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
-def pull_ollama_models(models: list[str]):
+def start_ollama_pull_thread():
+    threading.Thread(target=pull_ollama_models, daemon=True).start()
+
+def pull_ollama_models():
     """
     Pull Ollama model
     """
     from app.settings.app_settings import AppSettings
     if AppSettings.model_provider == "integrated_ollama":
         base_url = "http://idapt-nginx:3030/integrated-ollama"
+        model = AppSettings.ollama_model
+        embedding_model = AppSettings.ollama_embedding_model
     else:
-        base_url = "http://idapt-nginx:3030/local-ollama" # Used for now as using $custom_ollama_host as variable into proxy_pass does not work and gives a 502 error.
+        base_url = "http://idapt-nginx:3030/local-ollama" # Used for now as using $custom_ollama_host as variable into proxy_pass does not work and gives a 502 error.        
+        model = AppSettings.ollama_model
+        embedding_model = AppSettings.ollama_embedding_model
 
-    for model in models:
+    models_to_pull = [model, embedding_model]
+    for model in models_to_pull:
         model = model.strip()
         if not model:
             continue
