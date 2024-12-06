@@ -19,7 +19,7 @@ def pull_ollama_models():
         model = AppSettings.ollama_model
         embedding_model = AppSettings.ollama_embedding_model
     else:
-        base_url = "http://idapt-nginx:3030/local-ollama" # Used for now as using $custom_ollama_host as variable into proxy_pass does not work and gives a 502 error.        
+        base_url = AppSettings.custom_ollama_host
         model = AppSettings.ollama_model
         embedding_model = AppSettings.ollama_embedding_model
 

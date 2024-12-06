@@ -4,7 +4,7 @@ from app.settings.app_settings import AppSettings
 
 # Base URLs
 INTEGRATED_OLLAMA_URL = "http://idapt-nginx:3030/integrated-ollama"
-CUSTOM_OLLAMA_URL = "http://idapt-nginx:3030/local-ollama"
+#CUSTOM_OLLAMA_URL = "http://idapt-nginx:3030/local-ollama"
 
 def _get_ollama_imports():
     """Helper function to import Ollama-related modules"""
@@ -27,7 +27,7 @@ def init_integrated_ollama_embedding():
 def init_custom_ollama_embedding():
     OllamaEmbedding, _ = _get_ollama_imports()
     return OllamaEmbedding(
-        base_url=CUSTOM_OLLAMA_URL,
+        base_url=AppSettings.custom_ollama_host,
         model_name=AppSettings.ollama_embedding_model,
     )
 
@@ -43,7 +43,7 @@ def init_integrated_ollama_llm():
 def init_custom_ollama_llm():
     _, Ollama = _get_ollama_imports()
     return Ollama(
-        base_url=CUSTOM_OLLAMA_URL,
+        base_url=AppSettings.custom_ollama_host,
         model=AppSettings.ollama_model,
         request_timeout=AppSettings.ollama_request_timeout,
         system_prompt=AppSettings.system_prompt

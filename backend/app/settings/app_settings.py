@@ -31,7 +31,7 @@ class _AppSettings:
     tgi_model: str = "llama3.1"
     
     # Used when model_provider is custom_ollama defaults to localhost
-    custom_ollama_host: str = "http://localhost:11434"
+    custom_ollama_host: str = "http://idapt-nginx:3030/local-ollama" # Use this if you want to use the local ollama instance running on the localhost at port 11434
     # Used when model_provider is text-generation-inference
     tgi_host: str = ""
     # Set to big by default to avoid timeouts
