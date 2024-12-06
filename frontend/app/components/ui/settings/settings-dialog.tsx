@@ -121,6 +121,17 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </div>
           )}
 
+          {/* Only show the Text Generation Inference host input if the model provider is text-generation-inference */}
+          {settings.model_provider === "text-generation-inference" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Text Generation Inference Host</label>
+              <Input
+                value={settings.tgi_host}
+                onChange={(e) => setSettings({...settings, tgi_host: e.target.value})}
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Model</label>
             <Input
@@ -210,6 +221,18 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 type="number"
                 value={settings.ollama_request_timeout}
                 onChange={(e) => setSettings({...settings, ollama_request_timeout: parseInt(e.target.value)})}
+              />
+            </div>
+          )}
+
+          {/* Only show the Text Generation Inference request timeout input if the model provider is text-generation-inference */}
+          {settings.model_provider === "text-generation-inference" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Text Generation Inference Request Timeout (s)</label>
+              <Input
+                type="number"
+                value={settings.tgi_request_timeout}
+                onChange={(e) => setSettings({...settings, tgi_request_timeout: parseInt(e.target.value)})}
               />
             </div>
           )}

@@ -18,12 +18,15 @@ SETTINGS_FILE = APP_CONFIG_DIR / "app-settings.json"
 class _AppSettings:
     """Application settings with JSON persistence."""
     
-    model_provider: str = "openai"
-    model: str = "gpt-4o"
+    model_provider: str = "text-generation-inference"
+    model: str = "meta-llama/Llama-3.1-8B"
     # Used when model_provider is custom_ollama defaults to localhost
     custom_ollama_host: str = "http://localhost:11434"
+    # Used when model_provider is text-generation-inference
+    tgi_host: str = ""
     # Set to big by default to avoid timeouts
     ollama_request_timeout: float = 2000
+    tgi_request_timeout: float = 500
     embedding_model_provider: str = "integrated_ollama"
     embedding_model: str = "Losspost/stella_en_1.5b_v5"
     embedding_dim: str = "1536"

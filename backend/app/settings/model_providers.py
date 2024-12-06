@@ -213,3 +213,23 @@ def init_mistral_embedding():
 def init_mistral_llm():
     _, MistralAI = _get_mistral_imports()
     return MistralAI(model=AppSettings.model, system_prompt=AppSettings.system_prompt)
+
+def _get_tgi_imports():
+    """Helper function to import TGI-related modules"""
+    try:
+        from llama_index.llms.text_generation_inference import TextGenerationInference
+        return TextGenerationInference
+    except ImportError:
+        raise ImportError(
+            "Text Generation Inference support is not installed. Please install it with `poetry add llama-index-llms-text-generation-inference`"
+        )
+
+# TODO : Still need some work to work, works with openai-community/gpt2 but issues with llama3.1, seems to be a prompt formatting issue
+def init_tgi_llm():
+    TextGenerationInference = _get_tgi_imports()
+    return TextGenerationInference(
+        model_url=AppSettings.tgi_host,
+        model_name=AppSettings.model,
+        timeout=AppSettings.tgi_request_timeout,
+        system_prompt=AppSettings.system_prompt,
+    )

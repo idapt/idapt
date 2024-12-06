@@ -17,6 +17,8 @@ def init_llm():
             return init_integrated_ollama_llm()
         case "custom_ollama":
             return init_custom_ollama_llm()
+        case "text-generation-inference":
+            return init_tgi_llm()
         case "anthropic":
             return init_anthropic_llm()
         case "gemini":

@@ -1132,6 +1132,7 @@ files = [
 ]
 
 [package.dependencies]
+aiohttp = {version = "*", optional = true, markers = "extra == \"inference\""}
 filelock = "*"
 fsspec = ">=2023.5.0"
 packaging = ">=20.9"
@@ -1501,6 +1502,22 @@ llama-index-core = ">=0.12.0,<0.13.0"
 openai = ">=1.40.0,<2.0.0"
 
 [[package]]
+name = "llama-index-llms-text-generation-inference"
+version = "0.3.0"
+description = "llama-index llms huggingface text generation inference integration"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "llama_index_llms_text_generation_inference-0.3.0-py3-none-any.whl", hash = "sha256:29d5d8c84791ebd140a79489d869efb8bccf2f0bbf60cc9bafe5bb3bc09d22ad"},
+    {file = "llama_index_llms_text_generation_inference-0.3.0.tar.gz", hash = "sha256:ac3a786da5eb1905fd4e85d430f68c3e797d298cbe00617de21fa8a43b72c1b9"},
+]
+
+[package.dependencies]
+llama-index-core = ">=0.12.0,<0.13.0"
+llama-index-utils-huggingface = ">=0.3.0,<0.4.0"
+text-generation = ">=0.7.0,<0.8.0"
+
+[[package]]
 name = "llama-index-multi-modal-llms-openai"
 version = "0.3.0"
 description = "llama-index multi-modal-llms openai integration"
@@ -1671,6 +1688,21 @@ files = [
 [package.dependencies]
 llama-index-core = ">=0.12.0,<0.13.0"
 wikipedia = ">=1.4,<2.0"
+
+[[package]]
+name = "llama-index-utils-huggingface"
+version = "0.3.0"
+description = "llama-index utils for huggingface integration"
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "llama_index_utils_huggingface-0.3.0-py3-none-any.whl", hash = "sha256:03691de49f9dab86822ae1f86088433bc2f611f058bd9df995112843cd7ef5dd"},
+    {file = "llama_index_utils_huggingface-0.3.0.tar.gz", hash = "sha256:039b3facbe3468dd10b728c3ef9161adca862f043bd23b629aec57140ce216b2"},
+]
+
+[package.dependencies]
+huggingface-hub = {version = ">=0.19.0", extras = ["inference"]}
+llama-index-core = ">=0.12.0,<0.13.0"
 
 [[package]]
 name = "llama-index-vector-stores-postgres"
@@ -3893,6 +3925,22 @@ doc = ["reno", "sphinx"]
 test = ["pytest", "tornado (>=4.5)", "typeguard"]
 
 [[package]]
+name = "text-generation"
+version = "0.7.0"
+description = "Hugging Face Text Generation Python Client"
+optional = false
+python-versions = "<4.0,>=3.7"
+files = [
+    {file = "text_generation-0.7.0-py3-none-any.whl", hash = "sha256:02ab337a0ee0e7c70e04a607b311c261caae74bde46a7d837c6fdd150108f4d8"},
+    {file = "text_generation-0.7.0.tar.gz", hash = "sha256:689200cd1f0d4141562af2515393c2c21cdbd9fac21c8398bf3043cdcc14184e"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.8,<4.0"
+huggingface-hub = ">=0.12,<1.0"
+pydantic = ">2,<3"
+
+[[package]]
 name = "tiktoken"
 version = "0.8.0"
 description = "tiktoken is a fast BPE tokeniser for use with OpenAI's models"
@@ -4716,4 +4764,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "4cede1b2598a3450fda55e3cf8fb9367fbde144bfd9a10fb64c874fd24b10d7f"
+content-hash = "4225baa1c187130cfb6183a19211b01724cb163a06e3d833ae61740ff126427e"
