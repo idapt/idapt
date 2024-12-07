@@ -26,14 +26,31 @@ export default function ChatSection() {
     },
     onError: (error: unknown) => {
       console.error("Chat error:", error);
+      let errorMessage = "Chat error";
+      
       if (error instanceof Error) {
-        try {
-          const message = JSON.parse(error.message);
-          alert(message.detail || "Failed to connect to chat service");
-        } catch {
-          alert("Failed to connect to chat service. Please try again.");
+
+        // Print pretty error messages if the error is known
+        // NetworkError
+        console.log(error.message);
+        if (error.message.includes("NetworkError")) {
+          errorMessage = "Unable to connect to the AI service. Please check if the service is running and accessible.";
+        } 
+        // ConnectError: All connection attempts failed
+        else if (error.message.includes("ConnectError: All connection attempts failed")) {
+          errorMessage = "Unable to connect to the AI model service. Please check if Ollama is running and accessible.";
+        } 
+        // Failed to fetch
+        else if (error.message.includes("Failed to fetch")) {
+          errorMessage = "Network connection error. Please check your internet connection and try again.";
+        } 
+        // Unknown error
+        else { 
+          errorMessage = `Unknown chat error: ${error.message}`;
         }
       }
+      
+      alert(errorMessage);
     },
     sendExtraMessageFields: true,
   });
