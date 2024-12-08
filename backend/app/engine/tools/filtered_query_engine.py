@@ -1,9 +1,11 @@
 from typing import List, Any, Optional, Set
+from llama_index.core.schema import BaseNode, Document, NodeRelationship
 from llama_index.core.base.base_query_engine import BaseQueryEngine
 from llama_index.core.tools.query_engine import QueryEngineTool
 from llama_index.core.tools.types import ToolMetadata, ToolOutput
-from llama_index.core.schema import NodeWithScore
+from llama_index.core.schema import NodeWithScore, TextNode
 from llama_index.core.vector_stores.types import MetadataFilter, MetadataFilters
+from llama_index.core.node_parser import get_deeper_nodes
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ DEFAULT_DESCRIPTION = """Useful for running a natural language query against a k
 This tool keeps track of previously retrieved nodes to avoid repetition."""
 
 class FilteredQueryEngineTool(QueryEngineTool):
-    """Query engine tool that filters out previously retrieved nodes.
+    """Query engine tool that filters out previously retrieved nodes and their children.
 
     Args:
         query_engine (BaseQueryEngine): A query engine.
@@ -33,17 +35,41 @@ class FilteredQueryEngineTool(QueryEngineTool):
         """Reset the list of retrieved node IDs."""
         self._retrieved_node_ids.clear()
 
+    def _get_all_child_node_ids(self, node: NodeWithScore) -> Set[str]:
+        """Recursively get all child node IDs from a node."""
+        child_ids = set()
+        
+        try:
+            # Handle both direct node and NodeWithScore cases
+            target_node = node.node if hasattr(node, 'node') else node
+            
+            # Recursively add child node IDs if they exist
+            for relationship in target_node.relationships:
+                if relationship == NodeRelationship.CHILD:
+                    for child in target_node.relationships[relationship]:
+                        #logger.error(f"Func Child ID: {child.node_id}")
+                        # Add the child node's ID to the retrieved nodes set
+                        child_ids.add(child.node_id)
+                        # Recursively add child node IDs if they exist
+                        child_ids.add(self._get_all_child_node_ids(child))
+                        
+        except Exception as e:
+            logger.debug(f"Error getting child node IDs: {e}")  # Changed to debug since this is expected sometimes
+            
+        return child_ids
+
     def _apply_node_filter(self) -> None:
         """Apply filter to exclude previously retrieved nodes."""
         if not self._retrieved_node_ids:
             return
 
-        # Create a filter for excluding previously retrieved nodes
+        # Create a filter for excluding previously retrieved nodes using node_id column
         exclude_nodes_filter = MetadataFilter(
-            key="node_id",
+            key="id",  # This is the actual column name in PG vector store
             value=list(self._retrieved_node_ids),
             operator="nin"
         )
+        # ! NOT WORKING, maybe because node id is not a metadata ?
 
         # Get existing filters if any
         existing_filters = getattr(self._query_engine, "_filters", None)
@@ -62,29 +88,87 @@ class FilteredQueryEngineTool(QueryEngineTool):
 
     def _update_retrieved_nodes(self, response: Any) -> None:
         """Update the set of retrieved node IDs from the response."""
-        if hasattr(response, "source_nodes"):
-            for node in response.source_nodes:
-                if isinstance(node, NodeWithScore) and node.node.node_id:
-                    self._retrieved_node_ids.add(node.node.node_id)
+        if not response:
+            return
+        
+        try:
+            # Handle source nodes if present
+            if hasattr(response, "source_nodes") and response.source_nodes:
+                # For each source node
+                for node in response.source_nodes:
+                    #logger.error(f"Node ID: {node.node_id}")
+                    # Add the current node's ID
+                    #self._retrieved_node_ids.update(node.node_id)
+                    
+                    # Get all child node IDs
+                    child_ids = self._get_all_child_node_ids(node)
+                    # Print every child ID
+                    #for child_id in child_ids:
+                    #    logger.error(f"Child ID: {child_id}")
+                    # Update the retrieved node IDs
+                    self._retrieved_node_ids.update(child_ids)
+            
+        except Exception as e:
+            logger.error(f"Error updating retrieved nodes: {e}")
 
     def call(self, *args: Any, **kwargs: Any) -> ToolOutput:
         query_str = self._get_query_str(*args, **kwargs)
         self._apply_node_filter()
-        logger.error(f"Applying node filters: {self._query_engine._filters}")
-        response = self._query_engine.query(query_str)
-        self._update_retrieved_nodes(response)
-        logger.error(f"Retrieved nodes: {self._retrieved_node_ids}")
-        return ToolOutput(
-            content=str(response),
-            tool_name=self.metadata.name,
-            raw_input={"input": query_str},
-            raw_output=response,
-        )
+        logger.debug(f"Applying node filters: {self._query_engine._filters}")
+        
+        try:
+            response = self._query_engine.query(query_str)
+
+            # TODO Make this work with the filter because the top k will be less
+            # Manually remove the previously retrieved nodes from the response
+            #if hasattr(response, "source_nodes") and response.source_nodes:
+            #    for node in response.source_nodes:
+            #        if node.node_id in self._retrieved_node_ids:
+            #            response.source_nodes.remove(node)
+
+            # Handle empty response
+            if response is None:
+                return ToolOutput(
+                    content="I couldn't find any relevant information about that in my knowledge base.",
+                    tool_name=self.metadata.name,
+                    raw_input={"input": query_str},
+                    raw_output=None,
+                )
+            
+            # Only try to update retrieved nodes if we have source nodes
+            if hasattr(response, "source_nodes") and response.source_nodes:
+                self._update_retrieved_nodes(response)
+                logger.debug(f"Retrieved nodes: {self._retrieved_node_ids}")
+
+            return ToolOutput(
+                content=str(response),
+                tool_name=self.metadata.name,
+                raw_input={"input": query_str},
+                raw_output=response,
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in query engine: {e}")
+            return ToolOutput(
+                content="I encountered an error while searching the knowledge base. Please try rephrasing your question.",
+                tool_name=self.metadata.name,
+                raw_input={"input": query_str},
+                raw_output=None,
+            )
 
     async def acall(self, *args: Any, **kwargs: Any) -> ToolOutput:
         query_str = self._get_query_str(*args, **kwargs)
         self._apply_node_filter()
         response = await self._query_engine.aquery(query_str)
+
+    
+        # TODO Make this work with the filter because the top k will be less
+        # Manually remove the previously retrieved nodes from the response
+        #if hasattr(response, "source_nodes") and response.source_nodes:
+        #    for node in response.source_nodes:
+        #        if node.node_id in self._retrieved_node_ids:
+        #            response.source_nodes.remove(node)
+
         self._update_retrieved_nodes(response)
         return ToolOutput(
             content=str(response),
