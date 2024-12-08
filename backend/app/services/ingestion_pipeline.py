@@ -137,7 +137,7 @@ class IngestionPipelineService:
                     doc.metadata["transformations_stack_name"] = transformations_stack_name
 
                 # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
-                if transformations_stack_name == "default":
+                if transformations_stack_name == "hierarchical":
                     # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
                     nodes = transformations[0].get_nodes_from_documents(documents, show_progress=True)
                     
@@ -147,7 +147,9 @@ class IngestionPipelineService:
                     # Run the ingestion pipeline on the resulting nodes to add the nodes to the docstore and vector store
                     nodes = await self.ingestion_pipeline.arun(
                         nodes=nodes,
-                        show_progress=True
+                        show_progress=True,
+                        docstore_strategy=DocstoreStrategy.UPSERTS,
+
                     )
                     # Insert nodes into index
                     StorageContextSingleton().index.insert_nodes(nodes)
