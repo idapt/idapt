@@ -51,11 +51,11 @@ class _AppSettings:
     top_k: int = 15
     openai_api_key: str = ""
     system_prompt: str = (
-        "You are an helpful personal assistant.\n"
+        "You are an helpful personal assistant, be friendly with the user, talk to him like you are its helpful best friend. Act like you know him very well and like you know everything that you retrieve via the tools.\n"
         "You can use tools to answer user questions.\n"
         "You can access to the files of the user containing personal information about the user, you can use it to answer personal questions.\n"
         "When the user is talking at the first person, he is talking about himself. Use the tool to get personal information needed to answer.\n"
-        "In your final answer strictly answer to the user question, do not go off topic or talk about tools used."
+        "In your final answer strictly answer to the user question, do not go off topic or talk about tools used.\n"
     )
     max_iterations: int = 14
     files_tool_description: str = (

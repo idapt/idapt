@@ -66,7 +66,7 @@ export function useFolderUpload() {
         // List of GenerateFile objects
         const generateFiles: GenerateFile[] = filePaths.map(filePath => ({
           path: filePath,
-          transformations_stack_name_list: ["default", "ss1", "ss2", "ss3", "ss4", "ss5"]  // Can be extended to support multiple transformations
+          transformations_stack_name_list: ["hierarchical"]  // Can be extended to support multiple transformations
         }));
 
         await generate(generateFiles);

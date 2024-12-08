@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from llama_index.core.ingestion import IngestionPipeline, DocstoreStrategy
 from llama_index.core.readers import SimpleDirectoryReader
 from llama_index.core.settings import Settings
-from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser import SentenceSplitter, HierarchicalNodeParser
 from llama_index.core.extractors import (
     SummaryExtractor,
     QuestionsAnsweredExtractor,
@@ -30,48 +30,20 @@ class IngestionPipelineService:
     Service for managing the ingestion pipeline
     This only takes care of the llama index part
     """
-
+    # See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
     # List of avaliable transformations stacks with their name and transformations
     TRANSFORMATIONS_STACKS = {
         "default": [
             SentenceSplitter(
-                chunk_size=2048,
-                chunk_overlap=256,
-            ),
-            Settings.embed_model,
-        ],
-        "ss1": [
-            SentenceSplitter(
-                chunk_size=1024,
+                chunk_size=512,
                 chunk_overlap=128,
             ),
             Settings.embed_model,
         ],
-        "ss2": [
-            SentenceSplitter(
-                chunk_size=512,
-                chunk_overlap=64,
-            ),
-            Settings.embed_model,
-        ],
-        "ss3": [
-            SentenceSplitter(
-                chunk_size=256,
-                chunk_overlap=32,
-            ),
-            Settings.embed_model,
-        ],
-        "ss4": [
-            SentenceSplitter(
-                chunk_size=128,
-                chunk_overlap=16,
-            ),
-            Settings.embed_model,
-        ],
-        "ss5": [
-            SentenceSplitter(
-                chunk_size=64,
-                chunk_overlap=8,
+        "hierarchical": [
+            HierarchicalNodeParser.from_defaults(
+                include_metadata=True,
+                chunk_sizes=[2048, 1024, 512, 128]
             ),
             Settings.embed_model,
         ],
@@ -156,25 +128,43 @@ class IngestionPipelineService:
             
             # For each transformations stack we need to apply
             for transformations_stack_name in transformations_stack_name_list:
+                
                 # Get the transformations stack
                 transformations = self.TRANSFORMATIONS_STACKS[transformations_stack_name]
-                # Set the transformations for the ingestion pipeline
-                self.ingestion_pipeline.transformations = transformations
+
                 # Set the transformations stack name for the documents
-                for doc in documents:
+                for doc in documents:   
                     doc.metadata["transformations_stack_name"] = transformations_stack_name
 
-                logger.info(f"Running ingestion pipeline with transformations stack {transformations_stack_name}")
-                # This will add the documents to the vector store and docstore in the expected llama index way
-                nodes = await self.ingestion_pipeline.arun(
-                    documents=documents,
-                    show_progress=True
-                )
+                # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
+                if transformations_stack_name == "default":
+                    # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
+                    nodes = transformations[0].get_nodes_from_documents(documents, show_progress=True)
+                    
+                    # Set the transformations for the ingestion pipeline
+                    self.ingestion_pipeline.transformations = [] # HierarchicalNodeParser embed the nodes using the Settings.embed_model so no need to re-embed them
 
-                # Get the index from the storage context
-                index = StorageContextSingleton().index
-                # Add the nodes to the index
-                index.insert_nodes(nodes)
+                    # Run the ingestion pipeline on the resulting nodes to add the nodes to the docstore and vector store
+                    nodes = await self.ingestion_pipeline.arun(
+                        nodes=nodes,
+                        show_progress=True
+                    )
+                    # Insert nodes into index
+                    StorageContextSingleton().index.insert_nodes(nodes)
+
+
+                else:
+                    logger.info(f"Running ingestion pipeline with transformations stack {transformations_stack_name}")
+                    # This will add the documents to the vector store and docstore in the expected llama index way
+
+                    # Set the transformations for the ingestion pipeline
+                    self.ingestion_pipeline.transformations = transformations
+                    nodes = await self.ingestion_pipeline.arun(
+                        documents=documents,
+                        show_progress=True
+                    )
+                    # Insert nodes into index
+                    StorageContextSingleton().index.insert_nodes(nodes)
 
             # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
             self.ingestion_pipeline.persist("./output/pipeline_storage")

@@ -33,7 +33,7 @@ export function useFileUpload() {
 
       await generate([{
         path: filePath,
-        transformations_stack_name_list: ["default", "ss1", "ss2", "ss3", "ss4", "ss5"]  // Can be extended to support multiple transformations
+        transformations_stack_name_list: ["hierarchical"] // Can be extended to support multiple transformations
       }]);
       
       options?.onComplete?.();
