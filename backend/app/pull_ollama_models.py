@@ -14,20 +14,20 @@ def pull_ollama_models():
     from app.settings.app_settings import AppSettings
     
     # Pull LLM model first
-    if AppSettings.model_provider in ["integrated_ollama", "custom_ollama"]:
-        base_url = (AppSettings.integrated_ollama_llm_host 
-                   if AppSettings.model_provider == "integrated_ollama" 
-                   else AppSettings.custom_ollama_llm_host)
-        model = AppSettings.ollama_model
-        _pull_model(base_url, model)
+    if AppSettings.model_provider == "custom_ollama":
+        base_url = AppSettings.custom_ollama_llm_host
+    else:
+        base_url = AppSettings.integrated_ollama_llm_host
+    model = AppSettings.ollama_model
+    _pull_model(base_url, model)
 
     # Then pull embedding model
-    if AppSettings.embedding_model_provider in ["integrated_ollama", "custom_ollama"]:
-        base_url = (AppSettings.integrated_ollama_embedding_host 
-                   if AppSettings.embedding_model_provider == "integrated_ollama" 
-                   else AppSettings.custom_ollama_embedding_host)
-        model = AppSettings.ollama_embedding_model
-        _pull_model(base_url, model)
+    if AppSettings.embedding_model_provider == "custom_ollama":
+        base_url = AppSettings.custom_ollama_embedding_host
+    else:
+        base_url = AppSettings.integrated_ollama_embedding_host
+    model = AppSettings.ollama_embedding_model
+    _pull_model(base_url, model)
 
 def _pull_model(base_url: str, model: str):
     """Helper function to pull a model from Ollama"""
