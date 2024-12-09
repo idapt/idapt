@@ -372,6 +372,17 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             )}
           </div>
 
+          {settings.embedding_model_provider === "custom_ollama" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Custom Ollama Embedding Host</label>
+              <Input
+                value={settings.custom_ollama_embedding_host}
+                onChange={(e) => setSettings({...settings, custom_ollama_embedding_host: e.target.value})}
+                placeholder="http://localhost:11434"
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Embedding Dimensions</label>
             <Input
@@ -436,6 +447,17 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 type="number"
                 value={settings.tgi_request_timeout}
                 onChange={(e) => setSettings({...settings, tgi_request_timeout: parseInt(e.target.value)})}
+              />
+            </div>
+          )}
+
+          {settings.embedding_model_provider === "text-embeddings-inference" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Text Embeddings Inference Host</label>
+              <Input
+                value={settings.tei_host}
+                onChange={(e) => setSettings({...settings, tei_host: e.target.value})}
+                placeholder="http://localhost:8080"
               />
             </div>
           )}

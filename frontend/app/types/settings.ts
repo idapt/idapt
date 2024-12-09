@@ -25,6 +25,9 @@ export interface AppSettings {
   system_prompt: string;
   max_iterations: number;
   files_tool_description: string;
+  tei_host: string;
+  tei_model: string;
+  custom_ollama_embedding_host: string;
 }
 
 export const MODEL_PROVIDER_OPTIONS = [
@@ -59,6 +62,7 @@ export const EMBEDDING_PROVIDER_OPTIONS = [
   "azure-openai",
   "gemini",
   "mistral",
+  "text-embeddings-inference",
 ] as const;
 
 export const EMBEDDING_MODEL_OPTIONS: Record<string, string[]> = {
@@ -69,4 +73,5 @@ export const EMBEDDING_MODEL_OPTIONS: Record<string, string[]> = {
   gemini: ["embedding-001", "custom"],
   mistral: ["mistral-embed", "custom"],
   fastembed: ["all-MiniLM-L6-v2", "paraphrase-multilingual-mpnet-base-v2", "custom"],
+  "text-embeddings-inference": ["nvidia/NV-Embed-v2", "BAAI/bge-base-en-v1.5", "custom"],
 };

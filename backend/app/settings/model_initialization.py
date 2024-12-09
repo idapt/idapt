@@ -51,6 +51,8 @@ def init_embedding_model():
             return init_mistral_embedding()
         case "fastembed":
             return init_fastembed_embedding()
+        case "text-embeddings-inference":
+            return init_tei_embedding()
         case _:
             raise ValueError(f"Invalid embedding model provider: {provider}") 
 

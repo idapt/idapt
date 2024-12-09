@@ -31,6 +31,7 @@ class AppSettingsModel(BaseModel):
     openai_api_key: str
     max_iterations: int
     files_tool_description: str
+    custom_ollama_embedding_host: str
 
 @r.get("")
 async def get_settings() -> AppSettingsModel:
@@ -55,13 +56,14 @@ async def get_settings() -> AppSettingsModel:
         embedding_dim=AppSettings.embedding_dim,
         top_k=AppSettings.top_k,
         system_prompt=AppSettings.system_prompt,
-        custom_ollama_host=AppSettings.custom_ollama_host,
+        custom_ollama_host=AppSettings.custom_ollama_llm_host,
         tgi_host=AppSettings.tgi_host,
         ollama_request_timeout=AppSettings.ollama_request_timeout,
         tgi_request_timeout=AppSettings.tgi_request_timeout,
         openai_api_key=AppSettings.openai_api_key,
         max_iterations=AppSettings.max_iterations,
-        files_tool_description=AppSettings.files_tool_description
+        files_tool_description=AppSettings.files_tool_description,
+        custom_ollama_embedding_host=AppSettings.custom_ollama_embedding_host
     )
 
 @r.post("")
@@ -94,7 +96,8 @@ async def update_settings(settings: AppSettingsModel):
             tgi_request_timeout=settings.tgi_request_timeout,
             openai_api_key=settings.openai_api_key,
             max_iterations=settings.max_iterations,
-            files_tool_description=settings.files_tool_description
+            files_tool_description=settings.files_tool_description,
+            custom_ollama_embedding_host=settings.custom_ollama_embedding_host
         )
 
         return {"status": "success"}

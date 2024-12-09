@@ -27,7 +27,7 @@ def init_integrated_ollama_embedding():
 def init_custom_ollama_embedding():
     OllamaEmbedding, _ = _get_ollama_imports()
     return OllamaEmbedding(
-        base_url=AppSettings.custom_ollama_host,
+        base_url=AppSettings.custom_ollama_embedding_host,
         model_name=AppSettings.ollama_embedding_model,
     )
 
@@ -43,7 +43,7 @@ def init_integrated_ollama_llm():
 def init_custom_ollama_llm():
     _, Ollama = _get_ollama_imports()
     return Ollama(
-        base_url=AppSettings.custom_ollama_host,
+        base_url=AppSettings.custom_ollama_llm_host,
         model=AppSettings.ollama_model,
         request_timeout=AppSettings.ollama_request_timeout,
         system_prompt=AppSettings.system_prompt
@@ -214,4 +214,23 @@ def init_tgi_llm():
         model_name=AppSettings.tgi_model,
         timeout=AppSettings.tgi_request_timeout,
         system_prompt=AppSettings.system_prompt,
+    )
+
+def _get_tei_imports():
+    """Helper function to import Text Embeddings Inference embedding-related modules"""
+    try:
+        from llama_index.embeddings.text_embeddings_inference import TextEmbeddingsInference
+        return TextEmbeddingsInference
+    except ImportError:
+        raise ImportError(
+            "Text Embeddings Inference support is not installed. Please install it with `poetry add llama-index-embeddings-text-embeddings-inference`"
+        )
+    
+# TODO : Finish implementation of this if useful, also find how to manage dimensions with it.
+def init_tei_embedding():
+    TextEmbeddingsInference = _get_tei_imports()
+    return TextEmbeddingsInference(
+        base_url=AppSettings.tei_host,
+        model_name=AppSettings.tei_model,
+        embed_batch_size=10 
     )

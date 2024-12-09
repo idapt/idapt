@@ -19,7 +19,7 @@ def pull_ollama_models():
         model = AppSettings.ollama_model
         embedding_model = AppSettings.ollama_embedding_model
     else:
-        base_url = AppSettings.custom_ollama_host
+        base_url = AppSettings.custom_ollama_llm_host
         model = AppSettings.ollama_model
         embedding_model = AppSettings.ollama_embedding_model
 

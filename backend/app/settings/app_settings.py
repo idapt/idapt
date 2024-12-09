@@ -31,9 +31,10 @@ class _AppSettings:
     tgi_model: str = "llama3.1"
     
     # Used when model_provider is custom_ollama defaults to localhost
-    custom_ollama_host: str = "http://idapt-nginx:3030/local-ollama" # Use this if you want to use the local ollama instance running on the localhost at port 11434
+    custom_ollama_llm_host: str = "http://idapt-nginx:3030/local-ollama" # Use this if you want to use the local ollama instance running on the localhost at port 11434
     # Used when model_provider is text-generation-inference
     tgi_host: str = ""
+
     # Set to big by default to avoid timeouts
     ollama_request_timeout: float = 2000
     tgi_request_timeout: float = 500
@@ -41,12 +42,19 @@ class _AppSettings:
     # Embedding model settings
     embedding_model_provider: str = "integrated_ollama"
     ollama_embedding_model: str = "Losspost/stella_en_1.5b_v5"
+    custom_ollama_embedding_model: str = "Losspost/stella_en_1.5b_v5"
     openai_embedding_model: str = "text-embedding-3-large"
     azure_openai_embedding_model: str = "text-embedding-ada-002"
     gemini_embedding_model: str = "embedding-001"
     mistral_embedding_model: str = "mistral-embed"
     fastembed_embedding_model: str = "all-MiniLM-L6-v2"
-    
+    tei_model: str = "nvidia/NV-Embed-v2"
+
+    # Used when embedding_model_provider is custom_ollama
+    custom_ollama_embedding_host: str = "http://idapt-nginx:3030/local-ollama"
+    # Used when embedding_model_provider is text-embeddings-inference
+    tei_host: str = ""
+
     embedding_dim: str = "1536"
     top_k: int = 15
     openai_api_key: str = ""
@@ -111,7 +119,7 @@ class _AppSettings:
 
         # Set the custom Ollama host in nginx proxy
         from app.proxy import NginxProxy
-        NginxProxy.set_custom_ollama_host(self.custom_ollama_host)
+        NginxProxy.set_custom_ollama_host(self.custom_ollama_llm_host)
 
         # Update llama index settings after changing model settings
         from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
