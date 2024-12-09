@@ -15,7 +15,6 @@ from app.services.db_file import DBFileService
 from app.services.file_system import FileSystemService
 from app.database.models import File, Folder
 from app.api.routers.models import FileUploadItem, FileUploadRequest, FileUploadProgress, FileNode
-from app.services.llama_index import LlamaIndexService
 
 import logging
 
@@ -23,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 class FileManagerService:
     def __init__(self):
-        self.llama_index = LlamaIndexService()
         self.file_system = FileSystemService()
 
     async def upload_files(self, request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:

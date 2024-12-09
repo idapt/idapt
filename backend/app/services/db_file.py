@@ -161,23 +161,11 @@ class DBFileService:
     async def delete_file(session: Session, file_id: int) -> bool:
         """Delete a file from the database"""
         file = DBFileService.get_file(session, file_id)
-        if file:
-            try:
-                # First delete from LlamaIndex if refs exist
-                if hasattr(file, 'refs') and file.refs:
-                    from app.services.llama_index import LlamaIndexService
-                    llama_service = LlamaIndexService()
-                    for doc_id in file.refs:
-                        await llama_service.remove_document(doc_id)
-                
-                # Then delete from database
-                session.delete(file)
-                session.commit()
-                return True
-            except Exception as e:
-                session.rollback()
-                logger.error(f"Error deleting file: {str(e)}")
-                raise
+        if file:                
+            # Then delete from database
+            session.delete(file)
+            session.commit()
+            return True
         return False
 
     @staticmethod
