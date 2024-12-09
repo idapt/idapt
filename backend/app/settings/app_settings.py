@@ -29,7 +29,9 @@ class _AppSettings:
     mistral_model: str = "mistral-medium"
     azure_openai_model: str = "gpt-4"
     tgi_model: str = "llama3.1"
-    
+
+    # Used when model_provider is integrated_ollama and cant be changed
+    integrated_ollama_llm_host: str = "http://idapt-nginx:3030/integrated-ollama"
     # Used when model_provider is custom_ollama defaults to localhost
     custom_ollama_llm_host: str = "http://idapt-nginx:3030/local-ollama" # Use this if you want to use the local ollama instance running on the localhost at port 11434
     # Used when model_provider is text-generation-inference
@@ -50,6 +52,8 @@ class _AppSettings:
     fastembed_embedding_model: str = "all-MiniLM-L6-v2"
     tei_model: str = "nvidia/NV-Embed-v2"
 
+    # Used when embedding_model_provider is integrated_ollama
+    integrated_ollama_embedding_host: str = "http://idapt-nginx:3030/integrated-ollama"
     # Used when embedding_model_provider is custom_ollama
     custom_ollama_embedding_host: str = "http://idapt-nginx:3030/local-ollama"
     # Used when embedding_model_provider is text-embeddings-inference
@@ -119,7 +123,7 @@ class _AppSettings:
 
         # Set the custom Ollama host in nginx proxy
         from app.proxy import NginxProxy
-        NginxProxy.set_custom_ollama_host(self.custom_ollama_llm_host)
+        NginxProxy.set_custom_ollama_llm_host(self.custom_ollama_llm_host)
 
         # Update llama index settings after changing model settings
         from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings

@@ -8,7 +8,7 @@ export interface AppSettings {
   mistral_model: string;
   azure_openai_model: string;
   tgi_model: string;
-  custom_ollama_host: string;
+  custom_ollama_llm_host: string;
   tgi_host: string;
   ollama_request_timeout: number;
   tgi_request_timeout: number;

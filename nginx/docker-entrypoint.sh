@@ -4,7 +4,7 @@
 # No need to wait for the backend to be ready as if it is not up, it will start soon and set the ollama host in nginx at its startup.
 # Try to fetch ollama host from backend with a short timeout to avoid blocking the startup of the nginx container.
 echo "Trying to fetch ollama host from backend..."
-OLLAMA_HOST=$(wget -q -O - --timeout=1 http://idapt-backend:8000/api/settings 2>/dev/null | grep -o '"custom_ollama_host":"[^"]*' | cut -d'"' -f4)
+OLLAMA_HOST=$(wget -q -O - --timeout=1 http://idapt-backend:8000/api/settings 2>/dev/null | grep -o '"custom_ollama_llm_host":"[^"]*' | cut -d'"' -f4)
 
 if [ ! -z "$OLLAMA_HOST" ]; then
     # Create a temporary config file with the fetched host

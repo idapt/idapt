@@ -24,7 +24,7 @@ class AppSettingsModel(BaseModel):
     embedding_dim: str
     top_k: int
     system_prompt: str
-    custom_ollama_host: str
+    custom_ollama_llm_host: str
     tgi_host: str
     ollama_request_timeout: float
     tgi_request_timeout: float
@@ -56,7 +56,7 @@ async def get_settings() -> AppSettingsModel:
         embedding_dim=AppSettings.embedding_dim,
         top_k=AppSettings.top_k,
         system_prompt=AppSettings.system_prompt,
-        custom_ollama_host=AppSettings.custom_ollama_llm_host,
+        custom_ollama_llm_host=AppSettings.custom_ollama_llm_host,
         tgi_host=AppSettings.tgi_host,
         ollama_request_timeout=AppSettings.ollama_request_timeout,
         tgi_request_timeout=AppSettings.tgi_request_timeout,
@@ -90,7 +90,7 @@ async def update_settings(settings: AppSettingsModel):
             embedding_dim=settings.embedding_dim,
             top_k=settings.top_k,
             system_prompt=settings.system_prompt,
-            custom_ollama_host=settings.custom_ollama_host,
+            custom_ollama_llm_host=settings.custom_ollama_llm_host,
             tgi_host=settings.tgi_host,
             ollama_request_timeout=settings.ollama_request_timeout,
             tgi_request_timeout=settings.tgi_request_timeout,

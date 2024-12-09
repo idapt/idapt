@@ -2,10 +2,6 @@ import os
 from llama_index.core.constants import DEFAULT_TEMPERATURE
 from app.settings.app_settings import AppSettings
 
-# Base URLs
-INTEGRATED_OLLAMA_URL = "http://idapt-nginx:3030/integrated-ollama"
-#CUSTOM_OLLAMA_URL = "http://idapt-nginx:3030/local-ollama"
-
 def _get_ollama_imports():
     """Helper function to import Ollama-related modules"""
     try:
@@ -20,7 +16,7 @@ def _get_ollama_imports():
 def init_integrated_ollama_embedding():
     OllamaEmbedding, _ = _get_ollama_imports()
     return OllamaEmbedding(
-        base_url=INTEGRATED_OLLAMA_URL,
+        base_url=AppSettings.integrated_ollama_embedding_host,
         model_name=AppSettings.ollama_embedding_model,
     )
 
@@ -34,7 +30,7 @@ def init_custom_ollama_embedding():
 def init_integrated_ollama_llm():
     _, Ollama = _get_ollama_imports()
     return Ollama(
-        base_url=INTEGRATED_OLLAMA_URL,
+        base_url=AppSettings.integrated_ollama_llm_host,
         model=AppSettings.ollama_model,
         request_timeout=AppSettings.ollama_request_timeout,
         system_prompt=AppSettings.system_prompt

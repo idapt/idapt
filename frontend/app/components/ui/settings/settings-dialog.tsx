@@ -113,8 +113,8 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <div className="space-y-2">
               <label className="text-sm font-medium">Custom Ollama Host</label>
               <Input
-                value={settings.custom_ollama_host}
-                onChange={(e) => setSettings({...settings, custom_ollama_host: e.target.value})}
+                value={settings.custom_ollama_llm_host}
+                onChange={(e) => setSettings({...settings, custom_ollama_llm_host: e.target.value})}
               />
             </div>
           )}

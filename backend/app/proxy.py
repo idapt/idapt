@@ -13,7 +13,7 @@ class NginxProxy:
     #ALLOWED_PORTS = [11434, 443, 8080]  # Add other allowed ports
     
     @classmethod
-    def set_custom_ollama_host(cls, host: str) -> None:
+    def set_custom_ollama_llm_host(cls, host: str) -> None:
         """Set the custom Ollama host in nginx proxy for subsequent requests"""
         try:
 
