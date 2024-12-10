@@ -4,6 +4,7 @@ import DocxIcon from "../ui/icons/docx.svg";
 import PdfIcon from "../ui/icons/pdf.svg";
 import SheetIcon from "../ui/icons/sheet.svg";
 import TxtIcon from "../ui/icons/txt.svg";
+import DocumentIcon from "../ui/icons/document.svg";
 import { Button } from "./button";
 import { DocumentFile, DocumentFileType } from "./chat";
 import {
@@ -64,23 +65,26 @@ export function DocumentPreview(props: DocumentPreviewProps) {
   );
 }
 
-export const FileIcon: Record<DocumentFileType, string> = {
+export const FileIcon: Record<string, string> = {
   csv: SheetIcon,
   pdf: PdfIcon,
   docx: DocxIcon,
   txt: TxtIcon,
+  default: DocumentIcon,
 };
 
 export function PreviewCard(props: {
   file: {
     name: string;
     size?: number;
-    type: DocumentFileType;
+    type: DocumentFileType | string;
   };
   onRemove?: () => void;
   className?: string;
 }) {
   const { onRemove, file, className } = props;
+  const iconSrc = FileIcon[file.type] || FileIcon.default;
+
   return (
     <div
       className={cn(
@@ -93,8 +97,8 @@ export function PreviewCard(props: {
           <Image
             className="h-full w-auto object-contain"
             priority
-            src={FileIcon[file.type]}
-            alt="Icon"
+            src={iconSrc}
+            alt={`${file.type} file icon`}
           />
         </div>
         <div className="overflow-hidden">
