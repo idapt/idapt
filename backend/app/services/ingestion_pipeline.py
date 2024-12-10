@@ -138,10 +138,10 @@ class IngestionPipelineService:
                 # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
                 if transformations_stack_name == "hierarchical":
                     # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
-                    nodes = transformations[0].get_nodes_from_documents(documents, show_progress=True)
-                    # Add the node_id into the metadata for later filtering using it # TODO Implement it for other transformations stacks
-                    for node in nodes:
-                        node.metadata["node_id"] = node.node_id
+                    nodes = transformations[0].get_nodes_from_documents(
+                        documents, 
+                        show_progress=True
+                    )
                     
                     # Set the transformations for the ingestion pipeline
                     self.ingestion_pipeline.transformations = [] # HierarchicalNodeParser embed the nodes using the Settings.embed_model so no need to re-embed them

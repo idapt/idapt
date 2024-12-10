@@ -58,34 +58,6 @@ class FilteredQueryEngineTool(QueryEngineTool):
             
         return child_ids
 
-    def _apply_node_filter(self) -> None:
-        """Apply filter to exclude previously retrieved nodes."""
-        if not self._retrieved_node_ids:
-            return
-
-        # Create a filter for excluding previously retrieved nodes using node_id column
-        exclude_nodes_filter = MetadataFilter(
-            key="id",  # This is the actual column name in PG vector store
-            value=list(self._retrieved_node_ids),
-            operator="nin"
-        )
-        # ! NOT WORKING, maybe because node id is not a metadata ?
-
-        # Get existing filters if any
-        existing_filters = getattr(self._query_engine, "_filters", None)
-        
-        if existing_filters:
-            # Combine with existing filters
-            new_filters = MetadataFilters(
-                filters=[*existing_filters.filters, exclude_nodes_filter],
-                condition="and"
-            )
-        else:
-            new_filters = MetadataFilters(filters=[exclude_nodes_filter])
-
-        # Apply the combined filters to the query engine
-        self._query_engine._filters = new_filters
-
     def _update_retrieved_nodes(self, response: Any) -> None:
         """Update the set of retrieved node IDs from the response."""
         if not response:
@@ -119,12 +91,12 @@ class FilteredQueryEngineTool(QueryEngineTool):
         try:
             response = self._query_engine.query(query_str)
 
-            # TODO Make this work with the filter because the top k will be less
+            # TODO Make this work at the retreiver level / query to get the right number of tok K results
             # Manually remove the previously retrieved nodes from the response
-            #if hasattr(response, "source_nodes") and response.source_nodes:
-            #    for node in response.source_nodes:
-            #        if node.node_id in self._retrieved_node_ids:
-            #            response.source_nodes.remove(node)
+            if hasattr(response, "source_nodes") and response.source_nodes:
+                for node in response.source_nodes:
+                    if node.node_id in self._retrieved_node_ids:
+                        response.source_nodes.remove(node)
 
             # Handle empty response
             if response is None:
@@ -158,16 +130,16 @@ class FilteredQueryEngineTool(QueryEngineTool):
 
     async def acall(self, *args: Any, **kwargs: Any) -> ToolOutput:
         query_str = self._get_query_str(*args, **kwargs)
-        self._apply_node_filter()
+    
         response = await self._query_engine.aquery(query_str)
 
     
-        # TODO Make this work with the filter because the top k will be less
+        # TODO Make this work at the retreiver level / query to get the right number of tok K results
         # Manually remove the previously retrieved nodes from the response
-        #if hasattr(response, "source_nodes") and response.source_nodes:
-        #    for node in response.source_nodes:
-        #        if node.node_id in self._retrieved_node_ids:
-        #            response.source_nodes.remove(node)
+        if hasattr(response, "source_nodes") and response.source_nodes:
+            for node in response.source_nodes:
+                if node.node_id in self._retrieved_node_ids:
+                    response.source_nodes.remove(node)
 
         self._update_retrieved_nodes(response)
         return ToolOutput(
