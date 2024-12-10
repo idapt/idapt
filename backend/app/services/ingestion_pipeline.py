@@ -13,7 +13,6 @@ from llama_index.core.extractors import (
 )
 #from llama_index.extractors.entity import EntityExtractor
 
-from app.services.file_system import FileSystemService
 #from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 from app.engine.storage_context import StorageContextSingleton
         
@@ -105,7 +104,6 @@ class IngestionPipelineService:
 
 
     def __init__(self):
-        self.file_system = FileSystemService()
         # Create a unique ingestion pipeline that will persist between file ingestions
         self.ingestion_pipeline = self._create_ingestion_pipeline()
 

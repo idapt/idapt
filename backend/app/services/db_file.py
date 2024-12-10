@@ -1,29 +1,33 @@
 from sqlalchemy.orm import Session
-from fastapi import Depends
-from sqlalchemy import create_engine
 from app.database.models import File, Folder
 from datetime import datetime
 import mimetypes
-import os
-from typing import List
-
 import logging
-
-logger = logging.getLogger(__name__)
+from typing import List, Tuple
+from pathlib import Path
 
 class DBFileService:
-    @staticmethod
-    def create_folder_path(session: Session, path: str) -> Folder:
+    """
+    Service for managing files and folders in the database
+    """
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+    
+    def create_folder_path(self, session: Session, path: str) -> Folder:
         """Create folder hierarchy and return the last folder"""
-        path = path.replace('idapt_data/', '').replace('idapt_data\\', '')
+        # Split the path into parts
         parts = [p for p in path.split('/') if p]
+    
         current_folder = None
         current_path = ""
         
+        # For each part of the path
         for part in parts:
+            # Build the current path from the parts and the current path, works because we start with the left first part
             current_path = f"{current_path}/{part}" if current_path else part
             
-            # First try to find an existing folder with the same path
+            # First try to find an existing folder with the same path in the database
             folder = session.query(Folder).filter(
                 Folder.path == current_path
             ).first()
@@ -35,38 +39,50 @@ class DBFileService:
                     Folder.parent_id == (current_folder.id if current_folder else None)
                 ).first()
             
+            # If not found, create a new folder
             if not folder:
-                logger.info(f"Creating new folder: {part} with path {current_path}")
+                self.logger.info(f"Creating new folder: {part} with path {current_path}")
                 folder = Folder(
                     name=part,
                     path=current_path,
-                    parent_id=current_folder.id if current_folder else None
+                    parent_id=current_folder.id if current_folder else None,
+                    original_created_at=datetime.now(), #Dummy values
+                    original_modified_at=datetime.now()
                 )
                 session.add(folder)
                 try:
                     session.commit()
                 except Exception as e:
                     session.rollback()
-                    logger.error(f"Error creating folder: {str(e)}")
+                    self.logger.error(f"Error creating folder: {str(e)}")
                     raise
             
+            # Set the current folder to the new folder, and continue with the next part of the path
             current_folder = folder
         
+        # Return the last folder created, the one at the end of the path
         return current_folder
 
-    @staticmethod
     def create_file(
+        self,
         session: Session,
         name: str,
         path: str,
-        folder_id: int | None = None,
         original_created_at: datetime | None = None,
         original_modified_at: datetime | None = None,
     ) -> File:
         """Create a file record in the database without content"""
         try:
             mime_type, _ = mimetypes.guess_type(name)
-            
+
+            # If there is a parent folder, create it, else get its id
+            folder_id = None
+            if path.count('/') >= 1:
+                parent_path = str(Path(path).parent)
+                folder_id = self.create_folder_path(session, parent_path).id
+            else:
+                folder_id = None # Root folder
+
             file = File(
                 name=name,
                 path=path,
@@ -80,87 +96,36 @@ class DBFileService:
             session.commit()
         except Exception as e:
             session.rollback()
-            logger.error(f"Error creating file: {str(e)}")
+            self.logger.error(f"Error creating file: {str(e)}")
             raise
         return file
 
-    @staticmethod
-    def get_file_tree(session: Session) -> List[dict]:
-        """Get complete file/folder hierarchy"""
-        def build_tree(folder=None):
-            query = session.query(Folder).filter(Folder.parent_id == (folder.id if folder else None))
-            tree = []
-            
-            for folder in query.all():
-                node = {
-                    "id": folder.id,
-                    "name": folder.name,
-                    "type": "folder",
-                    "children": build_tree(folder)
-                }
-                
-                # Add files in this folder
-                files = session.query(File).filter(File.folder_id == folder.id).all()
-                node["children"].extend([{
-                    "id": file.id,
-                    "name": file.name,
-                    "type": "file",
-                    "mime_type": file.mime_type
-                } for file in files])
-                
-                tree.append(node)
-            
-            return tree
+    def get_folder_contents(self, session: Session, path: str | None) -> Tuple[List[File], List[Folder]]:
         
-        return build_tree()
+        folder_id = None
+        # If path is not None, get folder id from path
+        if path:
+            folder_id = self.get_folder_id(session, path)
 
-    @staticmethod
-    def get_folder_contents(session: Session, folder_id: int | None) -> List[dict]:
+        # Get all folders in this folder
         folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
-        folder_nodes = [{
-            "id": folder.id,
-            "name": folder.name,
-            "type": "folder",
-            "created_at": folder.created_at,
-            "updated_at": folder.updated_at,
-            "original_created_at": folder.original_created_at,
-            "original_modified_at": folder.original_modified_at
-        } for folder in folders]
 
         # Get files - for root folder (folder_id is None) or specific folder
         files = session.query(File).filter(File.folder_id == folder_id).all()
-        file_nodes = [{
-            "id": file.id,
-            "name": file.name,
-            "type": "file",
-            "mime_type": file.mime_type,
-            "created_at": file.created_at,
-            "updated_at": file.updated_at,
-            "original_created_at": file.original_created_at,
-            "original_modified_at": file.original_modified_at
-        } for file in files]
+        
+        return files, folders
 
-        return folder_nodes + file_nodes
-
-    @staticmethod
-    def get_file(session: Session, file_id: int) -> File | None:
+    def get_file(self, session: Session, path: str) -> File | None:
         """Get a file by ID"""
-        return session.query(File).filter(File.id == file_id).first()
+        return session.query(File).filter(File.path == path).first()
 
-    @staticmethod
-    def get_folder(session: Session, folder_id: int) -> Folder | None:
+    def get_folder(self, session: Session, path: str) -> Folder | None:
         """Get a folder by ID"""
-        return session.query(Folder).filter(Folder.id == folder_id).first()
+        return session.query(Folder).filter(Folder.path == path).first()
 
-    @staticmethod
-    def get_folder_files(session: Session, folder_id: int) -> List[File]:
-        """Get all files in a folder"""
-        return session.query(File).filter(File.folder_id == folder_id).all()
-
-    @staticmethod
-    async def delete_file(session: Session, file_id: int) -> bool:
+    def delete_file(self, session: Session, path: str) -> bool:
         """Delete a file from the database"""
-        file = DBFileService.get_file(session, file_id)
+        file = self.get_file(session, path)
         if file:                
             # Then delete from database
             session.delete(file)
@@ -168,25 +133,21 @@ class DBFileService:
             return True
         return False
 
-    @staticmethod
-    def delete_folder(session: Session, folder_id: int) -> bool:
+    def delete_folder(self, session: Session, path: str) -> bool:
         """Delete a folder and all its contents from the database"""
-        folder = DBFileService.get_folder(session, folder_id)
+        # Get the folder from the database
+        folder = self.get_folder(session, path)
+        # If the folder exists
         if folder:
             try:
                 # Delete all files in this folder and subfolders recursively
-                files = DBFileService.get_folder_files_recursive(session, folder_id)
+                files, _ = self.get_folder_files_recursive(session, path)
+                # Delete all files in this folder
                 for file in files:
                     session.delete(file)
                 
                 # Delete all subfolders recursively
-                def delete_subfolders(folder_id):
-                    subfolders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
-                    for subfolder in subfolders:
-                        delete_subfolders(subfolder.id)
-                        session.delete(subfolder)
-                
-                delete_subfolders(folder_id)
+                self.delete_subfolders(session, folder.id)
                 
                 # Delete the main folder
                 session.delete(folder)
@@ -194,25 +155,44 @@ class DBFileService:
                 return True
             except Exception as e:
                 session.rollback()
-                logger.error(f"Error deleting folder: {str(e)}")
+                self.logger.error(f"Error deleting folder: {str(e)}")
                 return False
         return False
+    
+    # Delete all subfolders recursively
+    def delete_subfolders(self, session: Session, folder_id: int):
+        subfolders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
+        for subfolder in subfolders:
+            self.delete_subfolders(session, subfolder.id)
+            session.delete(subfolder)
+    
 
-    @staticmethod
-    def update_file(session: Session, file_id: int, name: str, path: str) -> File | None:
+    def update_file(self, session: Session, old_path: str, new_path: str) -> File | None:
         """Update file name and path"""
-        file = DBFileService.get_file(session, file_id)
+        # Get the file from the database
+        file = self.get_file(session, old_path)
+        # If the file exists
         if file:
+            # Get filename from new path
+            name = Path(new_path).name
+
+            # Update the file name and path
             file.name = name
-            file.path = path
-            file.updated_at = datetime.utcnow()
+            file.path = new_path
+            file.updated_at = datetime.now(datetime.timezone.utc)
+            # Commit the changes to the database
             session.commit()
+            # Return the updated file
             return file
+        # If the file does not exist, return None
         return None
 
-    @staticmethod
-    def get_folder_files_recursive(session: Session, folder_id: int) -> List[File]:
+    def get_folder_files_recursive(self, session: Session, path: str) -> Tuple[List[File], List[Folder]]:
         """Get all files in a folder and its subfolders recursively"""
+
+        # Get folder id from path
+        folder_id = self.get_folder_id(session, path)
+
         # Get direct files in this folder
         files = session.query(File).filter(File.folder_id == folder_id).all()
         
@@ -221,19 +201,16 @@ class DBFileService:
         
         # Recursively get files from subfolders
         for subfolder in subfolders:
-            files.extend(DBFileService.get_folder_files_recursive(session, subfolder.id))
+            files.extend(self.get_folder_files_recursive(session, subfolder.id))
         
-        return files
+        return files, subfolders
 
-    @staticmethod
-    def path_exists(session: Session, path: str) -> bool:
-        """Check if a file or folder exists at the given path"""
-        file_exists = session.query(File).filter(File.path == path).first() is not None
-        folder_exists = session.query(Folder).filter(Folder.path == path).first() is not None
-        return file_exists or folder_exists
-
-    @staticmethod
-    def get_file_id(session: Session, path: str) -> int | None:
+    def get_file_id(self, session: Session, path: str) -> int | None:
         """Get the ID of a file by path"""
         file = session.query(File).filter(File.path == path).first()
         return file.id if file else None
+    
+    def get_folder_id(self, session: Session, path: str) -> int | None:
+        """Get the ID of a folder by path"""
+        folder = session.query(Folder).filter(Folder.path == path).first()
+        return folder.id if folder else None

@@ -23,39 +23,23 @@ export function useFolderUpload() {
     for (const file of files) {
       const relativePath = file.webkitRelativePath;
       const fullPath = targetPath ? `${targetPath}/${relativePath}` : relativePath;
-      
+
       // Store file paths for generation
-      if (file.size > 0) {
-        filePaths.push(fullPath);
-      }
+      filePaths.push(fullPath);
 
-      // For files, we need to read their content
-      if (file.size > 0) {
-        const content = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
-
-        uploadItems.push({
-          path: fullPath,
-          content,
-          is_folder: false,
-          name: file.name,
-          mime_type: file.type,
-          original_created_at: file.lastModified.toString(),
-          original_modified_at: file.lastModified.toString()
-        });
-      } else {
-        uploadItems.push({
-          path: fullPath,
-          content: "",
-          is_folder: true,
-          name: file.name,
-          original_created_at: file.lastModified.toString(),
-          original_modified_at: file.lastModified.toString()
-        });
-      }
+      const content = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      uploadItems.push({
+        path: fullPath,
+        content,
+        name: file.name,
+        mime_type: file.type,
+        original_created_at: file.lastModified.toString(),
+        original_modified_at: file.lastModified.toString()
+      });
     }
 
     try {

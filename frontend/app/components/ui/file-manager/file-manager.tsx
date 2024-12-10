@@ -4,7 +4,6 @@ import { Grid2X2, List, Upload, FolderUp, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "../button";
 import { FileList } from "./file-list";
-import { FileGrid } from "./file-grid";
 import { FilePath } from "./file-path";
 import { useFileUpload } from "./hooks/use-file-upload";
 import { useFolderUpload } from "./hooks/use-folder-upload";
@@ -12,9 +11,9 @@ import { useFileManager } from './hooks/use-file-manager';
 
 export function FileManager() {
   const {
-    contents,
-    currentFolder,
-    path,
+    files,
+    folders,
+    currentPath,
     loading,
     error,
     navigateToFolder,
@@ -30,8 +29,7 @@ export function FileManager() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const folderPath = path.map(p => p.name).join('/');
-      await uploadFile(file, folderPath, {
+      await uploadFile(file, currentPath, {
         onError: (error) => alert(error),
         onComplete: () => {
           if (fileInputRef.current) fileInputRef.current.value = '';
@@ -43,8 +41,7 @@ export function FileManager() {
 
   const handleFolderUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const folderPath = path.map(p => p.name).join('/');
-      await uploadFolder(e.target, folderPath, {
+      await uploadFolder(e.target, currentPath, {
         onError: (error) => alert(error),
         onComplete: () => {
           if (folderInputRef.current) folderInputRef.current.value = '';
@@ -61,7 +58,7 @@ export function FileManager() {
   return (
     <div className="w-full h-full bg-white rounded-lg shadow-sm p-4 space-y-4">
       <div className="flex justify-between items-center">
-        <FilePath folder={currentFolder} path={path} onNavigate={navigateToFolder} />
+        <FilePath currentPath={currentPath} onNavigate={navigateToFolder} />
         <div className="flex space-x-2">
           <input
             type="file"
@@ -114,19 +111,14 @@ export function FileManager() {
         <div className="flex items-center justify-center flex-1">
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
-      ) : (
-        viewMode === "grid" ? 
-          <FileGrid 
-            items={contents} 
-            viewMode={viewMode} 
-            onFolderClick={navigateToFolder} 
-            onUploadComplete={refreshContents} 
-          /> : 
-          <FileList 
-            items={contents} 
-            onFolderClick={navigateToFolder} 
-            onUploadComplete={refreshContents} 
-          />
+      ) : ( 
+        <FileList 
+          files={files}
+          folders={folders}
+          viewMode={viewMode}
+          onFolderClick={navigateToFolder}
+          onUploadComplete={refreshContents}
+        />
       )}
     </div>
   );

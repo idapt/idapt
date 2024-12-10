@@ -13,7 +13,6 @@ interface FileUploadProgress {
 interface FileUploadItem {
   path: string;
   content: string;
-  is_folder: boolean;
   name: string;
   mime_type?: string;
   original_created_at?: string;

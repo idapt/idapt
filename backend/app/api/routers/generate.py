@@ -3,13 +3,12 @@ import logging
 from typing import List
 from pydantic import BaseModel, Field
 from app.services.generate import GenerateService
-from app.services.file_system import FileSystemService
+from app.services.file_system import get_full_path_from_path
 from app.database.connection import get_db_session
 from sqlalchemy.orm import Session
 
 generate_router = r = APIRouter()
 logger = logging.getLogger(__name__)
-file_system_service = FileSystemService()
 
 class GenerateRequest(BaseModel):
     files: List[dict] = Field(..., example=[{
@@ -34,7 +33,7 @@ async def generate(
     try:
         # Convert to full paths and maintain transformation stack names
         files = [{
-            "path": file_system_service.get_full_path(file["path"]),
+            "path": get_full_path_from_path(file["path"]),
             "transformations_stack_name_list": file.get("transformations_stack_name_list", "default")
         } for file in request.files]
         

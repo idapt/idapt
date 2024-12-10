@@ -10,6 +10,7 @@ from pydantic.alias_generators import to_camel
 
 from app.config import DATA_DIR
 from app.services.file import DocumentFile
+from app.database.models import File, Folder
 
 logger = logging.getLogger("uvicorn")
 
@@ -335,7 +336,6 @@ class ChatConfig(BaseModel):
 class FileUploadItem(BaseModel):
     path: str  # Relative path in the file system
     content: str  # Base64 content
-    is_folder: bool = False
     name: str  # Original file name
     mime_type: Optional[str] = None
     original_created_at: Optional[datetime] = None
@@ -355,14 +355,28 @@ class FileUploadProgress(BaseModel):
     error: Optional[str] = None
 
 
-
-class FileNode(BaseModel):
+class FileResponse(BaseModel):
     id: int
     name: str
-    type: str  # 'file' or 'folder'
-    mime_type: Optional[str] = None
+    path: str
+    mime_type: str | None = None
+    size: str | None = None
     created_at: datetime
     updated_at: datetime
-    original_created_at: Optional[datetime] = None
-    original_modified_at: Optional[datetime] = None
-    children: List['FileNode'] | None = None
+    original_created_at: datetime | None = None
+    original_modified_at: datetime | None = None
+
+
+class FolderResponse(BaseModel):
+    id: int
+    name: str
+    path: str
+    created_at: datetime
+    updated_at: datetime
+    original_created_at: datetime | None = None
+    original_modified_at: datetime | None = None
+
+
+class FolderContentsResponse(BaseModel):
+    files: list[FileResponse]
+    folders: list[FolderResponse]

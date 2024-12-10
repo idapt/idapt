@@ -1,43 +1,47 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from pathlib import Path
-import os
-import base64
-from typing import Dict, List, Optional, Tuple, Any, AsyncGenerator
+from typing import Dict, Any, AsyncGenerator, List, Tuple
 import zipfile
-import mimetypes
-import re
 from io import BytesIO
 import asyncio
 from fastapi import BackgroundTasks
+import base64
+import mimetypes
+import os
 
 from app.services.db_file import DBFileService
 from app.services.file_system import FileSystemService
+from app.api.routers.models import FileUploadItem, FileUploadRequest, FileUploadProgress
 from app.database.models import File, Folder
-from app.api.routers.models import FileUploadItem, FileUploadRequest, FileUploadProgress, FileNode
+from app.services.llama_index import LlamaIndexService
 
 import logging
 
-logger = logging.getLogger(__name__)
-
 class FileManagerService:
+    """
+    Service for managing files and folders
+    """
+
     def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.db_file_service = DBFileService()
         self.file_system = FileSystemService()
+        self.llama_index = LlamaIndexService()
 
     async def upload_files(self, request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:
         try:
             total = len(request.items)
             processed = []
             skipped = []
-            file_paths = []
             
-            logger.info(f"Uploading {total} files")
+            self.logger.info(f"Uploading {total} files")
             
             for idx, item in enumerate(request.items, 1):
                 try:
-                    logger.info(f"Uploading file {idx}/{total}: {item.path}")
+                    self.logger.info(f"Uploading file {idx}/{total}: {item.path}")
                     
-                    result = await self.upload_file(session, item, file_paths)
+                    result = await self.upload_file(session, item)
                     if result:
                         processed.append(result)
 
@@ -54,7 +58,7 @@ class FileManagerService:
                     await asyncio.sleep(0.1)
                     
                 except Exception as e:
-                    logger.error(f"Error uploading file {item.path}: {str(e)}")
+                    self.logger.error(f"Error uploading file {item.path}: {str(e)}")
                     error_message = str(e)
                     yield {
                         "event": "message",
@@ -81,7 +85,7 @@ class FileManagerService:
             }
 
         except Exception as e:
-            logger.error(f"Error during file upload process: {str(e)}")
+            self.logger.error(f"Error during file upload process: {str(e)}")
             yield {
                 "event": "message",
                 "data": FileUploadProgress(
@@ -93,97 +97,46 @@ class FileManagerService:
                 ).model_dump_json()
             }
 
-    async def upload_file(self, session: Session, item: FileUploadItem, file_paths: list[str]) -> str:
+    async def upload_file(self, session: Session, item: FileUploadItem) -> str:
         """Process a single upload item (file or folder)"""
         try:
             # Log the start of the upload process
-            logger.info(f"Starting upload for file: {item.name}")
+            self.logger.info(f"Starting upload for file: {item.name}")
+        
 
-            # Store full path for filesystem operations
-            full_path = Path(convert_db_path_to_filesystem_path(item.path))
-            
-            # Get relative path for database operations
-            db_path = item.path
-            
-            # Check if path already exists
-            if DBFileService.path_exists(session, db_path):
-                # Delete existing file/folder if it exists
-                # If it is a folder
-                if item.is_folder:
-                    # Get folder from database
-                    folder = session.query(Folder).filter(Folder.path == db_path).first()
-                    if folder:
-                        # Delete from database
-                        DBFileService.delete_folder(session, folder.id)
-                        # Delete from filesystem
-                        await self.file_system.delete_folder(db_path)
-                # If it is a file
-                else:
-                    # Get file from database
-                    file = session.query(File).filter(File.path == db_path).first()
-                    if file:
-                        # Delete from database
-                        result = await DBFileService.delete_file(session, file.id)
-                        if not result:
-                            logger.warning(f"Failed to delete file from database for id: {file.id}")
-                        # Delete from filesystem
-                        await self.file_system.delete_file(db_path)
-            
-            # Now proceed with the upload
-            if item.is_folder:
-                # Create folder on filesystem
-                os.makedirs(str(full_path), exist_ok=True)
-                # Create folder in database
-                DBFileService.create_folder_path(session, db_path)
-            else:
-                # Create all parent directories on filesystem
-                os.makedirs(str(full_path.parent), exist_ok=True)
-                # Process file # Why ?
-                file_data, _ = _preprocess_base64_file(item.content)
-                # Write file to filesystem
-                await self.file_system.write_file(str(full_path), file_data)
-                
-                # Store file path for generation
-                file_paths.append(db_path)
-                
-                # Create folder structure and file in database
-                parent_path = str(Path(db_path).parent)
-                # Create parent folder in database if it exists
-                folder = None if parent_path in ['', '.'] else DBFileService.create_folder_path(session, parent_path)
-                # Create file in database
-                file = DBFileService.create_file(
-                    session=session,
-                    name=item.name,
-                    path=db_path,
-                    folder_id=folder.id if folder else None,
-                    original_created_at=item.original_created_at,
-                    original_modified_at=item.original_modified_at
-                )
+            # Decode the base64 file content into text
+            decoded_file_data, _ = self.preprocess_base64_file(item.content)
+            # Write file to filesystem
+            await self.file_system.write_file(item.path, decoded_file_data)
 
-                # Log the file creation
-                logger.info(f"File created with ID: {file.id}")
-                
-                return f"Uploaded file: {item.path}"
+
+            # Create file in database
+            file = self.db_file_service.create_file(
+                session=session,
+                name=item.name,
+                path=item.path,
+                original_created_at=item.original_created_at,
+                original_modified_at=item.original_modified_at
+            )
+            
+            # Log the file creation
+            self.logger.info(f"File created with ID: {file.id}")
+            
+            return f"Uploaded file: {item.path}"
                 
         except Exception as e:
-            logger.error(f"Error during file upload: {str(e)}")
+            self.logger.error(f"Error during file upload: {str(e)}")
             raise
 
-    async def download_file(self, session: Session, file_id: int) -> Dict[str, str]:
+    async def download_file(self, session: Session, path: str) -> Dict[str, str]:
         try:
-            file = DBFileService.get_file(session, file_id)
+            # First try to get file from database to see fast if it exists
+            file = self.db_file_service.get_file(session, path)
             if not file:
                 raise HTTPException(status_code=404, detail="File not found")
             
-            # Add idapt_data prefix to the path
-            file_path = Path(os.getenv("STORAGE_PATH", "")) / "/idapt_data" / file.path
-
-            if not file_path.exists():
-                raise HTTPException(status_code=404, detail="File not found on disk")
-
-            # Get the file content from the filesystem
-            with open(file_path, "rb") as f:
-                file_content = f.read()
+            # Get file content from filesystem
+            file_content = await self.file_system.read_file(file.path)
 
             return {
                 "content": file_content,
@@ -193,89 +146,102 @@ class FileManagerService:
             }
             
         except Exception as e:
-            logger.error(f"Error downloading file: {str(e)}")
+            self.logger.error(f"Error downloading file: {str(e)}")
             raise
 
-    async def delete_file(self, session: Session, file_id: int):
-        file = DBFileService.get_file(session, file_id)
-        if not file:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        # Convert db file path to filesystem path
-        filesystem_path = convert_db_path_to_filesystem_path(file.path)
-
-        # Delete from filesystem with idapt_data prefix
-        await self.file_system.delete_file(filesystem_path)
-        
-        # Delete from database
-        result = await DBFileService.delete_file(session, file_id)
-        if not result:
-            logger.warning(f"Failed to delete file from database for id: {file_id}")
-
-        # Remove from LlamaIndex
-        result = await self.llama_index.remove_document(filesystem_path)
-        if result is None:
-            logger.warning(f"Failed to delete document from LlamaIndex for path: {filesystem_path}")
-
-    async def delete_folder(self, session: Session, folder_id: int):
-        folder = DBFileService.get_folder(session, folder_id)
-        if not folder:
-            raise HTTPException(status_code=404, detail="Folder not found")
-
-        # Get all files in folder and subfolders recursively
-        files = DBFileService.get_folder_files_recursive(session, folder_id)
-        
-        # Delete all files in the folder and subfolders
-        for file in files:
-            # Use our delete_file method to delete from filesystem and LlamaIndex
-            await self.delete_file(session, file.id)
-
-        # Delete folder and all subfolders from filesystem
-        await self.file_system.delete_folder(folder.path)
-
-        # Delete folder from database (will cascade delete files and subfolders)
-        DBFileService.delete_folder(session, folder_id)
-
-    async def rename_file(self, session: Session, file_id: int, new_name: str):
-        file = DBFileService.get_file(session, file_id)
-        if not file:
-            raise HTTPException(status_code=404, detail="File not found")
-
-        # Rename in filesystem
-        new_path = await self.file_system.rename_file(file.path, new_name)
-        
-        # Update database
-        updated_file = DBFileService.update_file(session, file_id, new_name, new_path)
-        if not updated_file:
-            raise HTTPException(status_code=500, detail="Failed to update file in database")
-
-        # Update in LlamaIndex
-        await self.llama_index.update_document(str(file_id), {
-            "metadata": {"filename": new_name, "path": new_path}
-        }) 
-
-    async def download_folder(self, session: Session, folder_id: int) -> Dict[str, Any]:
+    async def delete_file(self, session: Session, path: str):
         try:
-            folder = DBFileService.get_folder(session, folder_id)
+            file = self.db_file_service.get_file(session, path)
+            if not file:
+                raise HTTPException(status_code=404, detail="File not found")
+
+            # Delete from filesystem with idapt_data prefix
+            await self.file_system.delete_file(path)
+            
+            # Delete from database
+            result = self.db_file_service.delete_file(session, path)
+            if not result:
+                self.logger.warning(f"Failed to delete file from database for path: {path}")
+
+            # Remove from LlamaIndex
+            self.llama_index.delete_file(path)
+
+        except Exception as e:
+            self.logger.error(f"Error deleting file: {str(e)}")
+            raise
+
+    async def delete_folder(self, session: Session, path: str):
+        try:
+            folder = self.db_file_service.get_folder(session, path)
+            if not folder:
+                raise HTTPException(status_code=404, detail="Folder not found")
+
+            # Get all files in folder and subfolders recursively
+            files, _ = self.db_file_service.get_folder_files_recursive(session, path)
+            
+            # Delete all files in the folder and subfolders
+            for file in files:
+                # Use our delete_file method to delete from filesystem and LlamaIndex
+                await self.delete_file(session, file.path)
+
+            # Delete folder and all subfolders from filesystem
+            await self.file_system.delete_folder(folder.path)
+
+            # Delete folder from database (will cascade delete files and subfolders)
+            self.db_file_service.delete_folder(session, path)
+
+        except Exception as e:
+            self.logger.error(f"Error deleting folder: {str(e)}")
+            raise
+
+    async def rename_file(self, session: Session, path: str, new_name: str):
+        try:
+            file = self.db_file_service.get_file(session, path)
+            if not file:
+                raise HTTPException(status_code=404, detail="File not found")
+
+            # Rename in filesystem
+            await self.file_system.rename_file(path, new_name)
+            
+            new_path = file.path.replace(file.name, new_name)
+            # Update database
+            updated_file = self.db_file_service.update_file(session, path, new_path)
+            if not updated_file:
+                raise HTTPException(status_code=500, detail="Failed to update file in database")
+
+            # Update in LlamaIndex
+            await self.llama_index.rename_file(old_path=path, new_path=new_path) 
+
+        except Exception as e:
+            self.logger.error(f"Error renaming file: {str(e)}")
+            raise
+
+    async def download_folder(self, session: Session, path: str) -> Dict[str, Any]:
+        try:
+            # Get folder from database
+            folder = self.db_file_service.get_folder(session, path)
             if not folder:
                 raise HTTPException(status_code=404, detail="Folder not found")
             
             # Create a memory buffer for the zip file
             zip_buffer = BytesIO()
             
+            # Create zip file
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 # Get all files recursively
-                files = DBFileService.get_folder_files_recursive(session, folder_id)
+                files, _ = self.db_file_service.get_folder_files_recursive(session, path)
                 
+                # Iterate over all retrieved files
                 for file in files:
                     # Calculate relative path within the zip
-                    relative_path = file.path.replace(folder.path + '/', '')
+                    relative_path = os.path.relpath(file.path, folder.path)
                     
                     # Read file content
-                    file_path = Path(os.getenv("STORAGE_PATH", "")) / "/idapt_data" / file.path
-                    if file_path.exists():
-                        with open(file_path, 'rb') as f:
-                            zip_file.writestr(relative_path, f.read())
+                    file_content = await self.file_system.read_file(file.path)
+
+                    # Write file content to zip
+                    if file_content:
+                        zip_file.writestr(relative_path, file_content)
             
             # Get the zip content
             zip_buffer.seek(0)
@@ -288,40 +254,25 @@ class FileManagerService:
             }
             
         except Exception as e:
-            logger.error(f"Error creating folder zip: {str(e)}")
+            self.logger.error(f"Error creating folder zip: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error creating folder zip: {str(e)}")
+
+    def get_folder_contents(self, session: Session, path: str | None) -> Tuple[List[File], List[Folder]]:
+        """Get contents of a specific folder"""
+        try:
+            return self.db_file_service.get_folder_contents(session, path)
+        except Exception as e:
+            self.logger.error(f"Error getting folder contents: {str(e)}")
             raise
-
-def convert_filesystem_path_to_db_path(full_path: str | Path) -> str:
-    """
-    Normalize a full path by removing the DATA_DIR prefix and leading slashes.
-    
-    Args:
-        full_path: The full path to normalize (can be string or Path object)
-        
-    Returns:
-        str: Normalized path relative to DATA_DIR
-    """
-    from app.config import DATA_DIR
-    return str(full_path).replace(str(DATA_DIR), '').lstrip('/')
-
-def convert_db_path_to_filesystem_path(path: str) -> str:
-    try:
-        from app.config import DATA_DIR
-        return str(Path(DATA_DIR) / path)
-    except Exception as e:
-        logger.error(f"Error converting db path to filesystem path: {str(e)}")
-        raise
-
-def _sanitize_file_name(file_name: str) -> str:
-    """
-    Sanitize the file name by replacing all non-alphanumeric characters with underscores
-    """
-    sanitized_name = re.sub(r"[^a-zA-Z0-9.]", "_", file_name)
-    return sanitized_name
-
-def _preprocess_base64_file(base64_content: str) -> Tuple[bytes, str | None]:
-    header, data = base64_content.split(",", 1)
-    mime_type = header.split(";")[0].split(":", 1)[1]
-    extension = mimetypes.guess_extension(mime_type).lstrip(".")
-    # File data as bytes
-    return base64.b64decode(data), extension
+                    
+    def preprocess_base64_file(self, base64_content: str) -> Tuple[bytes, str | None]:
+        """ Decode base64 file content and return the file data and extension """
+        try:
+            header, data = base64_content.split(",", 1)
+            mime_type = header.split(";")[0].split(":", 1)[1]
+            extension = mimetypes.guess_extension(mime_type).lstrip(".")
+            # File data as bytes
+            return base64.b64decode(data), extension
+        except Exception as e:
+            self.logger.error(f"Error preprocessing base64 file: {str(e)}")
+            raise

@@ -1,7 +1,5 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Text, DateTime, func, JSON, UniqueConstraint, Index, Table
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, func
 from sqlalchemy.orm import relationship, declarative_base
-from sqlalchemy.ext.declarative import declared_attr
-from pgvector.sqlalchemy import Vector
 
 Base = declarative_base()
 

@@ -12,14 +12,16 @@ import { useState } from "react";
 import { useClientConfig } from "../chat/hooks/use-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { Input } from "../input";
+import { encodePathSafe } from "@/app/utils/path-encoding";
 
 interface FileItemProps {
   id: number;
   name: string;
   type: "file" | "folder";
   size?: string;
-  modified?: string;
-  path?: string;
+  modified: string;
+  path: string;
+  mimeType?: string;
   onClick?: () => void;
   onRefresh?: () => void;
   viewMode?: 'grid' | 'list';
@@ -31,10 +33,11 @@ export function FileItem({
   type, 
   size, 
   modified, 
-  path, 
+  path,
+  mimeType,
   onClick, 
   onRefresh,
-  viewMode = 'list' 
+  viewMode = 'list'
 }: FileItemProps) {
   const { backend } = useClientConfig();
   const [isRenaming, setIsRenaming] = useState(false);
@@ -49,57 +52,74 @@ export function FileItem({
   };
 
   const handleDownload = async () => {
-    try {
-      let response;
-      if (type === 'folder') {
-        response = await fetch(`${backend}/api/file-manager/download-folder/${id}`);
-      } else {
-        response = await fetch(`${backend}/api/file-manager/download/${id}`);
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Download failed:', error);
+    const encodedPath = encodePathSafe(path);
+    const response = await fetch(`${backend}/api/file-manager/${type}/${encodedPath}/download`, {
+      method: 'GET',
+    });
+    
+    // Download the file or folder zip with the right file or folder name
+    if (!response.ok) {
+      throw new Error('Download failed');
     }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // Use original name with .zip extension for folders
+    a.download = type === 'folder' ? `${name}.zip` : name;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   };
 
   const handleDelete = async () => {
+    if (!path) return;
+    
     if (confirm(`Are you sure you want to delete ${name}?`)) {
       try {
-        const response = await fetch(`${backend}/api/file-manager/${type}/${id}`, {
-          method: 'DELETE',
+        const encodedPath = encodePathSafe(path);
+        const response = await fetch(`${backend}/api/file-manager/${type}/${encodedPath}`, {
+          method: 'DELETE'
         });
         if (response.ok) {
           onRefresh?.();
+        } else {
+          throw new Error('Delete failed');
         }
       } catch (error) {
         console.error('Delete failed:', error);
+        alert('Failed to delete item');
       }
     }
   };
 
   const handleRename = async () => {
+    if (!path || newName === name) {
+      setIsRenaming(false);
+      return;
+    }
+
     try {
-      const response = await fetch(`${backend}/api/file-manager/${type}/${id}/rename`, {
+      const encodedPath = encodePathSafe(path);
+      const response = await fetch(`${backend}/api/file-manager/${type}/${encodedPath}/rename`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ newName }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          new_name: newName
+        }),
       });
+
       if (response.ok) {
-        setIsRenaming(false);
         onRefresh?.();
+        setIsRenaming(false);
+      } else {
+        throw new Error('Rename failed');
       }
     } catch (error) {
       console.error('Rename failed:', error);
+      alert('Failed to rename item');
     }
   };
 
