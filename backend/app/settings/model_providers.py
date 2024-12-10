@@ -18,6 +18,7 @@ def init_integrated_ollama_embedding():
     return OllamaEmbedding(
         base_url=AppSettings.integrated_ollama_embedding_host,
         model_name=AppSettings.ollama_embedding_model,
+        embed_batch_size=2048
     )
 
 def init_custom_ollama_embedding():
@@ -25,6 +26,7 @@ def init_custom_ollama_embedding():
     return OllamaEmbedding(
         base_url=AppSettings.custom_ollama_embedding_host,
         model_name=AppSettings.ollama_embedding_model,
+        embed_batch_size=2048
     )
 
 def init_integrated_ollama_llm():
@@ -63,6 +65,7 @@ def init_openai_embedding():
     return OpenAIEmbedding(
         model=AppSettings.openai_embedding_model,
         dimensions=int(dimensions) if dimensions is not None else None,
+        embed_batch_size=2048
     )
 
 def init_openai_llm():
@@ -104,6 +107,7 @@ def init_azure_openai_embedding():
         model=AppSettings.azure_openai_embedding_model,
         dimensions=int(dimensions) if dimensions is not None else None,
         deployment_name=embedding_deployment,
+        embed_batch_size=2048,
         **_get_azure_config(),
     )
 
@@ -133,7 +137,10 @@ def init_fastembed_embedding():
     if embedding_model is None:
         raise ValueError("embedding_model is not set")
 
-    return FastEmbedEmbedding(model_name=AppSettings.fastembed_embedding_model)
+    return FastEmbedEmbedding(
+        model_name=AppSettings.fastembed_embedding_model,
+        embed_batch_size=2048
+    )
 
 def init_groq_llm():
     try:
@@ -142,7 +149,10 @@ def init_groq_llm():
         raise ImportError(
             "Groq support is not installed. Please install it with `poetry add llama-index-llms-groq`"
         )
-    return Groq(model=AppSettings.groq_model, system_prompt=AppSettings.system_prompt)
+    return Groq(
+        model=AppSettings.groq_model,
+        system_prompt=AppSettings.system_prompt,
+    )
 
 def init_anthropic_llm():
     try:
@@ -152,7 +162,10 @@ def init_anthropic_llm():
             "Anthropic support is not installed. Please install it with `poetry add llama-index-llms-anthropic`"
         )
 
-    return Anthropic(model=AppSettings.anthropic_model, system_prompt=AppSettings.system_prompt)
+    return Anthropic(
+        model=AppSettings.anthropic_model,
+        system_prompt=AppSettings.system_prompt,
+    )
 
 def _get_gemini_imports():
     """Helper function to import Gemini-related modules"""
@@ -167,11 +180,16 @@ def _get_gemini_imports():
 
 def init_gemini_embedding():
     GeminiEmbedding, _ = _get_gemini_imports()
-    return GeminiEmbedding(model_name=AppSettings.gemini_embedding_model)
+    return GeminiEmbedding(
+        model_name=AppSettings.gemini_embedding_model,
+        embed_batch_size=2048
+    )
 
 def init_gemini_llm():
     _, Gemini = _get_gemini_imports()
-    return Gemini(model=AppSettings.gemini_model)
+    return Gemini(
+        model=AppSettings.gemini_model,
+    )
 
 def _get_mistral_imports():
     """Helper function to import Mistral-related modules"""
@@ -186,11 +204,17 @@ def _get_mistral_imports():
 
 def init_mistral_embedding():
     MistralAIEmbedding, _ = _get_mistral_imports()
-    return MistralAIEmbedding(model_name=AppSettings.mistral_embedding_model)
+    return MistralAIEmbedding(
+        model_name=AppSettings.mistral_embedding_model,
+        embed_batch_size=2048
+    )
 
 def init_mistral_llm():
     _, MistralAI = _get_mistral_imports()
-    return MistralAI(model=AppSettings.mistral_model, system_prompt=AppSettings.system_prompt)
+    return MistralAI(
+        model=AppSettings.mistral_model,
+        system_prompt=AppSettings.system_prompt,
+    )
 
 def _get_tgi_imports():
     """Helper function to import TGI-related modules"""
@@ -228,5 +252,5 @@ def init_tei_embedding():
     return TextEmbeddingsInference(
         base_url=AppSettings.tei_host,
         model_name=AppSettings.tei_model,
-        embed_batch_size=10 
+        embed_batch_size=2048 
     )
