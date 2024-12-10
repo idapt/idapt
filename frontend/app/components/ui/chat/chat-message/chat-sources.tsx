@@ -22,16 +22,24 @@ export function ChatSources({ data }: { data: SourceData }) {
     // group nodes by document (a document must have a URL)
     const nodesByUrl: Record<string, SourceNode[]> = {};
     data.nodes.forEach((node) => {
+      // Skip nodes with empty or invalid URLs
+      if (!node.url || node.url.trim() === '') {
+        return;
+      }
       const key = node.url;
       nodesByUrl[key] ??= [];
       nodesByUrl[key].push(node);
     });
 
     // convert to array of documents
-    return Object.entries(nodesByUrl).map(([url, sources]) => ({
-      url,
-      sources,
-    }));
+    return Object.entries(nodesByUrl)
+      .filter(([url]) => url && url.trim() !== '') // Additional URL validation
+      .map(([url, sources]) => ({
+        url,
+        sources,
+        // Add timestamp to ensure uniqueness across streaming updates
+        id: `${url}-${sources.map(s => s.id).join('-')}-${Date.now()}-${Math.random()}`
+      }));
   }, [data.nodes]);
 
   if (documents.length === 0) return null;
@@ -40,14 +48,12 @@ export function ChatSources({ data }: { data: SourceData }) {
     <div className="space-y-2 text-sm">
       <div className="font-semibold text-lg">Sources:</div>
       <div className="flex gap-3 flex-wrap">
-        {documents.map((document, index) => {
-          return (
-            <DocumentInfo 
-              key={`${document.url}-${index}`}
-              document={document} 
-            />
-          );
-        })}
+        {documents.map((document) => (
+          <DocumentInfo 
+            key={document.id}
+            document={document} 
+          />
+        ))}
       </div>
     </div>
   );
@@ -118,7 +124,7 @@ export function DocumentInfo({
       <PreviewCard className={"cursor-pointer"} file={previewFile} />
       <div className="absolute bottom-2 right-2 space-x-2 flex">
         {sources.map((node: SourceNode, index: number) => (
-          <div key={node.id}>
+          <div key={`${node.id}-${index}-${document.id}`}>
             <SourceInfo node={node} index={index} />
           </div>
         ))}
