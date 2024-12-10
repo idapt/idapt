@@ -125,33 +125,43 @@ class GenerateService:
             raise e
 
     async def _process_queue(self):
-        """Process items in the queue one at a time"""        
+        """Process items in the queue by batching those with same transformation stacks"""
         while True:
             try:
                 if self._queue.empty():
                     await asyncio.sleep(1)
                     continue
 
-                # Get the next file from the queue
-                queue_item = await self._queue.get()
-                full_file_path = queue_item["path"]
-                transformations_stack_name_list = queue_item.get("transformations_stack_name_list", ["default"])
+                # Get all current items from queue
+                current_batch = {}
+                current_size = self._queue.qsize()
                 
-                logger.info(f"Processing file {full_file_path} from generation queue with stacks {transformations_stack_name_list}")
+                # Group items by transformation stack
+                for _ in range(current_size):
+                    item = await self._queue.get()
+                    stack_key = tuple(sorted(item["transformations_stack_name_list"]))
+                    if stack_key not in current_batch:
+                        current_batch[stack_key] = []
+                    current_batch[stack_key].append(item["path"])
+                    self._queue.task_done()
 
-                # Run the ingestion pipeline on the file with multiple transformation stacks
-                await self.ingestion_pipeline_service.ingest_file(
-                    full_file_path=full_file_path,
-                    logger=logger,
-                    transformations_stack_name_list=transformations_stack_name_list
-                )
-
-                self._queue.task_done()
-                self._save_queue_to_disk()
+                # Process each batch with same transformation stack
+                for stack_list, file_paths in current_batch.items():
+                    logger.info(f"Processing batch of {len(file_paths)} files with transformation stacks {list(stack_list)}")
                     
-                logger.info(f"Successfully processed file {full_file_path}")
+                    try:
+                        await self.ingestion_pipeline_service.ingest_files(
+                            full_file_paths=file_paths,
+                            logger=logger,
+                            transformations_stack_name_list=list(stack_list)
+                        )
+                    except Exception as e:
+                        logger.error(f"Error processing batch with stacks {list(stack_list)}: {str(e)}")
+
+                self._save_queue_to_disk()
+
             except Exception as e:
-                logger.error(f"Error processing file {full_file_path}: {str(e)}")
+                logger.error(f"Error in queue processing: {str(e)}")
 
             await asyncio.sleep(0.1)
 

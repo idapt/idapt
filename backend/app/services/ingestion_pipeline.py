@@ -42,7 +42,7 @@ class IngestionPipelineService:
         "hierarchical": [
             HierarchicalNodeParser.from_defaults(
                 include_metadata=True,
-                chunk_sizes=[512, 128, 64], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum size
+                chunk_sizes=[512, 256, 64], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum size, we also chunk it into The smallest sentences possible to capture as much atomic meaning of the sentence as possible.
                 chunk_overlap=0
             ),
             Settings.embed_model,
@@ -108,22 +108,28 @@ class IngestionPipelineService:
         self.ingestion_pipeline = self._create_ingestion_pipeline()
 
 
-    async def ingest_file(self, full_file_path: str, logger: logging.Logger, transformations_stack_name_list: List[str]):
+    async def ingest_files(self, full_file_paths: List[str], logger: logging.Logger, transformations_stack_name_list: List[str]):
         try:
-            logger.info(f"Starting ingestion pipeline for file {full_file_path}")
+            logger.info(f"Starting batch ingestion pipeline for {len(full_file_paths)} files")
             
-            logger.info(f"Using SimpleDirectoryReader to read file {full_file_path}")
-            # Use SimpleDirectoryReader to read the only the file
+            # Read all files in batch
             reader = SimpleDirectoryReader(
-                input_files=[full_file_path],
+                input_files=full_file_paths,
                 filename_as_id=True,
                 raise_on_error=True,
             )
             documents = reader.load_data()
 
+            # Remove the metadata created by the file reader that we dont want to embed and llm
+            for doc in documents:
+                doc.excluded_embed_metadata_keys = ["file_path","file_name", "file_type", "file_size", "creation_date", "last_modified_date", "document_id", "doc_id", "ref_doc_id"]
+                doc.excluded_llm_metadata_keys = ["file_path","file_name", "file_type", "file_size", "creation_date", "last_modified_date", "document_id", "doc_id", "ref_doc_id"]
+
             # Set the origin metadata of the document
             for doc in documents:
                 doc.metadata["origin"] = "upload"
+                doc.excluded_embed_metadata_keys.append("origin")
+                doc.excluded_llm_metadata_keys.append("origin")
             
             # For each transformations stack we need to apply
             for transformations_stack_name in transformations_stack_name_list:
@@ -134,6 +140,8 @@ class IngestionPipelineService:
                 # Set the transformations stack name for the documents
                 for doc in documents:   
                     doc.metadata["transformations_stack_name"] = transformations_stack_name
+                    doc.excluded_embed_metadata_keys.append("transformations_stack_name")
+                    doc.excluded_llm_metadata_keys.append("transformations_stack_name")
 
                 # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
                 if transformations_stack_name == "hierarchical":
@@ -150,8 +158,8 @@ class IngestionPipelineService:
                     nodes = await self.ingestion_pipeline.arun(
                         nodes=nodes,
                         show_progress=True,
-                        docstore_strategy=DocstoreStrategy.UPSERTS,
-
+                        docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
+                        num_workers=16
                     )
                     # Insert nodes into index
                     StorageContextSingleton().index.insert_nodes(nodes)
@@ -165,7 +173,9 @@ class IngestionPipelineService:
                     self.ingestion_pipeline.transformations = transformations
                     nodes = await self.ingestion_pipeline.arun(
                         documents=documents,
-                        show_progress=True
+                        show_progress=True,
+                        docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
+                        num_workers=16
                     )
                     # Insert nodes into index
                     StorageContextSingleton().index.insert_nodes(nodes)
