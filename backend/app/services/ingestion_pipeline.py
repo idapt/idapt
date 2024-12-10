@@ -43,7 +43,8 @@ class IngestionPipelineService:
         "hierarchical": [
             HierarchicalNodeParser.from_defaults(
                 include_metadata=True,
-                chunk_sizes=[2048, 1024, 512, 128]
+                chunk_sizes=[512, 128, 64], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum size
+                chunk_overlap=0
             ),
             Settings.embed_model,
         ],
