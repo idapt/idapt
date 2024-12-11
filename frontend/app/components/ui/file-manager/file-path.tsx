@@ -10,7 +10,6 @@ interface FilePathProps {
 }
 
 export function FilePath({ currentPath, onNavigate }: FilePathProps) {
-  console.log("currentPath", currentPath);
   const pathParts = currentPath ? currentPath.split('/').filter(Boolean) : [];
   
   return (

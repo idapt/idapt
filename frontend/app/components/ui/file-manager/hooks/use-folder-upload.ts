@@ -19,8 +19,6 @@ export function useFolderUpload() {
     const uploadItems = [];
     const filePaths = [];
 
-    console.log('Files to upload:', files);
-
     for (const file of files) {
       const relativePath = file.webkitRelativePath;
       const fullPath = targetPath ? `${targetPath}/${relativePath}` : relativePath;
