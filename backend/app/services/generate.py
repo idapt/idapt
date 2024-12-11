@@ -205,7 +205,7 @@ class GenerateService:
             except Exception as e:
                 logger.error(f"Queue processing error: {str(e)}")
             
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(1)
 
     async def _persist_remaining_items(self, items: List[dict]):
         """Persist the remaining items to disk"""
