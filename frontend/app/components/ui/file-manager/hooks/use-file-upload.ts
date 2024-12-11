@@ -1,5 +1,6 @@
 import { useUpload } from '../../chat/hooks/use-upload';
 import { useGenerate } from '../hooks/use-generate';
+import { compressData, arrayBufferToBase64 } from '../utils/compression';
 
 interface FileUploadOptions {
   onProgress?: (progress: number) => void;
@@ -21,14 +22,18 @@ export function useFileUpload() {
     try {
       const filePath = folderId ? `${folderId}/${file.name}` : file.name;
       
+      // Compress the file content
+      const compressed = compressData(content);
+      const compressedBase64 = arrayBufferToBase64(compressed);
+      
       await upload([{
         path: filePath,
-        content,
-        is_folder: false,
+        content: `data:${file.type};base64,${compressedBase64}`,
         name: file.name,
         mime_type: file.type,
         original_created_at: file.lastModified.toString(),
-        original_modified_at: file.lastModified.toString()
+        original_modified_at: file.lastModified.toString(),
+        //compressed: true // Add flag to indicate compression
       }], true);
 
       await generate([{

@@ -1,7 +1,7 @@
 import { FolderContentsResponse, File, Folder } from '@/app/types/files';
 import { useCallback, useEffect, useState } from 'react';
 import { useClientConfig } from '../../chat/hooks/use-config';
-import { encodePathSafe } from '@/app/utils/path-encoding';
+import { encodePathSafe } from '@/app/components/ui/file-manager/utils/path-encoding';
 
 export function useFileManager() {
   const { backend } = useClientConfig();

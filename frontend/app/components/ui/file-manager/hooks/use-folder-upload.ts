@@ -1,5 +1,6 @@
 import { useUpload } from "../../chat/hooks/use-upload";
 import { useGenerate, GenerateFile } from "../hooks/use-generate";
+import { compressData, arrayBufferToBase64 } from "../utils/compression";
 
 interface FolderUploadOptions {
   onProgress?: (progress: number) => void;
@@ -32,13 +33,19 @@ export function useFolderUpload() {
         reader.onload = () => resolve(reader.result as string);
         reader.readAsDataURL(file);
       });
+
+      // Compress the file content
+      const compressed = compressData(content);
+      const compressedBase64 = arrayBufferToBase64(compressed);
+
       uploadItems.push({
         path: fullPath,
-        content,
+        content: `data:${file.type};base64,${compressedBase64}`,
         name: file.name,
         mime_type: file.type,
         original_created_at: file.lastModified.toString(),
-        original_modified_at: file.lastModified.toString()
+        original_modified_at: file.lastModified.toString(),
+        //compressed: true // Add flag to indicate compression
       });
     }
 

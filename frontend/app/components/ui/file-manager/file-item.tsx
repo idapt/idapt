@@ -12,7 +12,7 @@ import { useState } from "react";
 import { useClientConfig } from "../chat/hooks/use-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { Input } from "../input";
-import { encodePathSafe } from "@/app/utils/path-encoding";
+import { encodePathSafe } from "@/app/components/ui/file-manager/utils/path-encoding";
 
 interface FileItemProps {
   id: number;
