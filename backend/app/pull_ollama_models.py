@@ -14,7 +14,7 @@ def pull_ollama_models():
     from app.settings.app_settings import AppSettings
     
     # Pull LLM model first
-    if AppSettings.model_provider == "custom_ollama":
+    if AppSettings.llm_model_provider == "custom_ollama":
         base_url = AppSettings.custom_ollama_llm_host
     else:
         base_url = AppSettings.integrated_ollama_llm_host

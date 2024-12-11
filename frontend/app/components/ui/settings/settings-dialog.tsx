@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../select";
-import { AppSettings, MODEL_PROVIDER_OPTIONS, EMBEDDING_PROVIDER_OPTIONS, MODEL_OPTIONS, EMBEDDING_MODEL_OPTIONS } from "@/app/types/settings";
+import { AppSettings, LLM_MODEL_PROVIDER_OPTIONS, EMBEDDING_PROVIDER_OPTIONS, LLM_MODEL_OPTIONS, EMBEDDING_MODEL_OPTIONS } from "@/app/types/settings";
 import { getSettings, updateSettings } from "@/app/api/settings";
 
 interface SettingsDialogProps {
@@ -32,7 +32,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const isCustomModel = (provider: string, modelName: string): boolean => {
-    const predefinedModels = MODEL_OPTIONS[provider] || [];
+    const predefinedModels = LLM_MODEL_OPTIONS[provider] || [];
     return !predefinedModels.includes(modelName) || modelName === "custom";
   };
 
@@ -91,15 +91,15 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           <div className="space-y-2">
             <label className="text-sm font-medium">Model Provider</label>
             <Select
-              value={settings.model_provider}
-              onValueChange={(value) => setSettings({...settings, model_provider: value})}
+              value={settings.llm_model_provider}
+              onValueChange={(value) => setSettings({...settings, llm_model_provider: value})}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a model provider" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {MODEL_PROVIDER_OPTIONS.map((provider) => (
+                  {LLM_MODEL_PROVIDER_OPTIONS.map((provider) => (
                     <SelectItem key={provider} value={provider}>
                       {provider}
                     </SelectItem>
@@ -109,7 +109,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </Select>
           </div>
           {/* Only show the custom ollama host input if the model provider is custom_ollama */}
-          {settings.model_provider === "custom_ollama" && (
+          {settings.llm_model_provider === "custom_ollama" && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Custom Ollama Host</label>
               <Input
@@ -120,7 +120,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           )}
 
           {/* Only show the OpenAI API key input if the model provider is openai */}
-          {settings.model_provider === "openai" && (  
+          {settings.llm_model_provider === "openai" && (  
             <div className="space-y-2">
               <label className="text-sm font-medium">OpenAI API Key</label>
               <Input
@@ -132,7 +132,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           )}
 
           {/* Only show the Text Generation Inference host input if the model provider is text-generation-inference */}
-          {settings.model_provider === "text-generation-inference" && (
+          {settings.llm_model_provider === "text-generation-inference" && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Text Generation Inference Host</label>
               <Input
@@ -146,28 +146,28 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <label className="text-sm font-medium">Model</label>
             <Select
               value={
-                settings.model_provider === "integrated_ollama" ? (isCustomModel(settings.model_provider, settings.ollama_model) ? "custom" : settings.ollama_model) :
-                settings.model_provider === "custom_ollama" ? (isCustomModel(settings.model_provider, settings.ollama_model) ? "custom" : settings.ollama_model) :
-                settings.model_provider === "openai" ? (isCustomModel(settings.model_provider, settings.openai_model) ? "custom" : settings.openai_model) :
-                settings.model_provider === "anthropic" ? (isCustomModel(settings.model_provider, settings.anthropic_model) ? "custom" : settings.anthropic_model) :
-                settings.model_provider === "groq" ? (isCustomModel(settings.model_provider, settings.groq_model) ? "custom" : settings.groq_model) :
-                settings.model_provider === "gemini" ? (isCustomModel(settings.model_provider, settings.gemini_model) ? "custom" : settings.gemini_model) :
-                settings.model_provider === "mistral" ? (isCustomModel(settings.model_provider, settings.mistral_model) ? "custom" : settings.mistral_model) :
-                settings.model_provider === "azure-openai" ? (isCustomModel(settings.model_provider, settings.azure_openai_model) ? "custom" : settings.azure_openai_model) :
-                settings.model_provider === "text-generation-inference" ? (isCustomModel(settings.model_provider, settings.tgi_model) ? "custom" : settings.tgi_model) :
+                settings.llm_model_provider === "integrated_ollama" ? (isCustomModel(settings.llm_model_provider, settings.ollama_model) ? "custom" : settings.ollama_model) :
+                settings.llm_model_provider === "custom_ollama" ? (isCustomModel(settings.llm_model_provider, settings.ollama_model) ? "custom" : settings.ollama_model) :
+                settings.llm_model_provider === "openai" ? (isCustomModel(settings.llm_model_provider, settings.openai_model) ? "custom" : settings.openai_model) :
+                settings.llm_model_provider === "anthropic" ? (isCustomModel(settings.llm_model_provider, settings.anthropic_model) ? "custom" : settings.anthropic_model) :
+                settings.llm_model_provider === "groq" ? (isCustomModel(settings.llm_model_provider, settings.groq_model) ? "custom" : settings.groq_model) :
+                settings.llm_model_provider === "gemini" ? (isCustomModel(settings.llm_model_provider, settings.gemini_model) ? "custom" : settings.gemini_model) :
+                settings.llm_model_provider === "mistral" ? (isCustomModel(settings.llm_model_provider, settings.mistral_model) ? "custom" : settings.mistral_model) :
+                settings.llm_model_provider === "azure-openai" ? (isCustomModel(settings.llm_model_provider, settings.azure_openai_model) ? "custom" : settings.azure_openai_model) :
+                settings.llm_model_provider === "text-generation-inference" ? (isCustomModel(settings.llm_model_provider, settings.tgi_model) ? "custom" : settings.tgi_model) :
                 ""
               }
               onValueChange={(value) => {
                 const modelKey = 
-                  settings.model_provider === "integrated_ollama" ? "ollama_model" :
-                  settings.model_provider === "custom_ollama" ? "ollama_model" :
-                  settings.model_provider === "openai" ? "openai_model" :
-                  settings.model_provider === "anthropic" ? "anthropic_model" :
-                  settings.model_provider === "groq" ? "groq_model" :
-                  settings.model_provider === "gemini" ? "gemini_model" :
-                  settings.model_provider === "mistral" ? "mistral_model" :
-                  settings.model_provider === "azure-openai" ? "azure_openai_model" :
-                  settings.model_provider === "text-generation-inference" ? "tgi_model" :
+                  settings.llm_model_provider === "integrated_ollama" ? "ollama_model" :
+                  settings.llm_model_provider === "custom_ollama" ? "ollama_model" :
+                  settings.llm_model_provider === "openai" ? "openai_model" :
+                  settings.llm_model_provider === "anthropic" ? "anthropic_model" :
+                  settings.llm_model_provider === "groq" ? "groq_model" :
+                  settings.llm_model_provider === "gemini" ? "gemini_model" :
+                  settings.llm_model_provider === "mistral" ? "mistral_model" :
+                  settings.llm_model_provider === "azure-openai" ? "azure_openai_model" :
+                  settings.llm_model_provider === "text-generation-inference" ? "tgi_model" :
                   null;
                 
                 if (modelKey) {
@@ -191,7 +191,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  {MODEL_OPTIONS[settings.model_provider]?.map((model) => (
+                  {LLM_MODEL_OPTIONS[settings.llm_model_provider]?.map((model) => (
                     <SelectItem key={model} value={model}>
                       {model}
                     </SelectItem>
@@ -200,44 +200,44 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               </SelectContent>
             </Select>
 
-            {isCustomModel(settings.model_provider, 
-              settings.model_provider === "integrated_ollama" ? settings.ollama_model :
-              settings.model_provider === "custom_ollama" ? settings.ollama_model :
-              settings.model_provider === "openai" ? settings.openai_model :
-              settings.model_provider === "anthropic" ? settings.anthropic_model :
-              settings.model_provider === "groq" ? settings.groq_model :
-              settings.model_provider === "gemini" ? settings.gemini_model :
-              settings.model_provider === "mistral" ? settings.mistral_model :
-              settings.model_provider === "azure-openai" ? settings.azure_openai_model :
-              settings.model_provider === "text-generation-inference" ? settings.tgi_model :
+            {isCustomModel(settings.llm_model_provider, 
+              settings.llm_model_provider === "integrated_ollama" ? settings.ollama_model :
+              settings.llm_model_provider === "custom_ollama" ? settings.ollama_model :
+              settings.llm_model_provider === "openai" ? settings.openai_model :
+              settings.llm_model_provider === "anthropic" ? settings.anthropic_model :
+              settings.llm_model_provider === "groq" ? settings.groq_model :
+              settings.llm_model_provider === "gemini" ? settings.gemini_model :
+              settings.llm_model_provider === "mistral" ? settings.mistral_model :
+              settings.llm_model_provider === "azure-openai" ? settings.azure_openai_model :
+              settings.llm_model_provider === "text-generation-inference" ? settings.tgi_model :
               ""
             ) && (
               <div className="mt-2">
                 <Input
                   placeholder="Enter custom model name"
                   value={
-                    settings.model_provider === "integrated_ollama" ? settings.ollama_model :
-                    settings.model_provider === "custom_ollama" ? settings.ollama_model :
-                    settings.model_provider === "openai" ? settings.openai_model :
-                    settings.model_provider === "anthropic" ? settings.anthropic_model :
-                    settings.model_provider === "groq" ? settings.groq_model :
-                    settings.model_provider === "gemini" ? settings.gemini_model :
-                    settings.model_provider === "mistral" ? settings.mistral_model :
-                    settings.model_provider === "azure-openai" ? settings.azure_openai_model :
-                    settings.model_provider === "text-generation-inference" ? settings.tgi_model :
+                    settings.llm_model_provider === "integrated_ollama" ? settings.ollama_model :
+                    settings.llm_model_provider === "custom_ollama" ? settings.ollama_model :
+                    settings.llm_model_provider === "openai" ? settings.openai_model :
+                    settings.llm_model_provider === "anthropic" ? settings.anthropic_model :
+                    settings.llm_model_provider === "groq" ? settings.groq_model :
+                    settings.llm_model_provider === "gemini" ? settings.gemini_model :
+                    settings.llm_model_provider === "mistral" ? settings.mistral_model :
+                    settings.llm_model_provider === "azure-openai" ? settings.azure_openai_model :
+                    settings.llm_model_provider === "text-generation-inference" ? settings.tgi_model :
                     ""
                   }
                   onChange={(e) => {
                     const modelKey = 
-                      settings.model_provider === "integrated_ollama" ? "ollama_model" :
-                      settings.model_provider === "custom_ollama" ? "ollama_model" :
-                      settings.model_provider === "openai" ? "openai_model" :
-                      settings.model_provider === "anthropic" ? "anthropic_model" :
-                      settings.model_provider === "groq" ? "groq_model" :
-                      settings.model_provider === "gemini" ? "gemini_model" :
-                      settings.model_provider === "mistral" ? "mistral_model" :
-                      settings.model_provider === "azure-openai" ? "azure_openai_model" :
-                      settings.model_provider === "text-generation-inference" ? "tgi_model" :
+                      settings.llm_model_provider === "integrated_ollama" ? "ollama_model" :
+                      settings.llm_model_provider === "custom_ollama" ? "ollama_model" :
+                      settings.llm_model_provider === "openai" ? "openai_model" :
+                      settings.llm_model_provider === "anthropic" ? "anthropic_model" :
+                      settings.llm_model_provider === "groq" ? "groq_model" :
+                      settings.llm_model_provider === "gemini" ? "gemini_model" :
+                      settings.llm_model_provider === "mistral" ? "mistral_model" :
+                      settings.llm_model_provider === "azure-openai" ? "azure_openai_model" :
+                      settings.llm_model_provider === "text-generation-inference" ? "tgi_model" :
                       null;
                     
                     if (modelKey) {
@@ -428,7 +428,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           </div>
 
           {/* Only show the ollama request timeout input if the model provider is integrated_ollama or custom_ollama */}
-          {(settings.model_provider === "integrated_ollama" || settings.model_provider === "custom_ollama") && (
+          {(settings.llm_model_provider === "integrated_ollama" || settings.llm_model_provider === "custom_ollama") && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Ollama Request Timeout (s)</label>
               <Input
@@ -440,7 +440,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           )}
 
           {/* Only show the Text Generation Inference request timeout input if the model provider is text-generation-inference */}
-          {settings.model_provider === "text-generation-inference" && (
+          {settings.llm_model_provider === "text-generation-inference" && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Text Generation Inference Request Timeout (s)</label>
               <Input

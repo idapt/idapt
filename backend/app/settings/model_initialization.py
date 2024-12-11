@@ -7,8 +7,8 @@ from app.settings.model_providers import *
 
 def init_llm():
     """Initialize LLM based on model provider setting"""
-    model_provider = AppSettings.model_provider
-    match model_provider:
+    llm_model_provider = AppSettings.llm_model_provider
+    match llm_model_provider:
         case "openai":
             return init_openai_llm()
         case "groq":
@@ -31,7 +31,7 @@ def init_llm():
             from .llmhub import init_llmhub_llm
             return init_llmhub_llm()
         case _:
-            raise ValueError(f"Invalid model provider: {model_provider}")
+            raise ValueError(f"Invalid model provider: {llm_model_provider}")
 
 def init_embedding_model():
     """Initialize embedding model based on embedding_model_provider setting"""
@@ -58,7 +58,7 @@ def init_embedding_model():
 
 def get_current_model_name():
     """Get the current model name based on the provider"""
-    provider = AppSettings.model_provider
+    provider = AppSettings.llm_model_provider
     model_attr = f"{provider.replace('-', '_')}_model"
     return getattr(AppSettings, model_attr)
 

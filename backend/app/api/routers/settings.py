@@ -5,7 +5,7 @@ from app.settings.app_settings import AppSettings
 settings_router = r = APIRouter()
 
 class AppSettingsModel(BaseModel):
-    model_provider: str
+    llm_model_provider: str
     ollama_model: str
     openai_model: str
     anthropic_model: str
@@ -37,7 +37,7 @@ class AppSettingsModel(BaseModel):
 async def get_settings() -> AppSettingsModel:
     """Get current application settings"""
     return AppSettingsModel(
-        model_provider=AppSettings.model_provider,
+        llm_model_provider=AppSettings.llm_model_provider,
         ollama_model=AppSettings.ollama_model,
         openai_model=AppSettings.openai_model,
         anthropic_model=AppSettings.anthropic_model,
@@ -71,7 +71,7 @@ async def update_settings(settings: AppSettingsModel):
     """Update application settings"""
     try:
         AppSettings.update(
-            model_provider=settings.model_provider,
+            llm_model_provider=settings.llm_model_provider,
             ollama_model=settings.ollama_model,
             openai_model=settings.openai_model,
             anthropic_model=settings.anthropic_model,

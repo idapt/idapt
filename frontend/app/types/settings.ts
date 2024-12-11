@@ -1,5 +1,5 @@
 export interface AppSettings {
-  model_provider: string;
+  llm_model_provider: string;
   ollama_model: string;
   openai_model: string;
   anthropic_model: string;
@@ -30,7 +30,7 @@ export interface AppSettings {
   custom_ollama_embedding_host: string;
 }
 
-export const MODEL_PROVIDER_OPTIONS = [
+export const LLM_MODEL_PROVIDER_OPTIONS = [
   "integrated_ollama",
   "custom_ollama",
   "openai",
@@ -42,7 +42,7 @@ export const MODEL_PROVIDER_OPTIONS = [
   "azure-openai",
 ] as const;
 
-export const MODEL_OPTIONS: Record<string, string[]> = {
+export const LLM_MODEL_OPTIONS: Record<string, string[]> = {
   integrated_ollama: ["llama3.1:8b", "mistral:7b", "mixtral:8x7b", "phi:latest", "custom"],
   custom_ollama: ["llama3.1:8b", "mistral:7b", "mixtral:8x7b", "phi:latest", "custom"],
   openai: ["gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo", "custom"],

@@ -58,7 +58,7 @@ def create_app() -> FastAPI:
     from app.settings.app_settings import AppSettings
 
     # Pull Ollama models currently set in app settings if needed
-    if AppSettings.model_provider == "integrated_ollama" or AppSettings.model_provider == "custom_ollama":
+    if AppSettings.llm_model_provider == "integrated_ollama" or AppSettings.llm_model_provider == "custom_ollama":
         from app.pull_ollama_models import start_ollama_pull_thread
         start_ollama_pull_thread()
         

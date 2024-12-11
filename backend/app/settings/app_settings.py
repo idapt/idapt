@@ -18,7 +18,7 @@ SETTINGS_FILE = APP_CONFIG_DIR / "app-settings.json"
 class _AppSettings:
     """Application settings with JSON persistence."""
     
-    model_provider: str = "integrated_ollama"
+    llm_model_provider: str = "integrated_ollama"
     
     # Model names for each provider
     ollama_model: str = "llama3.1:8b"
@@ -30,11 +30,11 @@ class _AppSettings:
     azure_openai_model: str = "gpt-4"
     tgi_model: str = "llama3.1"
 
-    # Used when model_provider is integrated_ollama and cant be changed
+    # Used when llm_model_provider is integrated_ollama and cant be changed
     integrated_ollama_llm_host: str = "http://idapt-nginx:3030/integrated-ollama"
-    # Used when model_provider is custom_ollama defaults to localhost
+    # Used when llm_model_provider is custom_ollama defaults to localhost
     custom_ollama_llm_host: str = "http://idapt-nginx:3030/local-ollama" # Use this if you want to use the local ollama instance running on the localhost at port 11434
-    # Used when model_provider is text-generation-inference
+    # Used when llm_model_provider is text-generation-inference
     tgi_host: str = ""
 
     # Set to big by default to avoid timeouts
@@ -130,7 +130,7 @@ class _AppSettings:
         update_llama_index_settings_from_app_settings()
 
         # Pull Ollama models currently set in app settings if needed
-        if self.model_provider == "integrated_ollama" or self.model_provider == "custom_ollama":
+        if self.llm_model_provider == "integrated_ollama" or self.llm_model_provider == "custom_ollama":
             from app.pull_ollama_models import start_ollama_pull_thread
             start_ollama_pull_thread()
 
