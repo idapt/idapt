@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
+import { decompressData } from '../../file-manager/utils/compression';
 
 interface FileUploadProgress {
   total: number;
@@ -27,12 +28,22 @@ export function useUpload() {
 
   const upload = async (items: FileUploadItem[], skipConflictCheck: boolean = false) => {
     try {
+      // Decompress items before sending to backend
+      const decompressedItems = items.map(item => {
+        const [header, base64Data] = item.content.split(',');
+        const decompressedBase64 = decompressData(base64Data);
+        return {
+          ...item,
+          content: `${header},${decompressedBase64}`
+        };
+      });
+
       if (!skipConflictCheck) {
         // First check for conflicts
         const conflictsResponse = await fetch(`${backend}/api/file-manager/check-conflicts`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items }),
+          body: JSON.stringify({ items: decompressedItems }),
         });
         
         const conflicts = await conflictsResponse.json();
@@ -42,7 +53,7 @@ export function useUpload() {
       const response = await fetch(`${backend}/api/file-manager/upload${conflictResolution ? `?conflict_resolution=${conflictResolution}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items: decompressedItems }),
       });
 
       if (!response.ok) {
