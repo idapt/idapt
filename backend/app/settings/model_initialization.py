@@ -1,69 +1,47 @@
-from typing import Dict
-import os
-from llama_index.core.settings import Settings
-from llama_index.core.constants import DEFAULT_TEMPERATURE
-from app.settings.app_settings import AppSettings
+from app.settings.manager import SettingsManager
+from app.settings.models import *
 from app.settings.model_providers import *
 
 def init_llm():
     """Initialize LLM based on model provider setting"""
-    llm_model_provider = AppSettings.llm_model_provider
-    match llm_model_provider:
+    settings = SettingsManager.get_instance().settings
+    match settings.llm_model_provider:
         case "openai":
-            return init_openai_llm()
-        case "groq":
-            return init_groq_llm()
-        case "integrated_ollama":
-            return init_integrated_ollama_llm()
+            return init_openai_llm(settings.openai, settings.temperature, settings.system_prompt)
+        #case "groq":
+        #    return init_groq_llm(settings.llm.groq_model, settings.system_prompt)
         case "custom_ollama":
-            return init_custom_ollama_llm()
+            return init_ollama_llm(settings.custom_ollama, settings.temperature, settings.system_prompt)
         case "text-generation-inference":
-            return init_tgi_llm()
-        case "anthropic":
-            return init_anthropic_llm()
-        case "gemini":
-            return init_gemini_llm()
-        case "mistral":
-            return init_mistral_llm()
-        case "azure-openai":
-            return init_azure_openai_llm()
-        case "t-systems":
-            from .llmhub import init_llmhub_llm
-            return init_llmhub_llm()
+            return init_tgi_llm(settings.tgi, settings.temperature, settings.system_prompt)
+        #case "anthropic":
+        #    return init_anthropic_llm(settings.llm.anthropic_model, settings.system_prompt)
+        #case "gemini":
+        #    return init_gemini_llm(settings.llm.gemini_model, settings.system_prompt)
+        #case "mistral":
+        #    return init_mistral_llm(settings.llm.mistral_model, settings.system_prompt)
+        #case "azure-openai":
+        #    return init_azure_openai_llm(settings.llm.azure_openai_model, settings.system_prompt)
         case _:
-            raise ValueError(f"Invalid model provider: {llm_model_provider}")
-
+            return init_ollama_llm(settings.integrated_ollama, settings.temperature, settings.system_prompt)
+        
 def init_embedding_model():
     """Initialize embedding model based on embedding_model_provider setting"""
-    provider = AppSettings.embedding_model_provider
-    match provider:
+    settings = SettingsManager.get_instance().settings
+    match settings.embedding_model_provider:
         case "openai":
-            return init_openai_embedding()
-        case "integrated_ollama":
-            return init_integrated_ollama_embedding()
+            return init_openai_embedding(settings.openai, settings.embedding_dim)
         case "custom_ollama":
-            return init_custom_ollama_embedding()
-        case "azure-openai":
-            return init_azure_openai_embedding()
-        case "gemini":
-            return init_gemini_embedding()
-        case "mistral":
-            return init_mistral_embedding()
-        case "fastembed":
-            return init_fastembed_embedding()
+            return init_ollama_embedding(settings.custom_ollama)
+        #case "azure-openai":
+        #    return init_azure_openai_embedding(settings.embedding.azure_openai_embedding_model)
+        #case "gemini":
+        #    return init_gemini_embedding(settings.embedding.gemini_embedding_model)
+        #case "mistral":
+        #    return init_mistral_embedding(settings.embedding.mistral_embedding_model)
+        #case "fastembed":
+        #    return init_fastembed_embedding(settings.embedding.fastembed_embedding_model)
         case "text-embeddings-inference":
-            return init_tei_embedding()
+            return init_tei_embedding(settings.tei, settings.embedding_dim)
         case _:
-            raise ValueError(f"Invalid embedding model provider: {provider}") 
-
-def get_current_model_name():
-    """Get the current model name based on the provider"""
-    provider = AppSettings.llm_model_provider
-    model_attr = f"{provider.replace('-', '_')}_model"
-    return getattr(AppSettings, model_attr)
-
-def get_current_embedding_model_name():
-    """Get the current embedding model name based on the provider"""
-    provider = AppSettings.embedding_model_provider
-    model_attr = f"{provider.replace('-', '_')}_embedding_model"
-    return getattr(AppSettings, model_attr) 
+            return init_ollama_embedding(settings.integrated_ollama)

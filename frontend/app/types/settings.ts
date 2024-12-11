@@ -1,33 +1,91 @@
+// Provider-specific settings types
+interface OllamaSettings {
+  llm_model: string;
+  llm_host: string;
+  llm_request_timeout: number;
+  embedding_model: string;
+  embedding_host: string;
+  embedding_request_timeout: number;
+}
+
+interface OpenAISettings {
+  llm_model: string;
+  api_key: string;
+  embedding_model: string;
+  max_tokens?: number;
+}
+
+interface AnthropicSettings {
+  llm_model: string;
+  api_key: string;
+}
+
+interface GroqSettings {
+  llm_model: string;
+  api_key: string;
+}
+
+interface GeminiSettings {
+  llm_model: string;
+  api_key: string;
+  embedding_model: string;
+}
+
+interface MistralSettings {
+  llm_model: string;
+  api_key: string;
+  embedding_model: string;
+}
+
+interface AzureOpenAISettings {
+  llm_model: string;
+  api_key: string;
+  endpoint: string;
+  api_version: string;
+  deployment_name: string;
+  embedding_model: string;
+  embedding_deployment_name: string;
+}
+
+interface TGISettings {
+  llm_model: string;
+  llm_host: string;
+  llm_request_timeout: number;
+}
+
+interface FastEmbedSettings {
+  embedding_model: string;
+}
+
+interface TEISettings {
+  embedding_model: string;
+  embedding_host: string;
+}
+
 export interface AppSettings {
   llm_model_provider: string;
-  ollama_model: string;
-  openai_model: string;
-  anthropic_model: string;
-  groq_model: string;
-  gemini_model: string;
-  mistral_model: string;
-  azure_openai_model: string;
-  tgi_model: string;
-  custom_ollama_llm_host: string;
-  tgi_host: string;
-  ollama_request_timeout: number;
-  tgi_request_timeout: number;
   embedding_model_provider: string;
-  ollama_embedding_model: string;
-  openai_embedding_model: string;
-  azure_openai_embedding_model: string;
-  gemini_embedding_model: string;
-  mistral_embedding_model: string;
-  fastembed_embedding_model: string;
+  
+  // Provider settings
+  integrated_ollama: OllamaSettings;
+  custom_ollama: OllamaSettings;
+  openai: OpenAISettings;
+  anthropic: AnthropicSettings;
+  groq: GroqSettings;
+  gemini: GeminiSettings;
+  mistral: MistralSettings;
+  azure_openai: AzureOpenAISettings;
+  tgi: TGISettings;
+  fastembed: FastEmbedSettings;
+  tei: TEISettings;
+
+  // General settings
   embedding_dim: string;
   top_k: number;
-  openai_api_key: string;
-  system_prompt: string;
   max_iterations: number;
+  temperature: number;
+  system_prompt: string;
   files_tool_description: string;
-  tei_host: string;
-  tei_model: string;
-  custom_ollama_embedding_host: string;
 }
 
 export const LLM_MODEL_PROVIDER_OPTIONS = [
@@ -64,7 +122,6 @@ export const EMBEDDING_PROVIDER_OPTIONS = [
   "mistral",
   "text-embeddings-inference",
 ] as const;
-
 export const EMBEDDING_MODEL_OPTIONS: Record<string, string[]> = {
   integrated_ollama: ["Losspost/stella_en_1.5b_v5", "bge-m3", "nomic-embed-text", "custom"],
   custom_ollama: ["Losspost/stella_en_1.5b_v5", "bge-m3", "nomic-embed-text", "custom"],
