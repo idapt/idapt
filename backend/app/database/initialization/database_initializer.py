@@ -1,5 +1,6 @@
 from functools import lru_cache
 import logging
+import threading
 from typing import Optional
 from .password_manager import DatabasePasswordManager
 from .migration_manager import DatabaseMigrationManager
@@ -10,28 +11,34 @@ logger = logging.getLogger(__name__)
 class DatabaseInitializer:
     _instance: Optional['DatabaseInitializer'] = None
     _is_initialized = False
+    _lock = threading.Lock()
     
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
     
     def __init__(self):
         if not self._is_initialized:
-            self.password_manager = DatabasePasswordManager()
-            self.migration_manager = DatabaseMigrationManager(get_connection_string())
-            self._is_initialized = True
+            with self._lock:
+                if not self._is_initialized:
+                    self.password_manager = DatabasePasswordManager()
+                    self.migration_manager = DatabaseMigrationManager(get_connection_string())
+                    self._is_initialized = True
     
     def initialize(self):
         """Initialize the database if not already initialized"""
-        if not hasattr(self, '_init_complete'):
-            logger.info("Starting database initialization")
-            self._setup_password()
-            self._run_migrations()
-            self._init_complete = True
-            logger.info("Database initialization completed")
-        else:
-            logger.debug("Database already initialized, skipping")
+        with self._lock:
+            if not hasattr(self, '_init_complete'):
+                logger.info("Starting database initialization")
+                self._setup_password()
+                self._run_migrations()
+                self._init_complete = True
+                logger.info("Database initialization completed")
+            else:
+                logger.debug("Database already initialized, skipping")
     
     def _setup_password(self):
         # Ensure the password file path exists

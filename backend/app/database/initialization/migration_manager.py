@@ -6,6 +6,7 @@ from alembic import command
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 import time
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class DatabaseMigrationManager:
         self.retry_delay = retry_delay
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         self.alembic_ini_path = os.path.join(current_dir, "alembic", "alembic.ini")
+        self._migration_lock = threading.Lock()
         
     def _get_alembic_config(self):
         """Get Alembic config with the correct path"""
@@ -33,32 +35,38 @@ class DatabaseMigrationManager:
         return Config(self.alembic_ini_path)
     
     def run_migrations(self):
-        for attempt in range(self.max_retries):
-            try:
-                engine = create_engine(self.connection_string)
-                
-                # First check if tables exist
-                if not self._tables_exist(engine):
-                    logger.info("No tables found. Initializing new database.")
-                    self._initialize_new_database(engine)
+        with self._migration_lock:
+            for attempt in range(self.max_retries):
+                try:
+                    engine = create_engine(self.connection_string)
+                    
+                    # First check if tables exist
+                    if not self._tables_exist(engine):
+                        logger.info("No tables found. Initializing new database.")
+                        self._initialize_new_database(engine)
+                        return True
+                    
+                    # Check if alembic_version table exists and has a version
+                    if not self._has_alembic_version(engine):
+                        logger.info("Creating alembic version table and stamping current version.")
+                        self._stamp_alembic_version(engine)
+                        return True
+                        
+                    # Only check for migrations if we have a proper version tracking
+                    if self._needs_migration(engine):
+                        logger.info("Running pending migrations.")
+                        self._run_pending_migrations(engine)
+                    else:
+                        logger.info("Database is up to date, no migrations needed.")
                     return True
-                
-                # TODO Fix the fact that the alembic_version table dont get created and so we run this at every backend start.
-                # If tables exist, check if migrations are needed
-                if self._needs_migration(engine):
-                    logger.info("Running pending migrations.")
-                    self._run_pending_migrations(engine)
-                else:
-                    logger.info("Database is up to date, no migrations needed.")
-                return True
-                
-            except Exception as e:
-                if attempt < self.max_retries - 1:
-                    logger.warning(f"Migration attempt {attempt + 1} failed: {str(e)}")
-                    time.sleep(self.retry_delay)
-                else:
-                    logger.error("Failed to run migrations after multiple attempts", exc_info=True)
-                    return False
+                    
+                except Exception as e:
+                    if attempt < self.max_retries - 1:
+                        logger.warning(f"Migration attempt {attempt + 1} failed: {str(e)}")
+                        time.sleep(self.retry_delay)
+                    else:
+                        logger.error("Failed to run migrations after multiple attempts", exc_info=True)
+                        return False
         
     def _needs_migration(self, engine):
         """Check if there are any pending migrations"""
@@ -125,3 +133,23 @@ class DatabaseMigrationManager:
             config.attributes['connection'] = connection
             from alembic import command
             command.upgrade(config, "head")
+
+    def _has_alembic_version(self, engine):
+        """Check if alembic_version table exists and has a version"""
+        inspector = inspect(engine)
+        if 'alembic_version' not in inspector.get_table_names():
+            return False
+        
+        with engine.connect() as connection:
+            context = MigrationContext.configure(connection)
+            current_rev = context.get_current_revision()
+            return current_rev is not None
+            
+    def _stamp_alembic_version(self, engine):
+        """Create and stamp the alembic_version table"""
+        config = self._get_alembic_config()
+        config.set_main_option('sqlalchemy.url', self.connection_string)
+        
+        with engine.begin() as connection:
+            config.attributes['connection'] = connection
+            command.stamp(config, "head")
