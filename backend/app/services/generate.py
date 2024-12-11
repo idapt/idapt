@@ -126,17 +126,20 @@ class GenerateService:
 
                 total_processed = 0
                 total_items = len(items_to_process)
+                problematic_files = []
 
                 # Process each transformation stack group
                 for stack_list, items in batches.items():
                     logger.info(f"Processing {len(items)} files with transformation stack: {list(stack_list)}")
                     file_paths = [item["path"] for item in items]
                     stack_processed = 0
+                    current_batch_size = batch_size
                     
                     # Process files in smaller sub-batches
-                    for i in range(0, len(file_paths), batch_size):
-                        sub_batch = file_paths[i:i + batch_size]
-                        sub_batch_items = items[i:i + batch_size]
+                    i = 0
+                    while i < len(file_paths):
+                        sub_batch = file_paths[i:i + current_batch_size]
+                        sub_batch_items = items[i:i + current_batch_size]
                         
                         try:
                             await self.ingestion_pipeline_service.ingest_files(
@@ -163,15 +166,40 @@ class GenerateService:
                             # Update persisted queue with remaining items
                             await self._persist_remaining_items(items_to_process)
                             
+                            # Reset batch size to default after successful processing
+                            current_batch_size = batch_size
+                            i += len(sub_batch)
+
                         except Exception as e:
                             logger.error(f"Failed to process sub-batch: {str(e)}")
-                            # Re-add failed items back to queue
-                            for item in sub_batch_items:
-                                await self._queue.put(item)
+                            
+                            if current_batch_size == 1:
+                                # If we're already processing one by one, this file is problematic
+                                problematic_file = sub_batch[0]
+                                logger.error(f"Identified problematic file: {problematic_file}")
+                                problematic_files.append(problematic_file)
+                                
+                                # Skip this file and continue with the next one
+                                i += 1
+                                current_batch_size = batch_size  # Reset batch size
+                                
+                                # Remove the problematic file from items_to_process
+                                for item in sub_batch_items:
+                                    if item in items_to_process:
+                                        items_to_process.remove(item)
+                            else:
+                                # Reduce batch size to 1 to identify problematic file
+                                logger.info("Reducing batch size to 1 to identify problematic file")
+                                current_batch_size = 1
+                                # Don't increment i, retry with smaller batch size
+                            
                             # Persist the updated queue state
                             await self._persist_remaining_items(items_to_process)
                             continue
 
+                if problematic_files:
+                    logger.warning(f"Completed processing with {len(problematic_files)} problematic files: {problematic_files}")
+                
                 logger.info(f"Completed processing batch - {total_processed}/{total_items} files processed successfully")
                 
             except Exception as e:
