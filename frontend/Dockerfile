@@ -1,5 +1,5 @@
 # Use the node image only to build the application.
-FROM node:20-alpine AS build
+FROM node:23-alpine AS build
 
 WORKDIR /frontend
 
