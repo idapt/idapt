@@ -1,1 +1,1 @@
-DATA_DIR = "/idapt_data"
+DATA_DIR = "/data"

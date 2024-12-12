@@ -87,7 +87,7 @@ services:
       - ./backend/.env
       - ./.env
     volumes:
-      - idapt_data:/idapt_data # The volume where the data is stored.
+      - data:/data # The volume where the data is stored.
     security_opt:
       - no-new-privileges:true
     restart: always
@@ -156,7 +156,7 @@ services:
 volumes:
   postgres_data:
   ollama_data:
-  idapt_data:
+  data:
 
 
 # One network for each service to keep them isolated and routed through nginx. Each network has its own subnet ip range. Each container is assigned a static ip address on its network to control origins at th nginx level.
