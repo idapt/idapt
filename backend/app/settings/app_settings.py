@@ -7,11 +7,8 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Use DATA_DIR from config
-from app.config import DATA_DIR
-
 # Set default config directory
-APP_CONFIG_DIR = Path(os.getenv("APP_CONFIG_DIR", f"{DATA_DIR}/.app-config"))
+APP_CONFIG_DIR = Path("/backend_data/.app-config")
 SETTINGS_FILE = APP_CONFIG_DIR / "app-settings.json"
 
 @dataclass
