@@ -18,6 +18,7 @@ services:
             - driver: nvidia
               capabilities: ["gpu"]
               count: all
+    # Disable for dev to have a faster startup time.
     #healthcheck: # Causes issues when pulling large models or when api is busy for a long time.
     #  test: ["CMD", "curl", "-f", "http://localhost:11434"]
     #  interval: 1s
@@ -38,7 +39,7 @@ services:
       context: ./postgres
       dockerfile: ./Dockerfile
     ports:
-      - "5432:5432"
+      - "5432:5432" # Expose database port for remote dev access.
     expose:
       - "5432"
     networks:
@@ -108,7 +109,7 @@ services:
     networks:
       idapt-frontend-network:
         ipv4_address: 172.22.0.15
-    #depends_on:
+    #depends_on:     # Disable for dev to have a faster startup time, backend will not respond at frontend start.
       #idapt-backend:
       #  condition: service_healthy
     env_file:
