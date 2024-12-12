@@ -1,14 +1,16 @@
 "use client";
 
-import { ChevronRight, Home } from "lucide-react";
+import { ChevronRight, Home, Database } from "lucide-react";
 import { Button } from "../button";
+import { Datasource } from "@/app/types/files";
 
 interface FilePathProps {
   currentPath: string;
+  currentDatasource?: Datasource;
   onNavigate: (folder_path: string) => void;
 }
 
-export function FilePath({ currentPath, onNavigate }: FilePathProps) {
+export function FilePath({ currentPath, currentDatasource, onNavigate }: FilePathProps) {
   const pathParts = currentPath ? currentPath.split('/').filter(Boolean) : [];
   
   return (
@@ -17,10 +19,19 @@ export function FilePath({ currentPath, onNavigate }: FilePathProps) {
         variant="ghost"
         size="sm"
         className="flex items-center gap-1"
-        onClick={() => onNavigate("")} // Navigate to root folder
+        onClick={() => onNavigate("")}
       >
-        <Home className="w-4 h-4" />
-        <span>Home</span>
+        {currentDatasource ? (
+          <>
+            <Database className="w-4 h-4" />
+            <span>{currentDatasource.name}</span>
+          </>
+        ) : (
+          <>
+            <Home className="w-4 h-4" />
+            <span>Datasources</span>
+          </>
+        )}
       </Button>
       
       {pathParts.length > 0 && pathParts.map((part, index) => {
@@ -31,7 +42,7 @@ export function FilePath({ currentPath, onNavigate }: FilePathProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onNavigate(pathUpToHere)} // Navigate to folder
+              onClick={() => onNavigate(pathUpToHere)}
             >
               {part}
             </Button>

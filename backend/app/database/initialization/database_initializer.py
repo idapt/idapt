@@ -53,11 +53,7 @@ class DatabaseInitializer:
             self.password_manager.update_database_password(password)
         else:
             logger.info("Database password already set")
-        
-        #
-        
 
-    
     def _run_migrations(self):
         self.migration_manager.run_migrations()
 

@@ -1,6 +1,16 @@
+export interface Datasource {
+  id: number;
+  name: string;
+  type: string;
+  settings?: any;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface FolderContentsResponse {
   files: File[];
   folders: Folder[];
+  datasource?: Datasource;  // Include datasource info when at root level
 }
 
 export interface File {

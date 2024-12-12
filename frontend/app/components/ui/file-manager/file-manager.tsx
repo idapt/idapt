@@ -1,6 +1,6 @@
 "use client";
 
-import { Grid2X2, List, Upload, FolderUp, Loader2 } from "lucide-react";
+import { Grid2X2, List, Upload, FolderUp, Database, Plus, Loader2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "../button";
 import { FileList } from "./file-list";
@@ -8,12 +8,15 @@ import { FilePath } from "./file-path";
 import { useFileUpload } from "./hooks/use-file-upload";
 import { useFolderUpload } from "./hooks/use-folder-upload";
 import { useFileManager } from './hooks/use-file-manager';
+import { Datasource } from "@/app/types/files";
+import { CreateDatasourceDialog } from "./create-datasource-dialog";
 
 export function FileManager() {
   const {
     files,
     folders,
     currentPath,
+    currentDatasource,
     loading,
     error,
     navigateToFolder,
@@ -21,6 +24,7 @@ export function FileManager() {
   } = useFileManager();
   
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showCreateDatasource, setShowCreateDatasource] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useFileUpload();
@@ -58,40 +62,57 @@ export function FileManager() {
   return (
     <div className="w-full h-full bg-white rounded-lg shadow-sm p-4 space-y-4">
       <div className="flex justify-between items-center">
-        <FilePath currentPath={currentPath} onNavigate={navigateToFolder} />
+        <FilePath 
+          currentPath={currentPath} 
+          currentDatasource={currentDatasource}
+          onNavigate={navigateToFolder} 
+        />
         <div className="flex space-x-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          
-          <input
-            type="file"
-            ref={folderInputRef}
-            className="hidden"
-            // @ts-expect-error
-            webkitdirectory=""
-            directory=""
-            onChange={handleFolderUpload}
-          />
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Upload File
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => folderInputRef.current?.click()}
-          >
-            <FolderUp className="h-4 w-4 mr-2" />
-            Upload Folder
-          </Button>
+          {currentPath === '' ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCreateDatasource(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Datasource
+            </Button>
+          ) : (
+            <>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              
+              <input
+                type="file"
+                ref={folderInputRef}
+                className="hidden"
+                // @ts-expect-error
+                webkitdirectory=""
+                directory=""
+                onChange={handleFolderUpload}
+              />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload File
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => folderInputRef.current?.click()}
+              >
+                <FolderUp className="h-4 w-4 mr-2" />
+                Upload Folder
+              </Button>
+            </>
+          )}
           <div className="border-l h-6 mx-2" />
           <Button
             variant={viewMode === "grid" ? "secondary" : "ghost"}
@@ -122,6 +143,11 @@ export function FileManager() {
           onUploadComplete={refreshContents}
         />
       )}
+      <CreateDatasourceDialog 
+        open={showCreateDatasource}
+        onClose={() => setShowCreateDatasource(false)}
+        onCreated={refreshContents}
+      />
     </div>
   );
 }

@@ -108,6 +108,9 @@ class DatabaseMigrationManager:
         # Create all tables except data_embeddings and data_docstore
         filtered_metadata.create_all(engine)
         
+        # Populate default data
+        self._populate_default_data(engine)
+        
         # Configure alembic and stamp the database
         config = self._get_alembic_config()
         config.set_main_option('sqlalchemy.url', self.connection_string)
@@ -124,6 +127,52 @@ class DatabaseMigrationManager:
             if 'alembic_version' not in inspector.get_table_names():
                 raise RuntimeError("Failed to create alembic_version table")
         
+    def _populate_default_data(self, engine):
+        """Populate the database with default data"""
+        from app.database.models import Folder, Datasource
+        from sqlalchemy.orm import sessionmaker
+        
+        SessionLocal = sessionmaker(bind=engine)
+        session = SessionLocal()
+        
+        try:
+            # Create root folder
+            root_folder = Folder(
+                name="/data",
+                path="/data",
+                parent_id=None  # Root folder has no parent
+            )
+            session.add(root_folder)
+            session.flush()  # Flush to get the root_folder.id
+            
+            # Create Files datasource folder
+            datasource_folder = Folder(
+                name="Files",
+                path="/data/Files",
+                parent_id=root_folder.id
+            )
+            session.add(datasource_folder)
+            session.flush()  # Flush to get the datasource_folder.id
+
+            # Create Files datasource with the folder reference
+            datasource = Datasource(
+                name="Files",
+                type="files",
+                settings={"description": "Default file storage"},
+                root_folder_id=datasource_folder.id  # Set the root_folder_id
+            )
+            session.add(datasource)
+            
+            session.commit()
+            logger.info("Created Files datasource")
+            
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to populate default data: {str(e)}")
+            raise
+        finally:
+            session.close()
+
     def _run_pending_migrations(self, engine):
         """Run any pending migrations"""
         config = self._get_alembic_config()

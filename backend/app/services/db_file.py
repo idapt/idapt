@@ -24,6 +24,10 @@ class DBFileService:
         # Get all parts of the path
         parts = path.parts
         
+        # Skip the root folder '/'
+        if parts and parts[0] == '/':
+            parts = parts[1:]
+        
         current_folder = None
         current_path = Path()
         
@@ -114,9 +118,10 @@ class DBFileService:
         #if full_path.endswith('/'):
         #    full_path = full_path[:-1]
 
+        self.logger.error(f"Full path: {full_path}")
+
         # Get folder id from path
         folder_id = self.get_folder_id(session, full_path)
-        self.logger.error(f"Full path: {full_path}")
         self.logger.error(f"Folder id: {folder_id}")
 
         # Get all folders in this folder

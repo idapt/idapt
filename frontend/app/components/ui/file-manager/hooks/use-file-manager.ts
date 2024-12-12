@@ -1,4 +1,4 @@
-import { FolderContentsResponse, File, Folder } from '@/app/types/files';
+import { FolderContentsResponse, File, Folder, Datasource } from '@/app/types/files';
 import { useCallback, useEffect, useState } from 'react';
 import { useClientConfig } from '../../chat/hooks/use-config';
 import { encodePathSafe } from '@/app/components/ui/file-manager/utils/path-encoding';
@@ -8,12 +8,12 @@ export function useFileManager() {
   const [currentPath, setCurrentPath] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [currentDatasource, setCurrentDatasource] = useState<Datasource | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchFolderContents = useCallback(async (path?: string) => {
     try {
-      console.log("Fetching folder contents for path: ", path);
       setLoading(true);
       const encodedPath = path ? encodePathSafe(path) : '';
       const url = `${backend}/api/file-manager/folder/${encodedPath}`;
@@ -21,9 +21,10 @@ export function useFileManager() {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch folder contents');
       const data: FolderContentsResponse = await response.json();
-      console.log(data);
+      
       setFiles(data.files);
       setFolders(data.folders);
+      setCurrentDatasource(data.datasource);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch folder contents');
     } finally {
@@ -45,6 +46,7 @@ export function useFileManager() {
     files,
     folders,
     currentPath,
+    currentDatasource,
     loading,
     error,
     navigateToFolder,
