@@ -6,6 +6,8 @@ import logging
 from typing import List, Tuple
 from pathlib import Path
 
+from app.config import DATA_DIR
+
 class DBFileService:
     """
     Service for managing files and folders in the database
@@ -13,23 +15,27 @@ class DBFileService:
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-    
-    def create_folder_path(self, session: Session, path: str) -> Folder:
+        
+    def create_folder_path(self, session: Session, full_path: str) -> Folder:
         """Create folder hierarchy and return the last folder"""
-        # Split the path into parts
-        parts = [p for p in path.split('/') if p]
-    
+        # Convert to Path object and make absolute
+        path = Path(full_path).absolute()
+        
+        # Get all parts of the path
+        parts = path.parts
+        
         current_folder = None
-        current_path = ""
+        current_path = Path()
         
         # For each part of the path
         for part in parts:
-            # Build the current path from the parts and the current path, works because we start with the left first part
-            current_path = f"{current_path}/{part}" if current_path else part
+            # Build the current path incrementally
+            current_path = current_path / part
+            current_path_str = str(current_path)
             
             # First try to find an existing folder with the same path in the database
             folder = session.query(Folder).filter(
-                Folder.path == current_path
+                Folder.path == current_path_str
             ).first()
             
             # If not found, try to find by name and parent
@@ -41,10 +47,10 @@ class DBFileService:
             
             # If not found, create a new folder
             if not folder:
-                self.logger.info(f"Creating new folder: {part} with path {current_path}")
+                self.logger.info(f"Creating new folder: {part} with path {current_path_str}")
                 folder = Folder(
                     name=part,
-                    path=current_path,
+                    path=current_path_str,
                     parent_id=current_folder.id if current_folder else None,
                 )
                 session.add(folder)
@@ -102,12 +108,16 @@ class DBFileService:
             raise
         return file
 
-    def get_folder_contents(self, session: Session, path: str | None) -> Tuple[List[File], List[Folder]]:
-        
-        folder_id = None
-        # If path is not None, get folder id from path
-        if path:
-            folder_id = self.get_folder_id(session, path)
+    def get_folder_contents(self, session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
+
+        # If there is a trailing slash, remove it
+        #if full_path.endswith('/'):
+        #    full_path = full_path[:-1]
+
+        # Get folder id from path
+        folder_id = self.get_folder_id(session, full_path)
+        self.logger.error(f"Full path: {full_path}")
+        self.logger.error(f"Folder id: {folder_id}")
 
         # Get all folders in this folder
         folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
@@ -117,17 +127,17 @@ class DBFileService:
         
         return files, folders
 
-    def get_file(self, session: Session, path: str) -> File | None:
+    def get_file(self, session: Session, full_path: str) -> File | None:
         """Get a file by ID"""
-        return session.query(File).filter(File.path == path).first()
+        return session.query(File).filter(File.path == full_path).first()
 
-    def get_folder(self, session: Session, path: str) -> Folder | None:
+    def get_folder(self, session: Session, full_path: str) -> Folder | None:
         """Get a folder by ID"""
-        return session.query(Folder).filter(Folder.path == path).first()
+        return session.query(Folder).filter(Folder.path == full_path).first()
 
-    def delete_file(self, session: Session, path: str) -> bool:
+    def delete_file(self, session: Session, full_path: str) -> bool:
         """Delete a file from the database"""
-        file = self.get_file(session, path)
+        file = self.get_file(session, full_path)
         if file:                
             # Then delete from database
             session.delete(file)
@@ -135,15 +145,15 @@ class DBFileService:
             return True
         return False
 
-    def delete_folder(self, session: Session, path: str) -> bool:
+    def delete_folder(self, session: Session, full_path: str) -> bool:
         """Delete a folder and all its contents from the database"""
         # Get the folder from the database
-        folder = self.get_folder(session, path)
+        folder = self.get_folder(session, full_path)
         # If the folder exists
         if folder:
             try:
                 # Delete all files in this folder and subfolders recursively
-                files, _ = self.get_folder_files_recursive(session, path)
+                files, _ = self.get_folder_files_recursive(session, full_path)
                 # Delete all files in this folder
                 for file in files:
                     session.delete(file)
@@ -169,18 +179,18 @@ class DBFileService:
             session.delete(subfolder)
     
 
-    def update_file(self, session: Session, old_path: str, new_path: str) -> File | None:
+    def update_file(self, session: Session, full_old_path: str, full_new_path: str) -> File | None:
         """Update file name and path"""
         # Get the file from the database
-        file = self.get_file(session, old_path)
+        file = self.get_file(session, full_old_path)
         # If the file exists
         if file:
             # Get filename from new path
-            name = Path(new_path).name
+            name = Path(full_new_path).name
 
             # Update the file name and path
             file.name = name
-            file.path = new_path
+            file.path = full_new_path
             # Commit the changes to the database
             session.commit()
             # Return the updated file
@@ -188,11 +198,13 @@ class DBFileService:
         # If the file does not exist, return None
         return None
 
-    def get_folder_files_recursive(self, session: Session, path: str) -> Tuple[List[File], List[Folder]]:
+    def get_folder_files_recursive(self, session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
         """Get all files in a folder and its subfolders recursively"""
 
+        self.logger.error(f"Full path recursive: {full_path}")
+
         # Get folder id from path
-        folder_id = self.get_folder_id(session, path)
+        folder_id = self.get_folder_id(session, full_path)
 
         # Get direct files in this folder
         files = session.query(File).filter(File.folder_id == folder_id).all()
@@ -202,16 +214,16 @@ class DBFileService:
         
         # Recursively get files from subfolders
         for subfolder in subfolders:
-            files.extend(self.get_folder_files_recursive(session, subfolder.id))
+            files.extend(self.get_folder_files_recursive(session, subfolder.path))
         
         return files, subfolders
 
-    def get_file_id(self, session: Session, path: str) -> int | None:
+    def get_file_id(self, session: Session, full_path: str) -> int | None:
         """Get the ID of a file by path"""
-        file = session.query(File).filter(File.path == path).first()
+        file = session.query(File).filter(File.path == full_path).first()
         return file.id if file else None
     
-    def get_folder_id(self, session: Session, path: str) -> int | None:
+    def get_folder_id(self, session: Session, full_path: str) -> int | None:
         """Get the ID of a folder by path"""
-        folder = session.query(Folder).filter(Folder.path == path).first()
+        folder = session.query(Folder).filter(Folder.path == full_path).first()
         return folder.id if folder else None

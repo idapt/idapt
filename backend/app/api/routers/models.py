@@ -298,10 +298,11 @@ class SourceNodes(BaseModel):
             # file is from calling the 'generate' script
             # Get the relative path of file_path to data_dir
             file_path = metadata.get("file_path")
-            data_dir = os.path.abspath(DATA_DIR)
-            if file_path and data_dir:
-                relative_path = os.path.relpath(file_path, data_dir)
-                return f"{url_prefix}/data/{relative_path}"
+            return f"{url_prefix}/data/{file_path}"
+            #data_dir = os.path.abspath(DATA_DIR)
+            #if file_path and data_dir:
+            #    relative_path = os.path.relpath(file_path, data_dir)
+            #    return f"{url_prefix}/data/{relative_path}"
         # fallback to URL in metadata (e.g. for websites)
         return metadata.get("URL")
 

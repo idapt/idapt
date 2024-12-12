@@ -18,11 +18,11 @@ services:
             - driver: nvidia
               capabilities: ["gpu"]
               count: all
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
+    #healthcheck: # Causes issues when pulling large models or when api is busy for a long time.
+    #  test: ["CMD", "curl", "-f", "http://localhost:11434"]
+    #  interval: 1s
+    #  timeout: 5s
+    #  retries: 30
     volumes:
       - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
     security_opt:
@@ -37,6 +37,8 @@ services:
     build:
       context: ./postgres
       dockerfile: ./Dockerfile
+    ports:
+      - "5432:5432"
     expose:
       - "5432"
     networks:
@@ -73,8 +75,8 @@ services:
     depends_on:
       idapt-postgres:
         condition: service_healthy
-      idapt-ollama:
-        condition: service_started
+      #idapt-ollama:
+      #  condition: service_started
       idapt-nginx:
         condition: service_healthy
     healthcheck:
@@ -105,9 +107,9 @@ services:
     networks:
       idapt-frontend-network:
         ipv4_address: 172.22.0.15
-    depends_on:
-      idapt-backend:
-        condition: service_healthy
+    #depends_on:
+      #idapt-backend:
+      #  condition: service_healthy
     env_file:
       - ./frontend/.env
       - ./dev.env # To pass the dev variable.

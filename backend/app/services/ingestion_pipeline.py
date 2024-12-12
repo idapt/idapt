@@ -16,7 +16,6 @@ from llama_index.core.extractors import (
 #from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 from app.engine.storage_context import StorageContextSingleton
 from app.services.db_file import DBFileService
-from app.services.file_system import get_path_from_full_path
 from app.database.connection import get_connection_string
 from app.database.service import DatabaseService
 from sqlalchemy import create_engine
@@ -151,9 +150,9 @@ class IngestionPipelineService:
                 
                 # Override the file creation time to the current time with the times from the database
                 for doc in documents:
-                    # Convert full path to path
-                    path = get_path_from_full_path(doc.metadata["file_path"])
-                    file = self.db_file_service.get_file(session, path)
+                    # Get the file from the database
+                    file = self.db_file_service.get_file(session, doc.metadata["file_path"])
+                    # Set the creation and modification times
                     doc.metadata["created_at"] = file.file_created_at.isoformat()
                     doc.metadata["modified_at"] = file.file_modified_at.isoformat()
                     # Remove from embed and llm

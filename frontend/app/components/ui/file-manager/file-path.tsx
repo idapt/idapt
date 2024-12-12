@@ -2,7 +2,6 @@
 
 import { ChevronRight, Home } from "lucide-react";
 import { Button } from "../button";
-import { File, Folder } from "@/app/types/files";
 
 interface FilePathProps {
   currentPath: string;

@@ -13,6 +13,7 @@ export function useFileManager() {
 
   const fetchFolderContents = useCallback(async (path?: string) => {
     try {
+      console.log("Fetching folder contents for path: ", path);
       setLoading(true);
       const encodedPath = path ? encodePathSafe(path) : '';
       const url = `${backend}/api/file-manager/folder/${encodedPath}`;
@@ -20,6 +21,7 @@ export function useFileManager() {
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch folder contents');
       const data: FolderContentsResponse = await response.json();
+      console.log(data);
       setFiles(data.files);
       setFolders(data.folders);
     } catch (e) {

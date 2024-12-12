@@ -10,10 +10,10 @@ class FileSystemService:
     Service for managing files and folders in the filesystem
     """
     
-    async def write_file(self, path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
+    async def write_file(self, full_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
         """Write content to a file in the filesystem and set its metadata"""
         try:
-            full_path = Path(get_full_path_from_path(path))
+            full_path = Path(full_path)
 
             # Create parent directories if they don't exist
             if not full_path.parent.exists():
@@ -33,61 +33,64 @@ class FileSystemService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
 
-    async def read_file(self, path: str) -> bytes:
+    async def read_file(self, full_path: str) -> bytes:
         """Read file from the filesystem"""
         try:
-            full_path = get_full_path_from_path(path)
             with open(str(full_path), "rb") as f:
                 return f.read()
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
 
-    async def create_folder(self, path: str):
+    async def create_folder(self, full_path: str):
         """Create a folder in the filesystem"""
         try:
-            full_path = get_full_path_from_path(path)
             os.makedirs(str(full_path), exist_ok=True)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")
 
-    async def delete_file(self, path: str):
+    async def delete_file(self, full_path: str):
         try:
-            full_path = Path(get_full_path_from_path(path))
-
+            full_path = Path(full_path)
             if full_path.exists():
                 os.unlink(str(full_path))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
 
-    async def rename_file(self, old_path: str, new_file_name: str) -> str:
+    async def rename_file(self, full_old_path: str, new_file_name: str) -> str:
         try:
-            full_old_path = Path(get_full_path_from_path(old_path))
+            full_old_path = Path(full_old_path)
             directory = full_old_path.parent
             new_path = directory / new_file_name
             os.rename(str(full_old_path), str(new_path))
-            return str(new_path.relative_to(DATA_DIR))
+            return str(new_path)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
 
-    async def delete_folder(self, path: str):
+    async def delete_folder(self, full_path: str):
         """Delete a folder and its contents from the filesystem"""
         try:
-            full_path = Path(get_full_path_from_path(path))
+            full_path = Path(full_path)
             if full_path.exists():
                 shutil.rmtree(str(full_path))
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
 
 def get_full_path_from_path(path: str) -> str:
-    """Convert a database path to a full filesystem path."""
-    try:
-        return str(Path(DATA_DIR) / path)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get full path: {str(e)}")
+    """Convert frontend path to backend full path"""
+    # Remove any leading/trailing slashes from the path
+    cleaned_path = path.strip('/')
+    # If path is empty, return DATA_DIR
+    if not cleaned_path:
+        return DATA_DIR
+    # Join the paths using os.path.join to handle slashes correctly
+    return os.path.join(DATA_DIR, cleaned_path)
 
 def get_path_from_full_path(full_path: str) -> str:
     """Convert a full filesystem path to a database path."""
     try:
-        return str(Path(full_path).relative_to(DATA_DIR))
+        if full_path is None or full_path == "":
+            return ""
+        # Remove the DATA_DIR from the full path
+        return full_path.replace(DATA_DIR, "") #str(Path(full_path).relative_to(DATA_DIR))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get path from full path: {str(e)}")

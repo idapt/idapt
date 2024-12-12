@@ -1,7 +1,7 @@
 from typing import List, Optional, Dict
 import logging
 import asyncio
-from asyncio import Queue, Task, create_task, new_event_loop, set_event_loop
+from asyncio import Queue, Task, new_event_loop, set_event_loop
 import threading
 import json
 from pathlib import Path
