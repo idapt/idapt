@@ -16,10 +16,6 @@ class GenerateRequest(BaseModel):
         "transformations_stack_name_list": ["default", "titles"]
     }])
 
-class BatchGenerateRequest(BaseModel):
-    file_ids: List[int]
-
-# TODO Temporary endpoint to add files to the generation queue by file paths, switch to file_ids
 @r.post("")
 async def generate(
     request: GenerateRequest,
@@ -33,6 +29,7 @@ async def generate(
     try:
         # Convert to full paths and maintain transformation stack names
         files = [{
+            # The given path is not a full path as the frontend is not aware of the DATA_DIR
             "path": get_full_path_from_path(file["path"]),
             "transformations_stack_name_list": file.get("transformations_stack_name_list", "default")
         } for file in request.files]
@@ -47,24 +44,6 @@ async def generate(
         }
     except Exception as e:
         logger.error(f"Error in generate endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@r.post("/generate/{file_id}")
-async def generate(
-    file_id: int
-):
-    """
-    Add a file to the generation queue for processing.
-    Returns the queue position of the added file.
-    """
-    try:
-        position = await GenerateService.add_to_queue(file_id)
-        return {
-            "status": "queued",
-            "message": f"File added to generation queue at position {position}",
-            "queue_position": position
-        }
-    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @r.get("/generate/status")
