@@ -15,7 +15,12 @@ from llama_index.core.extractors import (
 
 #from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 from app.engine.storage_context import StorageContextSingleton
-        
+from app.services.db_file import DBFileService
+from app.services.file_system import get_path_from_full_path
+from app.database.connection import get_connection_string
+from app.database.service import DatabaseService
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 import nest_asyncio
 
@@ -29,6 +34,18 @@ class IngestionPipelineService:
     Service for managing the ingestion pipeline
     This only takes care of the llama index part
     """
+
+    def __init__(self):
+        # Create a regular SQLAlchemy engine and session factory
+        engine = create_engine(get_connection_string().replace("+asyncpg", "+psycopg2"))
+        Session = sessionmaker(bind=engine)
+        self.db_service = DatabaseService(Session)
+        
+        # Create a unique ingestion pipeline that will persist between file ingestions
+        self.ingestion_pipeline = self._create_ingestion_pipeline()
+
+        self.db_file_service = DBFileService()
+
     # See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
     # List of avaliable transformations stacks with their name and transformations
     TRANSFORMATIONS_STACKS = {
@@ -102,88 +119,102 @@ class IngestionPipelineService:
             logger.error(f"Error creating ingestion pipeline: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Error creating ingestion pipeline: {str(e)}")
 
-
-    def __init__(self):
-        # Create a unique ingestion pipeline that will persist between file ingestions
-        self.ingestion_pipeline = self._create_ingestion_pipeline()
-
-
     async def ingest_files(self, full_file_paths: List[str], logger: logging.Logger, transformations_stack_name_list: List[str]):
         try:
-            logger.info(f"Starting batch ingestion pipeline for {len(full_file_paths)} files")
-            
-            # Read all files in batch
-            reader = SimpleDirectoryReader(
-                input_files=full_file_paths,
-                filename_as_id=True,
-                raise_on_error=True,
-            )
-            documents = reader.load_data()
-
-            # Remove the metadata created by the file reader that we dont want to embed and llm
-            for doc in documents:
-                doc.excluded_embed_metadata_keys = ["file_path","file_name", "file_type", "file_size", "creation_date", "last_modified_date", "document_id", "doc_id", "ref_doc_id"]
-                doc.excluded_llm_metadata_keys = ["file_path","file_name", "file_type", "file_size", "creation_date", "last_modified_date", "document_id", "doc_id", "ref_doc_id"]
-
-            # Set the origin metadata of the document
-            for doc in documents:
-                doc.metadata["origin"] = "upload"
-                doc.excluded_embed_metadata_keys.append("origin")
-                doc.excluded_llm_metadata_keys.append("origin")
-            
-            # For each transformations stack we need to apply
-            for transformations_stack_name in transformations_stack_name_list:
+            # Use the database service to get a session
+            with self.db_service.get_session() as session:
+                logger.info(f"Starting batch ingestion pipeline for {len(full_file_paths)} files")
                 
-                # Get the transformations stack
-                transformations = self.TRANSFORMATIONS_STACKS[transformations_stack_name]
+                # Read all files in batch
+                reader = SimpleDirectoryReader(
+                    input_files=full_file_paths,
+                    filename_as_id=True,
+                    raise_on_error=True,
+                )
+                documents = reader.load_data()
 
-                # Set the transformations stack name for the documents
-                for doc in documents:   
-                    doc.metadata["transformations_stack_name"] = transformations_stack_name
-                    doc.excluded_embed_metadata_keys.append("transformations_stack_name")
-                    doc.excluded_llm_metadata_keys.append("transformations_stack_name")
-
-                # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
-                if transformations_stack_name == "hierarchical":
-                    # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
-                    nodes = transformations[0].get_nodes_from_documents(
-                        documents, 
-                        show_progress=True
-                    )
+                # Remove the unwanted metadata from the documents
+                for doc in documents:
+                    doc.metadata.pop("creation_date", None)
+                    doc.metadata.pop("last_modified_date", None)
                     
-                    # Set the transformations for the ingestion pipeline
-                    self.ingestion_pipeline.transformations = [] # HierarchicalNodeParser embed the nodes using the Settings.embed_model so no need to re-embed them
+                # Remove the metadata created by the file reader that we dont want to embed and llm
+                for doc in documents:
+                    doc.excluded_embed_metadata_keys = ["file_path","file_name", "file_type", "file_size", "document_id", "doc_id", "ref_doc_id"]
+                    doc.excluded_llm_metadata_keys = ["file_path","file_name", "file_type", "file_size", "document_id", "doc_id", "ref_doc_id"]
 
-                    # Run the ingestion pipeline on the resulting nodes to add the nodes to the docstore and vector store
-                    nodes = await self.ingestion_pipeline.arun(
-                        nodes=nodes,
-                        show_progress=True,
-                        docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
-                        num_workers=16
-                    )
-                    # Insert nodes into index
-                    StorageContextSingleton().index.insert_nodes(nodes)
+                # Set the origin metadata of the document
+                for doc in documents:
+                    doc.metadata["origin"] = "upload"
+                    doc.excluded_embed_metadata_keys.append("origin")
+                    doc.excluded_llm_metadata_keys.append("origin")
+                
+                # Override the file creation time to the current time with the times from the database
+                for doc in documents:
+                    # Convert full path to path
+                    path = get_path_from_full_path(doc.metadata["file_path"])
+                    file = self.db_file_service.get_file(session, path)
+                    doc.metadata["created_at"] = file.file_created_at.isoformat()
+                    doc.metadata["modified_at"] = file.file_modified_at.isoformat()
+                    # Remove from embed and llm
+                    doc.excluded_embed_metadata_keys.append("created_at")
+                    doc.excluded_embed_metadata_keys.append("modified_at")
+                    doc.excluded_llm_metadata_keys.append("created_at")
+                    doc.excluded_llm_metadata_keys.append("modified_at")
+
+                # For each transformations stack we need to apply
+                for transformations_stack_name in transformations_stack_name_list:
+                    
+                    # Get the transformations stack
+                    transformations = self.TRANSFORMATIONS_STACKS[transformations_stack_name]
+
+                    # Set the transformations stack name for the documents
+                    for doc in documents:   
+                        doc.metadata["transformations_stack_name"] = transformations_stack_name
+                        doc.excluded_embed_metadata_keys.append("transformations_stack_name")
+                        doc.excluded_llm_metadata_keys.append("transformations_stack_name")
+
+                    # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
+                    if transformations_stack_name == "hierarchical":
+                        # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
+                        nodes = transformations[0].get_nodes_from_documents(
+                            documents, 
+                            show_progress=True
+                        )
+                        
+                        # Set the transformations for the ingestion pipeline
+                        self.ingestion_pipeline.transformations = [] # HierarchicalNodeParser embed the nodes using the Settings.embed_model so no need to re-embed them
+
+                        # Run the ingestion pipeline on the resulting nodes to add the nodes to the docstore and vector store
+                        nodes = await self.ingestion_pipeline.arun(
+                            nodes=nodes,
+                            show_progress=True,
+                            docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
+                            num_workers=16
+                        )
+                        # Insert nodes into index
+                        StorageContextSingleton().index.insert_nodes(nodes)
 
 
-                else:
-                    logger.info(f"Running ingestion pipeline with transformations stack {transformations_stack_name}")
-                    # This will add the documents to the vector store and docstore in the expected llama index way
+                    else:
+                        logger.info(f"Running ingestion pipeline with transformations stack {transformations_stack_name}")
+                        # This will add the documents to the vector store and docstore in the expected llama index way
 
-                    # Set the transformations for the ingestion pipeline
-                    self.ingestion_pipeline.transformations = transformations
-                    nodes = await self.ingestion_pipeline.arun(
-                        documents=documents,
-                        show_progress=True,
-                        docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
-                        num_workers=16
-                    )
-                    # Insert nodes into index
-                    StorageContextSingleton().index.insert_nodes(nodes)
+                        # Set the transformations for the ingestion pipeline
+                        self.ingestion_pipeline.transformations = transformations
+                        nodes = await self.ingestion_pipeline.arun(
+                            documents=documents,
+                            show_progress=True,
+                            docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
+                            num_workers=16
+                        )
+                        # Insert nodes into index
+                        StorageContextSingleton().index.insert_nodes(nodes)
 
-            # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
-            self.ingestion_pipeline.persist("./output/pipeline_storage")
+                # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
+                self.ingestion_pipeline.persist("./output/pipeline_storage")
 
-            logger.info(f"Ingested {len(documents)} documents")
+                logger.info(f"Ingested {len(documents)} documents")
 
         except Exception as e:
             logger.error(f"Error in ingestion pipeline: {str(e)}")
