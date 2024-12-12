@@ -15,9 +15,8 @@ interface FileUploadItem {
   path: string;
   content: string;
   name: string;
-  mime_type?: string;
-  original_created_at?: string;
-  original_modified_at?: string;
+  file_created_at: number;
+  file_modified_at: number;
 }
 
 export function useUpload() {

@@ -11,7 +11,9 @@ from llama_index.postprocessor.colbert_rerank import ColbertRerank
 from llama_index.core.retrievers import AutoMergingRetriever, VectorIndexRetriever
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.query_engine import RetrieverQueryEngine
-
+#from llama_index.indices.vector_store.retrievers import (
+#    VectorIndexAutoRetriever,
+#)
 #from app.engine.tools import ToolFactory
 from app.engine.storage_context import StorageContextSingleton
 from app.settings.app_settings import AppSettings

@@ -10,8 +10,8 @@ class FileSystemService:
     Service for managing files and folders in the filesystem
     """
     
-    async def write_file(self, path: str, content: bytes | str):
-        """Write content to a file in the filesystem"""
+    async def write_file(self, path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
+        """Write content to a file in the filesystem and set its metadata"""
         try:
             full_path = Path(get_full_path_from_path(path))
 
@@ -22,8 +22,14 @@ class FileSystemService:
             if isinstance(content, str):
                 content = content.encode()
                 
+            # Write the file content
             with open(str(full_path), "wb") as f:
                 f.write(content)
+
+            # Set file timestamps
+            # ! The file creation time will be set to the current time regardless of the value passed in
+            os.utime(str(full_path), (created_at_unix_timestamp, modified_at_unix_timestamp))
+
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
 

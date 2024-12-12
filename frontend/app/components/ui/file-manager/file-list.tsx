@@ -21,7 +21,7 @@ export function FileList({ files, folders, viewMode, onFolderClick, onUploadComp
           name={folder.name}
           type="folder"
           path={folder.path}
-          modified={folder.updated_at}
+          modified={folder.uploaded_at}
           onClick={() => onFolderClick(folder.path)}
           onRefresh={onUploadComplete}
           viewMode={viewMode}
@@ -34,7 +34,7 @@ export function FileList({ files, folders, viewMode, onFolderClick, onUploadComp
           name={file.name}
           type="file"
           size={file.size}
-          modified={file.updated_at}
+          modified={file.uploaded_at}
           path={file.path}
           mimeType={file.mime_type}
           onRefresh={onUploadComplete}

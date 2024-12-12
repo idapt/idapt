@@ -1,14 +1,14 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from pathlib import Path
 from typing import Dict, Any, AsyncGenerator, List, Tuple
 import zipfile
 from io import BytesIO
 import asyncio
 from fastapi import BackgroundTasks
 import base64
-import mimetypes
 import os
+from datetime import datetime, timezone, timedelta
+
 
 from app.services.db_file import DBFileService
 from app.services.file_system import FileSystemService
@@ -100,26 +100,32 @@ class FileManagerService:
     async def upload_file(self, session: Session, item: FileUploadItem) -> str:
         """Process a single upload item (file or folder)"""
         try:
-            # Log the start of the upload process
             self.logger.info(f"Starting upload for file: {item.name}")
-        
 
             # Decode the base64 file content into text
             decoded_file_data, _ = self.preprocess_base64_file(item.content)
-            # Write file to filesystem
-            await self.file_system.write_file(item.path, decoded_file_data)
+            
+            # Write file to filesystem with metadata
+            await self.file_system.write_file(
+                item.path, 
+                content=decoded_file_data,
+                created_at_unix_timestamp=item.file_created_at,
+                modified_at_unix_timestamp=item.file_modified_at
+            )
 
+            # Calculate the file size
+            file_size = len(decoded_file_data)
 
             # Create file in database
             file = self.db_file_service.create_file(
                 session=session,
                 name=item.name,
                 path=item.path,
-                original_created_at=item.original_created_at,
-                original_modified_at=item.original_modified_at
+                size=file_size,
+                file_created_at=item.file_created_at, # Store as datetime in the database
+                file_modified_at=item.file_modified_at # Store as datetime in the database
             )
             
-            # Log the file creation
             self.logger.info(f"File created with ID: {file.id}")
             
             return f"Uploaded file: {item.path}"
@@ -141,8 +147,10 @@ class FileManagerService:
             return {
                 "content": file_content,
                 "filename": file.name,
-                "created_at": file.original_created_at or file.created_at,
-                "modified_at": file.original_modified_at or file.updated_at
+                "mime_type": file.mime_type,
+                "size": file.size,
+                "created_at": file.file_created_at,
+                "modified_at": file.file_modified_at
             }
             
         except Exception as e:
@@ -270,9 +278,9 @@ class FileManagerService:
         try:
             header, data = base64_content.split(",", 1)
             mime_type = header.split(";")[0].split(":", 1)[1]
-            extension = mimetypes.guess_extension(mime_type).lstrip(".")
+            #extension = mimetypes.guess_extension(mime_type).lstrip(".")
             # File data as bytes
-            return base64.b64decode(data), extension
+            return base64.b64decode(data), None #extension
         except Exception as e:
             self.logger.error(f"Error preprocessing base64 file: {str(e)}")
             raise

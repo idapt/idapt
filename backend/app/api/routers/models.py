@@ -337,9 +337,8 @@ class FileUploadItem(BaseModel):
     path: str  # Relative path in the file system
     content: str  # Base64 content
     name: str  # Original file name
-    mime_type: Optional[str] = None
-    original_created_at: Optional[datetime] = None
-    original_modified_at: Optional[datetime] = None
+    file_created_at: float # Unix timestamp in milliseconds
+    file_modified_at: float # Unix timestamp in milliseconds
     transformations_stack_name: Optional[str] = "default"
 
 
@@ -360,22 +359,19 @@ class FileResponse(BaseModel):
     name: str
     path: str
     mime_type: str | None = None
-    size: str | None = None
-    created_at: datetime
-    updated_at: datetime
-    original_created_at: datetime | None = None
-    original_modified_at: datetime | None = None
+    size: int | None = None
+    uploaded_at: float
+    accessed_at: float
+    file_created_at: float
+    file_modified_at: float
 
 
 class FolderResponse(BaseModel):
     id: int
     name: str
     path: str
-    created_at: datetime
-    updated_at: datetime
-    original_created_at: datetime | None = None
-    original_modified_at: datetime | None = None
-
+    uploaded_at: float
+    accessed_at: float
 
 class FolderContentsResponse(BaseModel):
     files: list[FileResponse]

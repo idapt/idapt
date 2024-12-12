@@ -66,10 +66,12 @@ export function FileManager() {
             className="hidden"
             onChange={handleFileUpload}
           />
+          
           <input
             type="file"
             ref={folderInputRef}
             className="hidden"
+            // @ts-expect-error
             webkitdirectory=""
             directory=""
             onChange={handleFolderUpload}

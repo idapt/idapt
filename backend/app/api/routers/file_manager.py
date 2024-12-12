@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi.responses import Response
 from sse_starlette.sse import EventSourceResponse
 from base64 import urlsafe_b64decode
+from datetime import datetime, timezone
 
 from app.database.connection import get_db_session
 from app.services.file_manager import FileManagerService
@@ -68,8 +69,24 @@ async def rename_file(
 @r.get("/folder/")
 async def get_root_folder(session: Session = Depends(get_db_session)) -> FolderContentsResponse:
     files, folders = file_manager.get_folder_contents(session, None)
-    files = [FileResponse(**file.__dict__) for file in files]
-    folders = [FolderResponse(**folder.__dict__) for folder in folders]
+    files = [FileResponse(
+        id=file.id,
+        name=file.name,
+        path=file.path,
+        mime_type=file.mime_type,
+        size=file.size,
+        uploaded_at=file.uploaded_at.timestamp(),
+        accessed_at=file.accessed_at.timestamp(),
+        file_created_at=file.file_created_at.timestamp(),
+        file_modified_at=file.file_modified_at.timestamp()
+    ) for file in files]
+    folders = [FolderResponse(
+        id=folder.id,
+        name=folder.name,
+        path=folder.path,
+        uploaded_at=folder.uploaded_at.timestamp(),
+        accessed_at=folder.accessed_at.timestamp()
+    ) for folder in folders]
     return FolderContentsResponse(files=files, folders=folders)
 
 @r.get("/folder/{encoded_path}")
@@ -82,8 +99,24 @@ async def get_folder_contents(
     if encoded_path:
         path = decode_path_safe(encoded_path)
     files, folders = file_manager.get_folder_contents(session, path)
-    files = [FileResponse(**file.__dict__) for file in files]
-    folders = [FolderResponse(**folder.__dict__) for folder in folders]
+    files = [FileResponse(
+        id=file.id,
+        name=file.name,
+        path=file.path,
+        mime_type=file.mime_type,
+        size=file.size,
+        uploaded_at=file.uploaded_at.timestamp(),
+        accessed_at=file.accessed_at.timestamp(),
+        file_created_at=file.file_created_at.timestamp(),
+        file_modified_at=file.file_modified_at.timestamp()
+    ) for file in files]
+    folders = [FolderResponse(
+        id=folder.id,
+        name=folder.name,
+        path=folder.path,
+        uploaded_at=folder.uploaded_at.timestamp(),
+        accessed_at=folder.accessed_at.timestamp()
+    ) for folder in folders]
     return FolderContentsResponse(files=files, folders=folders)
 
 @r.get("/folder/{encoded_path}/download")

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.database.models import File, Folder
-from datetime import datetime
+from datetime import datetime, timezone
 import mimetypes
 import logging
 from typing import List, Tuple
@@ -46,8 +46,6 @@ class DBFileService:
                     name=part,
                     path=current_path,
                     parent_id=current_folder.id if current_folder else None,
-                    original_created_at=datetime.now(), #Dummy values
-                    original_modified_at=datetime.now()
                 )
                 session.add(folder)
                 try:
@@ -68,11 +66,13 @@ class DBFileService:
         session: Session,
         name: str,
         path: str,
-        original_created_at: datetime | None = None,
-        original_modified_at: datetime | None = None,
+        file_created_at: float,
+        file_modified_at: float,
+        size: int
     ) -> File:
         """Create a file record in the database without content"""
         try:
+            # Guess the file mime type
             mime_type, _ = mimetypes.guess_type(name)
 
             # If there is a parent folder, create it, else get its id
@@ -87,9 +87,11 @@ class DBFileService:
                 name=name,
                 path=path,
                 mime_type=mime_type,
+                size=size,
                 folder_id=folder_id,
-                original_created_at=original_created_at,
-                original_modified_at=original_modified_at,
+                # Store timestamps in UTC datetime into the database as sqlalchemy need a datetime object
+                file_created_at=datetime.fromtimestamp(file_created_at, tz=timezone.utc),
+                file_modified_at=datetime.fromtimestamp(file_modified_at, tz=timezone.utc),
             )
             
             session.add(file)
@@ -179,7 +181,6 @@ class DBFileService:
             # Update the file name and path
             file.name = name
             file.path = new_path
-            file.updated_at = datetime.now(datetime.timezone.utc)
             # Commit the changes to the database
             session.commit()
             # Return the updated file

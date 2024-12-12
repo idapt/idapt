@@ -9,18 +9,16 @@ export interface File {
   path: string;
   mime_type?: string;
   size?: string;
-  created_at: string;
-  updated_at: string;
-  original_created_at?: string;
-  original_modified_at?: string;
+  uploaded_at: number;
+  accessed_at: number;
+  file_created_at: number;
+  file_modified_at: number;
 }
 
 export interface Folder {
   id: number;
   name: string;
   path: string;
-  created_at: string;
-  updated_at: string;
-  original_created_at?: string;
-  original_modified_at?: string;
+  uploaded_at: number;
+  accessed_at: number;
 }

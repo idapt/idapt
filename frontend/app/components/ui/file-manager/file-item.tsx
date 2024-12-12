@@ -20,6 +20,7 @@ interface FileItemProps {
   type: "file" | "folder";
   size?: string;
   modified: string;
+  accessed: string;
   path: string;
   mimeType?: string;
   onClick?: () => void;
@@ -33,6 +34,7 @@ export function FileItem({
   type, 
   size, 
   modified, 
+  accessed,
   path,
   mimeType,
   onClick, 
@@ -215,6 +217,7 @@ export function FileItem({
             <p><strong>Type:</strong> {type}</p>
             {size && <p><strong>Size:</strong> {size}</p>}
             {modified && <p><strong>Modified:</strong> {modified}</p>}
+            {accessed && <p><strong>Last Accessed:</strong> {accessed}</p>}
             {path && <p><strong>Path:</strong> {path}</p>}
           </div>
         </DialogContent>

@@ -30,10 +30,10 @@ export function useFileUpload() {
         path: filePath,
         content: `data:${file.type};base64,${compressedBase64}`,
         name: file.name,
-        mime_type: file.type,
-        original_created_at: file.lastModified.toString(),
-        original_modified_at: file.lastModified.toString(),
-        //compressed: true // Add flag to indicate compression
+        // We cannot get the original created_at from the browser so we use the last modified date as created_at
+        // Use unix timestamp in seconds
+        file_created_at: file.lastModified / 1000,
+        file_modified_at: file.lastModified / 1000,
       }], true);
 
       await generate([{
