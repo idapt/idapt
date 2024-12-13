@@ -10,7 +10,8 @@ import os
 import asyncio
 
 from app.database.connection import get_connection_string
-from app.settings.app_settings import AppSettings
+from app.settings.manager import AppSettingsManager
+app_settings = AppSettingsManager.get_instance().settings
 
 class SingletonMeta(type):
     _instances = {}
@@ -93,7 +94,7 @@ class StorageContextSingleton(metaclass=SingletonMeta):
                 async_connection_string=async_conn_string,
                 schema_name="public",
                 table_name="embeddings",
-                embed_dim=int(AppSettings.embedding_dim),
+                embed_dim=int(app_settings.embedding_dim),
             ) 
         return self._vector_store
 

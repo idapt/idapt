@@ -1,16 +1,13 @@
 import logging
 import os
 from typing import Any, Dict, List, Optional
-from datetime import datetime
 
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.schema import NodeWithScore
 from pydantic import BaseModel, Field, validator
 from pydantic.alias_generators import to_camel
 
-from app.config import DATA_DIR
 from app.services.file import DocumentFile
-from app.database.models import File, Folder
 
 logger = logging.getLogger("uvicorn")
 

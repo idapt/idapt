@@ -9,7 +9,7 @@ from llama_index.core.chat_engine.types import StreamingAgentChatResponse
 from llama_index.core.schema import NodeWithScore
 
 from app.api.routers.events import EventCallbackHandler
-from app.api.routers.models import ChatData, Message, SourceNodes
+from app.api.models.models import ChatData, Message, SourceNodes
 from app.api.services.suggestion import NextQuestionSuggestion
 
 logger = logging.getLogger("uvicorn")

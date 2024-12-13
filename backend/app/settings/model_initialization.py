@@ -1,10 +1,9 @@
-from app.settings.manager import SettingsManager
+from app.settings.manager import AppSettingsManager
 from app.settings.models import *
 from app.settings.model_providers import *
 
-def init_llm():
+def init_llm(settings: AppSettings):
     """Initialize LLM based on model provider setting"""
-    settings = SettingsManager.get_instance().settings
     match settings.llm_model_provider:
         case "openai":
             return init_openai_llm(settings.openai, settings.temperature, settings.system_prompt)
@@ -25,9 +24,8 @@ def init_llm():
         case _:
             return init_ollama_llm(settings.integrated_ollama, settings.temperature, settings.system_prompt)
         
-def init_embedding_model():
+def init_embedding_model(settings: AppSettings):
     """Initialize embedding model based on embedding_model_provider setting"""
-    settings = SettingsManager.get_instance().settings
     match settings.embedding_model_provider:
         case "openai":
             return init_openai_embedding(settings.openai, settings.embedding_dim)

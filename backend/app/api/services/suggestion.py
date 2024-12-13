@@ -3,7 +3,7 @@ import os
 import re
 from typing import List, Optional
 
-from app.api.routers.models import Message
+from app.api.models.models import Message
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.settings import Settings
 

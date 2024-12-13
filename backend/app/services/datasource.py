@@ -1,20 +1,21 @@
 from sqlalchemy.orm import Session
 from app.database.models import Datasource, Folder
+from app.services.database import DatabaseService
 from app.services.db_file import DBFileService
 from app.services.file_manager import FileManagerService
 from app.services.file_system import get_full_path_from_path
 import logging
 from typing import List, Optional
-from app.database.connection import get_db
 
 class DatasourceService:
-    def __init__(self):
+
+    def __init__(self, database_service: DatabaseService, db_file_service: DBFileService, file_manager_service: FileManagerService):
         self.logger = logging.getLogger(__name__)
-        self.db_file_service = DBFileService()
-        self.file_manager_service = FileManagerService()
-        self.logger.info("Initializing default datasources")
-        #with get_db() as session:
-            #self._init_default_datasources(session)
+        self.database_service = database_service
+        self.db_file_service = db_file_service
+        self.file_manager_service = file_manager_service
+        # Init the default datasource
+        self._init_default_datasources(self.database_service.get_session())
 
     def _init_default_datasources(self, session: Session):
         """Initialize default datasources if they don't exist"""

@@ -136,45 +136,8 @@ class DatabaseMigrationManager:
         session = SessionLocal()
         
         try:
-
-            # Create the root folder if it doesn't exist
-            root_folder = Folder(
-                name="/",
-                path="/",
-                parent_id=None
-            )
-            session.add(root_folder)
-            session.flush()  # Flush to get the root_folder.id
-
-            # Create data folder
-            data_folder = Folder(
-                name="/data",
-                path="/data",
-                parent_id=root_folder.id
-            )
-            session.add(data_folder)
-            session.flush()  # Flush to get the data_folder.id
-            
-            # Create Files datasource folder
-            datasource_folder = Folder(
-                name="Files",
-                path="/data/Files",
-                parent_id=data_folder.id
-            )
-            session.add(datasource_folder)
-            session.flush()  # Flush to get the datasource_folder.id
-
-            # Create Files datasource with the folder reference
-            datasource = Datasource(
-                name="Files",
-                type="files",
-                settings={"description": "Default file storage"},
-                root_folder_id=datasource_folder.id  # Set the root_folder_id
-            )
-            session.add(datasource)
-            
-            session.commit()
-            logger.info("Created Files datasource")
+            # Unused for now
+            logger.info("Populated default data")
             
         except Exception as e:
             session.rollback()

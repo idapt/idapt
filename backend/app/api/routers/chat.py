@@ -5,7 +5,7 @@ from llama_index.core.llms import MessageRole
 from llama_index.postprocessor.colbert_rerank import ColbertRerank
 
 from app.api.routers.events import EventCallbackHandler
-from app.api.routers.models import (
+from app.api.models.models import (
     ChatData,
     Message,
     Result,

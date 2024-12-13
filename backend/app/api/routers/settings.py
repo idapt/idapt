@@ -1,21 +1,28 @@
-from fastapi import APIRouter, HTTPException
-from app.settings.manager import SettingsManager
+from fastapi import APIRouter, HTTPException, Depends
+from app.settings.manager import AppSettingsManager
 from app.settings.models import AppSettings
 from pydantic import ValidationError
-from typing import Dict, Any
 
-settings_router = APIRouter()
+settings_router = r = APIRouter()
 
-@settings_router.get("")
-async def get_settings() -> AppSettings:
+def get_app_settings_manager():
+    return AppSettingsManager.get_instance()
+
+@r.get("")
+async def get_settings(
+    app_settings_manager: AppSettingsManager = Depends(get_app_settings_manager)
+) -> AppSettings:
     """Get current application settings"""
-    return SettingsManager.get_instance().settings
+    return app_settings_manager.settings
 
-@settings_router.post("")
-async def update_settings(settings: AppSettings):
+@r.post("")
+async def update_settings(
+    settings: AppSettings,
+    app_settings_manager: AppSettingsManager = Depends(get_app_settings_manager)
+):
     """Update application settings"""
     try:
-        SettingsManager.get_instance().update(**settings.model_dump())
+        app_settings_manager.settings.update(**settings.model_dump())
         return {"status": "success"}
     except ValidationError as e:
         errors = []

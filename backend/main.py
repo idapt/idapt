@@ -6,7 +6,6 @@ load_dotenv()
 
 import logging
 import os
-import threading
 
 # Set up logging configuration early
 environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
@@ -52,39 +51,31 @@ from fastapi.staticfiles import StaticFiles
 logger.info("Starting application initialization")
 
 def create_app() -> FastAPI:
-    app = FastAPI()
-    
-    # Initialize the application settings, this will load settings from file.
-    from app.settings.app_settings import AppSettings
 
-    # Pull Ollama models currently set in app settings if needed
-    if AppSettings.llm_model_provider == "integrated_ollama" or AppSettings.llm_model_provider == "custom_ollama":
-        from app.pull_ollama_models import start_ollama_pull_thread
-        start_ollama_pull_thread()
-        
-    # Initialize core components
-    from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
-    update_llama_index_settings_from_app_settings()
+    app = FastAPI()
 
     from app.observability import init_observability
     init_observability()
+    
+    # Initialize the application settings using SettingsManager, as the settings are new, it will update the dependent services
+    from app.settings.manager import AppSettingsManager
+    AppSettingsManager.get_instance().settings
 
     # Initialize the database
     from app.database.init_db import initialize_database
     initialize_database()
+
+    # Initialize all services
+    from app.services import ServiceManager
+    ServiceManager.get_instance()
     
     # Configure CORS
     configure_cors(app)
     
     # Mount static files
     mount_static_files(app)
-
-    # Initialize the Generate Service
-    from app.services.generate import GenerateService
-    GenerateService.get_instance()
-    logger.info("Initialized Generate Service")
     
-    # Include API router
+    # Include API router to init the API endpoints
     from app.api.routers import api_router
     app.include_router(api_router, prefix="/api")
     

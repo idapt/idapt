@@ -7,8 +7,8 @@ from urllib.parse import urlparse
 import asyncio
 
 from app.database.connection import get_connection_string
-from app.settings.app_settings import AppSettings
-
+from app.settings.manager import AppSettingsManager
+app_settings = AppSettingsManager.get_instance().settings
 
 import logging
 
@@ -87,6 +87,6 @@ class ZettelkastenIndexSingleton(metaclass=SingletonMeta):
                 async_connection_string=async_conn_string,
                 schema_name="public",
                 table_name="zettelkasten_vectorstore",
-                embed_dim=int(AppSettings.embedding_dim),
+                embed_dim=int(app_settings.embedding_dim),
             )
         return self._vector_store

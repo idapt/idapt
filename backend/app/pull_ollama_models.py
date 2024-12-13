@@ -11,23 +11,34 @@ def start_ollama_pull_thread():
 
 def pull_ollama_models():
     """Pull both Ollama LLM and embedding models sequentially"""
-    from app.settings.app_settings import AppSettings
-    
+    from app.settings.manager import AppSettingsManager
+    app_settings = AppSettingsManager.get_instance().settings
+
+    llm_model = None
+    llm_base_url = None
+
     # Pull LLM model first
-    if AppSettings.llm_model_provider == "custom_ollama":
-        base_url = AppSettings.custom_ollama_llm_host
+    if app_settings.llm_model_provider == "custom_ollama":
+        llm_base_url = app_settings.custom_ollama.llm_host
+        llm_model = app_settings.custom_ollama.llm_model
     else:
-        base_url = AppSettings.integrated_ollama_llm_host
-    model = AppSettings.ollama_model
-    _pull_model(base_url, model)
+        llm_base_url = app_settings.integrated_ollama.llm_host
+        llm_model = app_settings.integrated_ollama.llm_model
+
+    _pull_model(llm_base_url, llm_model)
+
+    embedding_model = None
+    embedding_base_url = None
 
     # Then pull embedding model
-    if AppSettings.embedding_model_provider == "custom_ollama":
-        base_url = AppSettings.custom_ollama_embedding_host
+    if app_settings.embedding_model_provider == "custom_ollama":
+        embedding_base_url = app_settings.custom_ollama.embedding_host
+        embedding_model = app_settings.custom_ollama.embedding_model
     else:
-        base_url = AppSettings.integrated_ollama_embedding_host
-    model = AppSettings.ollama_embedding_model
-    _pull_model(base_url, model)
+        embedding_base_url = app_settings.integrated_ollama.embedding_host
+        embedding_model = app_settings.integrated_ollama.embedding_model
+
+    _pull_model(embedding_base_url, embedding_model)
 
 def _pull_model(base_url: str, model: str):
     """Helper function to pull a model from Ollama"""

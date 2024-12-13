@@ -5,15 +5,18 @@ from sse_starlette.sse import EventSourceResponse
 from base64 import urlsafe_b64decode
 
 from app.database.connection import get_db_session
-from app.services.file_manager import FileManagerService
-from app.api.routers.models import FileUploadRequest, FolderContentsResponse, FileResponse, FolderResponse
+from app.api.models.models import FileUploadRequest, FolderContentsResponse, FileResponse, FolderResponse
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path
+from app.services.file_manager import FileManagerService
 
 import logging
 logger = logging.getLogger(__name__)
 
 file_manager_router = r = APIRouter()
-file_manager = FileManagerService()
+
+def get_file_manager_service():
+    from app.services import ServiceManager
+    return ServiceManager.get_instance().file_manager_service
 
 def decode_path_safe(encoded_path: str) -> str:
     try:
@@ -25,12 +28,17 @@ def decode_path_safe(encoded_path: str) -> str:
 async def upload_files(
     request: FileUploadRequest,
     background_tasks: BackgroundTasks,
+    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ) -> EventSourceResponse:
     return EventSourceResponse(file_manager.upload_files(request, background_tasks, session))
 
 @r.get("/file/{encoded_path}/download")
-async def download_file(encoded_path: str, session: Session = Depends(get_db_session)):
+async def download_file(
+    encoded_path: str,
+    file_manager: FileManagerService = Depends(get_file_manager_service),
+    session: Session = Depends(get_db_session)
+):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     result = await file_manager.download_file(session, full_path)
@@ -45,14 +53,22 @@ async def download_file(encoded_path: str, session: Session = Depends(get_db_ses
     )
 
 @r.delete("/file/{encoded_path}")
-async def delete_file(encoded_path: str, session: Session = Depends(get_db_session)):
+async def delete_file(
+    encoded_path: str,
+    file_manager: FileManagerService = Depends(get_file_manager_service),
+    session: Session = Depends(get_db_session)
+):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     await file_manager.delete_file(session, full_path)
     return {"success": True}
 
 @r.delete("/folder/{encoded_path}")
-async def delete_folder(encoded_path: str, session: Session = Depends(get_db_session)):
+async def delete_folder(
+    encoded_path: str,
+    file_manager: FileManagerService = Depends(get_file_manager_service),
+    session: Session = Depends(get_db_session)
+):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     await file_manager.delete_folder(session, full_path)
@@ -62,6 +78,7 @@ async def delete_folder(encoded_path: str, session: Session = Depends(get_db_ses
 async def rename_file(
     encoded_path: str, 
     new_name: str, 
+    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ):
     path = decode_path_safe(encoded_path)
@@ -74,6 +91,7 @@ async def rename_file(
 @r.get("/folder/{encoded_path}")
 async def get_folder_contents(
     encoded_path: str | None = None,
+    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ) -> FolderContentsResponse:
     """Get contents of a folder"""
@@ -107,7 +125,11 @@ async def get_folder_contents(
     return FolderContentsResponse(files=files, folders=folders)
 
 @r.get("/folder/{encoded_path}/download")
-async def download_folder(encoded_path: str, session: Session = Depends(get_db_session)):
+async def download_folder(
+    encoded_path: str,
+    file_manager: FileManagerService = Depends(get_file_manager_service),
+    session: Session = Depends(get_db_session)
+):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     result = await file_manager.download_folder(session, full_path)

@@ -15,11 +15,10 @@ from llama_index.core.extractors import (
 
 #from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 from app.engine.storage_context import StorageContextSingleton
+
+from app.services.database import DatabaseService
 from app.services.db_file import DBFileService
-from app.database.connection import get_connection_string
-from app.database.service import DatabaseService
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+
 
 import nest_asyncio
 
@@ -34,16 +33,14 @@ class IngestionPipelineService:
     This only takes care of the llama index part
     """
 
-    def __init__(self):
-        # Create a regular SQLAlchemy engine and session factory
-        engine = create_engine(get_connection_string().replace("+asyncpg", "+psycopg2"))
-        Session = sessionmaker(bind=engine)
-        self.db_service = DatabaseService(Session)
+    def __init__(self, db_file_service: DBFileService, db_service: DatabaseService):
+
+        self.db_service = db_service
         
+        self.db_file_service = db_file_service
+
         # Create a unique ingestion pipeline that will persist between file ingestions
         self.ingestion_pipeline = self._create_ingestion_pipeline()
-
-        self.db_file_service = DBFileService()
 
     # See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
     # List of avaliable transformations stacks with their name and transformations

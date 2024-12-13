@@ -2,8 +2,8 @@ from functools import lru_cache
 import logging
 import threading
 from typing import Optional
-from .password_manager import DatabasePasswordManager
-from .migration_manager import DatabaseMigrationManager
+from app.database.initialization.password_manager import DatabasePasswordManager
+from app.database.initialization.migration_manager import DatabaseMigrationManager
 from app.database.connection import get_connection_string
 
 logger = logging.getLogger(__name__)

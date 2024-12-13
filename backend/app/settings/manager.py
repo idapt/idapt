@@ -3,24 +3,26 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from app.config import DATA_DIR
+from app.config import APP_DATA_DIR
 from app.settings.models import AppSettings
 
 logger = logging.getLogger(__name__)
 
-class SettingsManager:
-    _instance: Optional["SettingsManager"] = None
+class AppSettingsManager:
+    _instance: Optional["AppSettingsManager"] = None
     _settings: Optional[AppSettings] = None
     
     def __init__(self):
-        self.config_dir = Path(DATA_DIR) / ".app-config"
-        self.settings_file = self.config_dir / "app-settings.json"
+        self.settings_file = Path(APP_DATA_DIR) / "app-settings.json"
         self._load_settings()
     
     @classmethod
-    def get_instance(cls) -> "SettingsManager":
+    def get_instance(cls) -> "AppSettingsManager":
         if cls._instance is None:
+            # Create a new instance
             cls._instance = cls()
+            # Update the dependent services with the new settings
+            cls._instance._update_dependent_services()
         return cls._instance
     
     @property
@@ -45,7 +47,6 @@ class SettingsManager:
     
     def _save_settings(self) -> None:
         try:
-            self.config_dir.mkdir(parents=True, exist_ok=True)
             self.settings_file.write_text(self.settings.model_dump_json(indent=2))
             logger.info(f"Saved settings to {self.settings_file}")
         except Exception as e:

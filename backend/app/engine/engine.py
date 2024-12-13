@@ -16,7 +16,8 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 #)
 #from app.engine.tools import ToolFactory
 from app.engine.storage_context import StorageContextSingleton
-from app.settings.app_settings import AppSettings
+from app.settings.manager import AppSettingsManager
+app_settings = AppSettingsManager.get_instance().settings
 
 import logging
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         files_index = StorageContextSingleton().index
         
         # Only return the top k results
-        top_k = int(AppSettings.top_k)
+        top_k = int(app_settings.top_k)
         
         # Init the query engine that will be reused for each node
         # Configure retriever
@@ -76,7 +77,7 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
             query_engine=files_query_engine,
             metadata=ToolMetadata(
                 name="files_query_engine",
-                description=AppSettings.files_tool_description
+                description=app_settings.files_tool_description
             ),
         )
         # Add the tool to the list of tools
@@ -93,7 +94,7 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
         # Read the prompt file
         react_agent_system_prompt = open(prompt_file_path, "r").read()
         # Add the user system prompt to it
-        react_agent_system_prompt = AppSettings.system_prompt + "\n\n" + react_agent_system_prompt
+        react_agent_system_prompt = app_settings.system_prompt + "\n\n" + react_agent_system_prompt
 
         # This creates the most appropriate agent for this llm
         return ReActAgent.from_llm(
@@ -101,7 +102,7 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
             tools=tools,
             callback_manager=callback_manager,
             verbose=True,
-            max_iterations=AppSettings.max_iterations,
+            max_iterations=app_settings.max_iterations,
             react_chat_formatter=ReActChatFormatter(
                 system_header=react_agent_system_prompt,
                 context=""

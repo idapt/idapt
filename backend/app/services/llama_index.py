@@ -1,7 +1,6 @@
 import logging
 
 from app.engine.storage_context import StorageContextSingleton
-from app.services.file_system import get_full_path_from_path
 
 class LlamaIndexService:
     def __init__(self):

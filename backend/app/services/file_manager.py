@@ -8,11 +8,14 @@ from fastapi import BackgroundTasks
 import base64
 import os
 
+# The services are already initialized in the main.py file
 from app.services.db_file import DBFileService
-from app.services.file_system import FileSystemService, get_full_path_from_path
-from app.api.routers.models import FileUploadItem, FileUploadRequest, FileUploadProgress
-from app.database.models import File, Folder
+from app.services.file_system import FileSystemService
 from app.services.llama_index import LlamaIndexService
+from app.services.file_system import get_full_path_from_path
+from app.api.models.models import FileUploadItem, FileUploadRequest, FileUploadProgress
+from app.database.models import File, Folder
+from app.services.database import DatabaseService
 
 import logging
 
@@ -21,11 +24,40 @@ class FileManagerService:
     Service for managing files and folders
     """
 
-    def __init__(self):
+    def __init__(self, db_service: DatabaseService, db_file_service: DBFileService, file_system_service: FileSystemService, llama_index_service: LlamaIndexService):
         self.logger = logging.getLogger(__name__)
-        self.db_file_service = DBFileService()
-        self.file_system = FileSystemService()
-        self.llama_index = LlamaIndexService()
+        self.db_service = db_service
+        self.db_file_service = db_file_service
+        self.file_system = file_system_service
+        self.llama_index = llama_index_service
+        
+        self._create_default_filestructure(self.db_service.get_session())
+
+    def _create_default_filestructure(self, session: Session):
+        """Create the default filestructure in the database"""
+        try:
+            # Create the root folder if it doesn't exist
+            root_folder = Folder(
+                name="/",
+                path="/",
+                parent_id=None
+            )
+            session.add(root_folder)
+            session.flush()  # Flush to get the root_folder.id
+
+            # Create data folder
+            data_folder = Folder(
+                name="/data",
+                path="/data",
+                parent_id=root_folder.id
+            )
+            session.add(data_folder)
+            session.flush()  # Flush to get the data_folder.id
+            session.commit()
+            
+        except Exception as e:
+            self.logger.error(f"Error creating default filestructure: {str(e)}")
+            raise
 
     async def upload_files(self, request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:
         try:
@@ -276,11 +308,8 @@ class FileManagerService:
     def get_folder_contents(self, session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
         """Get contents of a specific folder"""
         try:            
-            self.logger.error(f"Getting folder contents for full path: {full_path}")
+            
             folder_contents = self.db_file_service.get_folder_contents(session, full_path)
-
-            self.logger.error(f"Folder contents files: {folder_contents[0]}")
-            self.logger.error(f"Folder contents folders: {folder_contents[1]}")
 
             return folder_contents
         except Exception as e:

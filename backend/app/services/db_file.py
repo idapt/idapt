@@ -110,15 +110,8 @@ class DBFileService:
 
     def get_folder_contents(self, session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
 
-        # If there is a trailing slash, remove it
-        #if full_path.endswith('/'):
-        #    full_path = full_path[:-1]
-
-        self.logger.error(f"Full path: {full_path}")
-
         # Get folder id from path
         folder_id = self.get_folder_id(session, full_path)
-        self.logger.error(f"Folder id: {folder_id}")
 
         # Get all folders in this folder
         folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()

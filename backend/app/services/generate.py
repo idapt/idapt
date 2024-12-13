@@ -16,16 +16,14 @@ class GenerateService:
     Service for managing the generation queue and processing of files through the ingestion pipeline.
     Implements a singleton pattern and handles batched processing of files with similar transformation stacks.
     """
-    # Singleton instance
-    _instance = None
     _task: Optional[Task] = None
     _processing_loop = None
     _processing_thread = None
     _queue_file = Path("output/queue/generate_queue.json")
     
-    def __init__(self):
+    def __init__(self, ingestion_pipeline_service: IngestionPipelineService):
         """Initialize the service with a queue and start the processing thread"""
-        self.ingestion_pipeline_service = IngestionPipelineService()
+        self.ingestion_pipeline_service = ingestion_pipeline_service
         self._queue = Queue()
         self._ensure_queue_directory()
         self._load_queue_from_disk()
@@ -87,13 +85,6 @@ class GenerateService:
             thread_logger.error(f"Processing loop failed: {str(e)}")
         finally:
             loop.close()
-
-    @classmethod
-    def get_instance(cls):
-        """Get or create the singleton instance"""
-        if cls._instance is None:
-            cls._instance = GenerateService()
-        return cls._instance
 
     async def _process_queue(self, batch_size: int = DEFAULT_BATCH_SIZE):
         """
@@ -216,43 +207,37 @@ class GenerateService:
         except Exception as e:
             logger.error(f"Failed to persist queue to disk: {str(e)}")
 
-    @classmethod
-    async def add_to_queue(cls, full_file_path: str, transformations_stack_name_list: List[str] = ["default"]):
+    async def add_to_queue(self, full_file_path: str, transformations_stack_name_list: List[str] = ["default"]):
         """Add a single file to the generation queue"""
         try:
-            instance = cls.get_instance()
-            await instance._queue.put({
+            await self._queue.put({
                 "path": full_file_path,
                 "transformations_stack_name_list": transformations_stack_name_list
             })
-            instance._persist_queue()
+            self._persist_queue()
             logger.info(f"Added file to queue: {full_file_path} with stacks {transformations_stack_name_list}")
         except Exception as e:
             logger.error(f"Failed to add file to queue: {str(e)}")
             raise
 
-    @classmethod
-    async def add_batch_to_queue(cls, files: List[dict]):
+    async def add_batch_to_queue(self, files: List[dict]):
         """Add multiple files to the generation queue"""
         try:
-            instance = cls.get_instance()
             for file in files:
-                await instance._queue.put({
+                await self._queue.put({
                     "path": file["path"],
                     "transformations_stack_name_list": file.get("transformations_stack_name_list", ["default"])
                 })
-            instance._persist_queue()
+            self._persist_queue()
             logger.info(f"Added batch of {len(files)} files to queue")
         except Exception as e:
             logger.error(f"Failed to add batch to queue: {str(e)}")
             raise
 
-    @classmethod
-    def get_queue_status(cls) -> dict:
+    def get_queue_status(self) -> dict:
         """Get the current status of the generation queue"""
-        instance = cls.get_instance()
         return {
-            "queue_length": instance._queue.qsize(),
-            "queue_items": list(instance._queue._queue)
+            "queue_length": self._queue.qsize(),
+            "queue_items": list(self._queue._queue)
         }
 
