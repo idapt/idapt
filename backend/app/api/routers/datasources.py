@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from base64 import urlsafe_b64decode
 from app.services import ServiceManager
 from app.database.models import Datasource
@@ -23,7 +23,11 @@ class DatasourceResponse(BaseModel):
     id: int
     name: str
     type: str
+    description: Optional[str] = None
     settings: dict = None
+
+class DatasourceUpdate(BaseModel):
+    description: Optional[str] = None
 
 @datasources_router.get("", response_model=List[DatasourceResponse])
 async def get_datasources(
@@ -36,6 +40,7 @@ async def get_datasources(
         id=ds.id,
         name=ds.name,
         type=ds.type,
+        description=ds.description,
         settings=ds.settings,
     ) for ds in datasources]
 
@@ -55,6 +60,7 @@ async def get_datasource(
             id=datasource.id,
             name=datasource.name,
             type=datasource.type,
+            description=datasource.description,
             settings=datasource.settings,
         )
     except HTTPException:
@@ -80,6 +86,7 @@ async def create_datasource(
             id=created.id,
             name=created.name,
             type=created.type,
+            description=created.description,
             settings=created.settings,
         )
     except Exception as e:
@@ -97,6 +104,25 @@ async def delete_datasource(
         if not success:
             raise HTTPException(status_code=404, detail="Datasource not found")
         return {"message": "Datasource deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@datasources_router.patch("/{encoded_name}")
+async def update_datasource(
+    encoded_name: str,
+    update: DatasourceUpdate,
+    service = Depends(get_datasource_service),
+    session: Session = Depends(get_db_session)
+):
+    try:
+        name = urlsafe_b64decode(encoded_name.encode()).decode()
+        if update.description is not None:
+            success = service.update_datasource_description(session, name, update.description)
+            if not success:
+                raise HTTPException(status_code=404, detail="Datasource not found")
+        return {"message": "Datasource updated successfully"}
     except HTTPException:
         raise
     except Exception as e:

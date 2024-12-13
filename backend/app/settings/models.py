@@ -100,11 +100,6 @@ class AppSettings(BaseModel):
         "When the user is talking at the first person, he is talking about himself. Use the tool to get personal information needed to answer.\n"
         "In your final answer strictly answer to the user question, do not go off topic or talk about tools used.\n"
     )
-    
-    files_tool_description: str = (
-        "This tool provides information about the user files.\n"
-        "Use a detailed plain text question as input to the tool."
-    )
 
     class Config:
         json_schema_extra = {

@@ -6,11 +6,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@radix-ui/react-dropdown-menu";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useClientConfig } from "../chat/hooks/use-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { Datasource } from "@/app/types/files";
 import { encodePathSafe } from "./utils/path-encoding";
+import { Textarea } from "../textarea";
 
 interface DatasourceItemProps {
   datasource: Datasource;
@@ -18,53 +19,55 @@ interface DatasourceItemProps {
   onRefresh?: () => void;
 }
 
-export function DatasourceItem({ 
-  datasource,
-  onClick,
-  onRefresh
-}: DatasourceItemProps) {
+export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceItemProps) {
   const { backend } = useClientConfig();
   const [showSettings, setShowSettings] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const [description, setDescription] = useState(datasource.description || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setContextMenuPosition({ x: e.clientX, y: e.clientY });
-  };
+  useEffect(() => {
+    setDescription(datasource.description || '');
+  }, [datasource.description]);
 
   const handleClick = (e: React.MouseEvent) => {
-    if (!(e.target as HTMLElement).closest('.dropdown-trigger')) {
-      onClick?.();
+    // Check if the click came from the dropdown menu or its children
+    if (e.target instanceof Element && (
+      e.target.closest('[role="menu"]') || 
+      e.target.closest('button[role="trigger"]')
+    )) {
+      e.stopPropagation();
+      return;
     }
+    onClick?.();
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setContextMenuPosition(null);
-    
-    if (confirm(`Are you sure you want to delete datasource "${datasource.name}"?`)) {
-      try {
-        const encodedName = encodePathSafe(datasource.name);
-        const response = await fetch(`${backend}/api/datasources/${encodedName}`, {
-          method: 'DELETE'
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to delete datasource');
-        }
-        
-        onRefresh?.();
-      } catch (error) {
-        console.error('Delete failed:', error);
-        alert('Failed to delete datasource');
+  const handleSaveSettings = async () => {
+    try {
+      setError(null);
+      setIsSaving(true);
+      const response = await fetch(`${backend}/api/datasources/${encodePathSafe(datasource.name)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          description: description
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
       }
-    }
-  };
 
-  const handleSettingsClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setContextMenuPosition(null);
-    setShowSettings(true);
+      onRefresh?.();
+      setShowSettings(false);
+    } catch (error) {
+      console.error('Save failed:', error);
+      setError('Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -72,7 +75,6 @@ export function DatasourceItem({
       <div 
         className="group relative flex items-center space-x-4 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
         onClick={handleClick}
-        onContextMenu={handleContextMenu}
       >
         <Database className="h-8 w-8 text-gray-400" />
         <div className="flex-1 min-w-0">
@@ -80,53 +82,51 @@ export function DatasourceItem({
           <p className="text-xs text-gray-500">Datasource</p>
         </div>
         
-        {/* Regular dropdown menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="opacity-0 group-hover:opacity-100 dropdown-trigger"
+              className="opacity-0 group-hover:opacity-100"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={handleSettingsClick}>
+          <DropdownMenuContent align="end" className="w-[200px] p-2">
+            <DropdownMenuItem 
+              className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
+              onSelect={() => setShowSettings(true)}
+            >
               <Settings className="h-4 w-4 mr-2" />
               <span>Settings</span>
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleDelete} className="text-red-600">
+            <DropdownMenuItem 
+              className="cursor-pointer p-2 hover:bg-gray-100 rounded-md text-red-600 flex items-center"
+              onSelect={async () => {
+                if (confirm(`Are you sure you want to delete datasource "${datasource.name}"?`)) {
+                  try {
+                    const encodedName = encodePathSafe(datasource.name);
+                    const response = await fetch(`${backend}/api/datasources/${encodedName}`, {
+                      method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) {
+                      throw new Error('Failed to delete datasource');
+                    }
+                    
+                    onRefresh?.();
+                  } catch (error) {
+                    console.error('Delete failed:', error);
+                    alert('Failed to delete datasource');
+                  }
+                }
+              }}
+            >
               <Trash2 className="h-4 w-4 mr-2" />
               <span>Delete</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* Context menu (right-click) */}
-        {contextMenuPosition && (
-          <DropdownMenu 
-            open={true} 
-            onOpenChange={() => setContextMenuPosition(null)}
-          >
-            <DropdownMenuContent
-              style={{
-                position: 'fixed',
-                left: contextMenuPosition.x,
-                top: contextMenuPosition.y,
-              }}
-            >
-              <DropdownMenuItem onSelect={handleSettingsClick}>
-                <Settings className="h-4 w-4 mr-2" />
-                <span>Settings</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleDelete} className="text-red-600">
-                <Trash2 className="h-4 w-4 mr-2" />
-                <span>Delete</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
       </div>
 
       {/* Settings Dialog */}
@@ -135,19 +135,45 @@ export function DatasourceItem({
           <DialogHeader>
             <DialogTitle>Datasource Settings</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 p-4">
-            <p><strong>Name:</strong> {datasource.name}</p>
-            <p><strong>Type:</strong> {datasource.type}</p>
-            <p><strong>Created:</strong> {new Date(datasource.created_at).toLocaleString()}</p>
-            <p><strong>Updated:</strong> {new Date(datasource.updated_at).toLocaleString()}</p>
-            {datasource.settings && (
-              <div>
-                <strong>Settings:</strong>
-                <pre className="bg-gray-100 p-2 rounded mt-1">
-                  {JSON.stringify(datasource.settings, null, 2)}
-                </pre>
-              </div>
+          <div className="space-y-4 p-4">
+            {error && (
+              <div className="text-red-500 text-sm mb-2">{error}</div>
             )}
+            <div>
+              <label className="text-sm font-medium">Name</label>
+              <p className="mt-1">{datasource.name}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Type</label>
+              <p className="mt-1">{datasource.type}</p>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Description</label>
+              <Textarea
+                className="mt-1"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter datasource description..."
+                autoFocus={false}
+              />
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setDescription(datasource.description || '');
+                  setShowSettings(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveSettings} 
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

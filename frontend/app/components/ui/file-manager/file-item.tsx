@@ -47,10 +47,15 @@ export function FileItem({
   const [showDetails, setShowDetails] = useState(false);
 
   const handleClick = (e: React.MouseEvent) => {
-    // Prevent triggering click when using dropdown
-    if (!(e.target as HTMLElement).closest('.dropdown-trigger')) {
-      onClick?.();
+    // Check if the click came from the dropdown menu or its children
+    if (e.target instanceof Element && (
+      e.target.closest('[role="menu"]') || 
+      e.target.closest('button[role="trigger"]')
+    )) {
+      e.stopPropagation();
+      return;
     }
+    onClick?.();
   };
 
   const handleDownload = async () => {
@@ -153,28 +158,28 @@ export function FileItem({
           <DropdownMenuContent align="end" className="w-[200px] p-2">
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
-              onClick={handleDownload}
+              onSelect={handleDownload}
             >
               <Download className="h-4 w-4 mr-2" />
               <span>Download</span>
             </DropdownMenuItem>
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
-              onClick={() => setIsRenaming(true)}
+              onSelect={() => setIsRenaming(true)}
             >
               <Edit className="h-4 w-4 mr-2" />
               <span>Rename</span>
             </DropdownMenuItem>
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
-              onClick={() => setShowDetails(true)}
+              onSelect={() => setShowDetails(true)}
             >
               <Info className="h-4 w-4 mr-2" />
               <span>Details</span>
             </DropdownMenuItem>
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md text-red-600 flex items-center"
-              onClick={handleDelete}
+              onSelect={handleDelete}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               <span>Delete</span>

@@ -2,6 +2,7 @@ export interface Datasource {
   id: number;
   name: string;
   type: string;
+  description?: string;
   settings?: any;
   created_at: number;
   updated_at: number;

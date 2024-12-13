@@ -45,7 +45,8 @@ class Datasource(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
     type = Column(String, nullable=False)  # e.g., 'files', 'database', 'api'
-    settings = Column(JSON, nullable=True)  # Store datasource-specific settings
+    description = Column(String, nullable=True)
+    settings = Column(JSON, nullable=True)
     
     # System tracking
     created_at = Column(DateTime, server_default=func.now())

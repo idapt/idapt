@@ -219,15 +219,30 @@ class DatasourceService:
             response_mode="compact",
             llm=Settings.llm
         )
+
         query_engine = RetrieverQueryEngine.from_args(
             retriever=retriever,
             response_synthesizer=response_synthesizer,
         )
+        
+        # Get datasource from database
+        session = self.database_service.get_session()
+        datasource = session.query(Datasource).filter(Datasource.name == datasource_name).first()
+        # Create tool description
+        description = ""
+        if not datasource.description or datasource.description == "":
+            description = f"Query engine for the {datasource_name} datasource"
+        else:
+            description = datasource.description
+
+        # Add this instruction to the tool description for the agent to know how to use the tool # ? Great ?
+        tool_description = f"{description}\nUse a detailed plain text question as input to the tool."
+        
         return FilteredQueryEngineTool(
             query_engine=query_engine,
             metadata=ToolMetadata(
                 name=f"{datasource_name.lower()}_query_engine",
-                description=f"Query engine for the {datasource_name} datasource"
+                description=tool_description
             ),
         )
 
@@ -239,6 +254,41 @@ class DatasourceService:
         """Get all datasources"""
         return session.query(Datasource).all()
     
+    def update_datasource_description(self, session: Session, name: str, description: str) -> bool:
+        """Update a datasource's description and its associated query tool"""
+        try:
+            datasource = self.get_datasource(session, name)
+            if datasource:
+                # Update description in database
+                datasource.description = description
+                session.commit()
+
+                # Update the query tool if it exists
+                if name in self._tools:
+                    # Create new tool description
+                    tool_description = f"{description}\nUse a detailed plain text question as input to the tool."
+                    
+                    # Get existing query engine from current tool
+                    existing_tool = self._tools[name]
+                    if isinstance(existing_tool, FilteredQueryEngineTool):
+                        query_engine = existing_tool._query_engine
+                        
+                        # Create new tool with updated description
+                        self._tools[name] = FilteredQueryEngineTool(
+                            query_engine=query_engine,
+                            metadata=ToolMetadata(
+                                name=f"{name.lower()}_query_engine",
+                                description=tool_description
+                            ),
+                        )
+
+                return True
+            return False
+        except Exception as e:
+            session.rollback()
+            self.logger.error(f"Error updating datasource description: {str(e)}")
+            raise
+
 def get_datasource_name_from_path(path: str) -> str:
     """Get the datasource name from a path"""
     # Extract datasource name from path (first component after /data/)

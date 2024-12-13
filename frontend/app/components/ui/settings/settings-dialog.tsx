@@ -438,15 +438,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Files Tool Description</label>
-            <Textarea
-              value={settings.files_tool_description}
-              onChange={(e) => setSettings({...settings, files_tool_description: e.target.value})}
-              rows={4}
-            />
-          </div>
-
-          <div className="space-y-2">
             <label className="text-sm font-medium">System Prompt</label>
             <Textarea
               value={settings.system_prompt}

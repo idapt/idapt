@@ -85,7 +85,6 @@ export interface AppSettings {
   max_iterations: number;
   temperature: number;
   system_prompt: string;
-  files_tool_description: string;
 }
 
 export const LLM_MODEL_PROVIDER_OPTIONS = [
