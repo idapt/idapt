@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 from app.services import ServiceManager
 from app.services.generate import GenerateService
 from app.services.file_system import get_full_path_from_path
-from app.database.connection import get_db_session
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -14,6 +13,9 @@ generate_router = r = APIRouter()
 
 def get_generate_service():
     return ServiceManager.get_instance().generate_service
+
+def get_db_session():
+    return ServiceManager.get_instance().db_service.get_session()
 
 class GenerateRequest(BaseModel):
     files: List[dict] = Field(..., example=[{

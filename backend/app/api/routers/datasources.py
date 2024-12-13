@@ -3,12 +3,14 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from base64 import urlsafe_b64decode
 from app.services import ServiceManager
-from app.database.connection import get_db_session
 
 datasources_router = APIRouter()
 
 def get_datasource_service():
     return ServiceManager.get_instance().datasource_service
+
+def get_db_session():
+    return ServiceManager.get_instance().db_service.get_session()
 
 class DatasourceCreate(BaseModel):
     name: str

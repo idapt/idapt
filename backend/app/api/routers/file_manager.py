@@ -4,10 +4,10 @@ from fastapi.responses import Response
 from sse_starlette.sse import EventSourceResponse
 from base64 import urlsafe_b64decode
 
-from app.database.connection import get_db_session
 from app.api.models.models import FileUploadRequest, FolderContentsResponse, FileResponse, FolderResponse
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path
 from app.services.file_manager import FileManagerService
+from app.services import ServiceManager
 
 import logging
 logger = logging.getLogger(__name__)
@@ -15,8 +15,10 @@ logger = logging.getLogger(__name__)
 file_manager_router = r = APIRouter()
 
 def get_file_manager_service():
-    from app.services import ServiceManager
     return ServiceManager.get_instance().file_manager_service
+
+def get_db_session():
+    return ServiceManager.get_instance().db_service.get_session()
 
 def decode_path_safe(encoded_path: str) -> str:
     try:
