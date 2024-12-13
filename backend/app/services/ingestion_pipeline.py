@@ -14,11 +14,10 @@ from llama_index.core.extractors import (
 #from llama_index.extractors.entity import EntityExtractor
 
 #from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
-from app.engine.storage_context import StorageContextSingleton
 
 from app.services.database import DatabaseService
 from app.services.db_file import DBFileService
-from app.services.datasource import DatasourceService, get_datasource_name_from_path
+from app.services.datasource import DatasourceService
 
 
 import nest_asyncio
@@ -184,8 +183,7 @@ class IngestionPipelineService:
                         docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
                         num_workers=16
                     )
-                    # Insert nodes into index
-                    StorageContextSingleton().index.insert_nodes(nodes)
+                    # No need to insert nodes into index as we use a vector store
 
 
                 else:
@@ -197,11 +195,10 @@ class IngestionPipelineService:
                     nodes = await ingestion_pipeline.arun(
                         documents=documents,
                         show_progress=True,
-                        docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
+                        docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off # ? Mess up the stack if there is more than one ingestion transformation stack ?
                         num_workers=16
                     )
-                    # Insert nodes into index
-                    StorageContextSingleton().index.insert_nodes(nodes)
+                    # No need to insert nodes into index as we use a vector store
 
             # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
             ingestion_pipeline.persist(f"./output/pipeline_storage_{datasource_name}")

@@ -163,13 +163,13 @@ export function FileItem({
               <Download className="h-4 w-4 mr-2" />
               <span>Download</span>
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            {/* <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
               onSelect={() => setIsRenaming(true)}
             >
               <Edit className="h-4 w-4 mr-2" />
               <span>Rename</span>
-            </DropdownMenuItem>
+            </DropdownMenuItem> */}
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
               onSelect={() => setShowDetails(true)}
@@ -189,7 +189,7 @@ export function FileItem({
       </div>
 
       {/* Rename Dialog */}
-      <Dialog open={isRenaming} onOpenChange={setIsRenaming}>
+      {/* <Dialog open={isRenaming} onOpenChange={setIsRenaming}> // Not working for now // TODO
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rename {type}</DialogTitle>
@@ -210,7 +210,7 @@ export function FileItem({
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
 
       {/* Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>

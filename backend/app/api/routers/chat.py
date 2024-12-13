@@ -14,7 +14,6 @@ from app.api.models.models import (
 from app.api.routers.vercel_response import VercelStreamResponse
 from app.engine.engine import get_chat_engine
 from app.engine.query_filter import generate_filters
-from app.engine.storage_context import StorageContextSingleton
 
 chat_router = r = APIRouter()
 

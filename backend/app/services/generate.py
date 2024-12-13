@@ -6,8 +6,8 @@ import threading
 import json
 from pathlib import Path
 from app.services.ingestion_pipeline import IngestionPipelineService
-from threading import Lock as ThreadLock
 from app.services.datasource import get_datasource_name_from_path
+from threading import Lock as ThreadLock
 
 logger = logging.getLogger(__name__)
 

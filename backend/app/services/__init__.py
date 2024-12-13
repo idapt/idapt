@@ -42,6 +42,7 @@ class ServiceManager:
         self.db_file_service = DBFileService()
         self.file_system_service = FileSystemService()
         self.file_service = FileService()
+        
         self.llama_index_service = LlamaIndexService()
 
         # Dependent services

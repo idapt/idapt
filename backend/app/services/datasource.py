@@ -288,7 +288,7 @@ class DatasourceService:
             session.rollback()
             self.logger.error(f"Error updating datasource description: {str(e)}")
             raise
-
+    
 def get_datasource_name_from_path(path: str) -> str:
     """Get the datasource name from a path"""
     # Extract datasource name from path (first component after /data/)

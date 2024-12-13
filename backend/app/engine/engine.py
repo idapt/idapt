@@ -15,7 +15,6 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 #    VectorIndexAutoRetriever,
 #)
 #from app.engine.tools import ToolFactory
-from app.engine.storage_context import StorageContextSingleton
 from app.settings.manager import AppSettingsManager
 from app.services import ServiceManager
 app_settings = AppSettingsManager.get_instance().settings
