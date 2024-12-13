@@ -36,26 +36,32 @@ class FileManagerService:
     def _create_default_filestructure(self, session: Session):
         """Create the default filestructure in the database"""
         try:
-            # Create the root folder if it doesn't exist
-            root_folder = Folder(
-                name="/",
-                path="/",
-                parent_id=None
-            )
-            session.add(root_folder)
-            session.flush()  # Flush to get the root_folder.id
-
-            # Create data folder
-            data_folder = Folder(
-                name="/data",
-                path="/data",
-                parent_id=root_folder.id
-            )
-            session.add(data_folder)
-            session.flush()  # Flush to get the data_folder.id
+            # Check if root folder exists
+            root_folder = session.query(Folder).filter(Folder.path == "/").first()
+            if not root_folder:
+                root_folder = Folder(
+                    name="/",
+                    path="/",
+                    parent_id=None
+                )
+                session.add(root_folder)
+                session.flush()  # Flush to get the root_folder.id
+            
+            # Check if data folder exists
+            data_folder = session.query(Folder).filter(Folder.path == "/data").first()
+            if not data_folder:
+                data_folder = Folder(
+                    name="/data",
+                    path="/data",
+                    parent_id=root_folder.id
+                )
+                session.add(data_folder)
+                session.flush()
+            
             session.commit()
             
         except Exception as e:
+            session.rollback()
             self.logger.error(f"Error creating default filestructure: {str(e)}")
             raise
 

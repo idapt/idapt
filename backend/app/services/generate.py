@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from app.services.ingestion_pipeline import IngestionPipelineService
 from threading import Lock as ThreadLock
+from app.services.datasource import get_datasource_name_from_path
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ class GenerateService:
     async def _process_queue(self, batch_size: int = DEFAULT_BATCH_SIZE):
         """
         Main queue processing loop that handles batching and processing of files.
-        Groups files by transformation stack for efficient processing.
+        Groups files by datasource and transformation stack for efficient processing.
         """        
         while True:
             try:
@@ -119,7 +120,7 @@ class GenerateService:
                 current_size = self._queue.qsize()
                 logger.info(f"Starting processing of {current_size} items from queue")
                 
-                # Group items by transformation stack
+                # Group items by datasource and transformation stack
                 batches: Dict[tuple, List[dict]] = {}
                 items_to_process = []
                 
@@ -127,19 +128,22 @@ class GenerateService:
                 for _ in range(current_size):
                     item = await self._queue.get()
                     items_to_process.append(item)
+                    # Create composite key from datasource and transformation stack
+                    datasource_name = get_datasource_name_from_path(item["path"])
                     stack_key = tuple(sorted(item["transformations_stack_name_list"]))
-                    if stack_key not in batches:
-                        batches[stack_key] = []
-                    batches[stack_key].append(item)
+                    batch_key = (datasource_name, stack_key)
+                    if batch_key not in batches:
+                        batches[batch_key] = []
+                    batches[batch_key].append(item)
                     self._queue.task_done()
 
                 total_processed = 0
                 total_items = len(items_to_process)
                 problematic_files = []
 
-                # Process each transformation stack group
-                for stack_list, items in batches.items():
-                    logger.info(f"Processing {len(items)} files with transformation stack: {list(stack_list)}")
+                # Process each datasource and transformation stack group
+                for (datasource_name, stack_list), items in batches.items():
+                    logger.info(f"Processing {len(items)} files for datasource '{datasource_name}' with transformation stack: {list(stack_list)}")
                     file_paths = [item["path"] for item in items]
                     stack_processed = 0
                     current_batch_size = batch_size
@@ -151,9 +155,9 @@ class GenerateService:
                         sub_batch_items = items[i:i + current_batch_size]
                         
                         try:
-                            await self.ingestion_pipeline_service.ingest_files(
+                            await self.ingestion_pipeline_service.process_files(
                                 full_file_paths=sub_batch,
-                                logger=logger,
+                                datasource_name=datasource_name,
                                 transformations_stack_name_list=list(stack_list)
                             )
                             
@@ -168,7 +172,8 @@ class GenerateService:
                             
                             # Log progress
                             logger.info(
-                                f"Progress - Stack {list(stack_list)}: {stack_processed}/{len(items)} files | "
+                                f"Progress - Datasource '{datasource_name}' Stack {list(stack_list)}: "
+                                f"{stack_processed}/{len(items)} files | "
                                 f"Total: {total_processed}/{total_items} files ({(total_processed/total_items)*100:.1f}%)"
                             )
                             
@@ -233,7 +238,7 @@ class GenerateService:
                     "path": full_file_path,
                     "transformations_stack_name_list": transformations_stack_name_list
                 })
-                await self._persist_queue()
+                self._persist_queue()
         except Exception as e:
             logger.error(f"Failed to add file to queue: {str(e)}")
             raise
@@ -247,7 +252,7 @@ class GenerateService:
                         "path": file["path"],
                         "transformations_stack_name_list": file.get("transformations_stack_name_list", ["default"])
                     })
-                await self._persist_queue()
+                self._persist_queue()
                 logger.info(f"Added batch of {len(files)} files to queue")
         except Exception as e:
             logger.error(f"Failed to add batch to queue: {str(e)}")

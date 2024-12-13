@@ -6,8 +6,6 @@ import logging
 from typing import List, Tuple
 from pathlib import Path
 
-from app.config import DATA_DIR
-
 class DBFileService:
     """
     Service for managing files and folders in the database

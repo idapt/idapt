@@ -17,71 +17,33 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 #from app.engine.tools import ToolFactory
 from app.engine.storage_context import StorageContextSingleton
 from app.settings.manager import AppSettingsManager
+from app.services import ServiceManager
 app_settings = AppSettingsManager.get_instance().settings
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
+def get_chat_engine(datasource_name: str = None, filters=None, params=None, event_handlers=None, **kwargs):
     try:
         # The tools that will be used by the agent
         tools: List[BaseTool] = []
         # Used to display the index events in the steps ui
         callback_manager = CallbackManager(handlers=event_handlers or [])
 
-        # TODO : Only set the callback manager at index query time so that we avoid multiple chat issues
-        files_index = StorageContextSingleton().index
+        datasource_service = ServiceManager.get_instance().datasource_service
         
-        # Only return the top k results
-        top_k = int(app_settings.top_k)
-        
-        # Init the query engine that will be reused for each node
-        # Configure retriever
-        retriever = VectorIndexRetriever(
-            index=files_index,
-            similarity_top_k=top_k,
-        )
-
-        # Configure Colbert reranker to improve the retrieval quality
-        #colbert_reranker = ColbertRerank(
-        #    top_n=top_k,
-        #    model="colbert-ir/colbertv2.0",
-        #    tokenizer="colbert-ir/colbertv2.0",
-        #    keep_retrieval_score=False, # Do not keep the retrieval score in the metadata
-        #)
-
-        # Configure dummy response synthesizer
-        response_synthesizer = get_response_synthesizer(
-            response_mode="compact",
-            llm=Settings.llm
-        )
-
-        retriever = AutoMergingRetriever(
-            retriever, 
-            StorageContextSingleton().storage_context, 
-            verbose=True,
-            callback_manager=callback_manager
-        )
-
-        files_query_engine = RetrieverQueryEngine.from_args(
-            retriever=retriever,
-            filters=filters,
-            response_synthesizer=response_synthesizer,
-            #node_postprocessors=[colbert_reranker],
-        )
-        
-        # Build the tool for the query engine
-        # This will be used by the agent to answer questions
-        files_query_engine_tool = FilteredQueryEngineTool(
-            query_engine=files_query_engine,
-            metadata=ToolMetadata(
-                name="files_query_engine",
-                description=app_settings.files_tool_description
-            ),
-        )
-        # Add the tool to the list of tools
-        tools.append(files_query_engine_tool)
+        if datasource_name:
+            # Get specific datasource tool
+            tool = datasource_service.get_query_tool(datasource_name)
+            tools.append(tool)
+        else:
+            # Get all datasource tools
+            session = ServiceManager.get_instance().db_service.get_session()
+            datasources = datasource_service.get_all_datasources(session)
+            for ds in datasources:
+                tool = datasource_service.get_query_tool(ds.name)
+                tools.append(tool)
 
         # Add all available tools from the tool factory  # Not used for now
         #configured_tools: List[BaseTool] = ToolFactory.from_env()
@@ -89,14 +51,10 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
 
         # Get the directory where the current module (engine.py) is located
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        # Construct the path to the prompt file
         prompt_file_path = os.path.join(current_dir, "react_agent_system_prompt.md")
-        # Read the prompt file
         react_agent_system_prompt = open(prompt_file_path, "r").read()
-        # Add the user system prompt to it
         react_agent_system_prompt = app_settings.system_prompt + "\n\n" + react_agent_system_prompt
 
-        # This creates the most appropriate agent for this llm
         return ReActAgent.from_llm(
             llm=Settings.llm,
             tools=tools,
@@ -107,9 +65,7 @@ def get_chat_engine(filters=None, params=None, event_handlers=None, **kwargs):
                 system_header=react_agent_system_prompt,
                 context=""
             )
-
         )
-    
     except Exception as e:
         logger.error(f"Error creating chat engine: {e}")
         raise e

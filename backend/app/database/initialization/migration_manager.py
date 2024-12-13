@@ -10,14 +10,14 @@ import threading
 
 logger = logging.getLogger(__name__)
 
-# Ignore tables managed by llama index
-TABLES_TO_IGNORE = ["data_docstore", "data_embeddings", "data_index", "data_zettelkasten_docstore", "data_zettelkasten_vectorstore"]
+# Include only the tables from the database model to not affect other tables from the database
+TABLES_TO_INCLUDE = ["files", "folders", "datasources"]
 
 def include_object(object, name, type_, reflected, compare_to):
     """Should you include this table or not?"""
-    if type_ == "table" and name in TABLES_TO_IGNORE:
-        return False
-    return True
+    if type_ == "table" and name in TABLES_TO_INCLUDE:
+        return True
+    return False
 
 class DatabaseMigrationManager:
     def __init__(self, connection_string, max_retries=5, retry_delay=2):

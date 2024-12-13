@@ -60,7 +60,8 @@ class ServiceManager:
 
         self.ingestion_pipeline_service = IngestionPipelineService(
             self.db_file_service,
-            self.db_service
+            self.db_service,
+            self.datasource_service
         )
 
         self.generate_service = GenerateService(self.ingestion_pipeline_service)
