@@ -136,20 +136,30 @@ class DatabaseMigrationManager:
         session = SessionLocal()
         
         try:
-            # Create root folder
+
+            # Create the root folder if it doesn't exist
             root_folder = Folder(
-                name="/data",
-                path="/data",
-                parent_id=None  # Root folder has no parent
+                name="/",
+                path="/",
+                parent_id=None
             )
             session.add(root_folder)
             session.flush()  # Flush to get the root_folder.id
+
+            # Create data folder
+            data_folder = Folder(
+                name="/data",
+                path="/data",
+                parent_id=root_folder.id
+            )
+            session.add(data_folder)
+            session.flush()  # Flush to get the data_folder.id
             
             # Create Files datasource folder
             datasource_folder = Folder(
                 name="Files",
                 path="/data/Files",
-                parent_id=root_folder.id
+                parent_id=data_folder.id
             )
             session.add(datasource_folder)
             session.flush()  # Flush to get the datasource_folder.id

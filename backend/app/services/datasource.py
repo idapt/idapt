@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.database.models import Datasource, Folder
 from app.services.db_file import DBFileService
+from app.services.file_manager import FileManagerService
 from app.services.file_system import get_full_path_from_path
 import logging
 from typing import List, Optional
@@ -10,6 +11,7 @@ class DatasourceService:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.db_file_service = DBFileService()
+        self.file_manager_service = FileManagerService()
         self.logger.info("Initializing default datasources")
         #with get_db() as session:
             #self._init_default_datasources(session)
@@ -75,8 +77,10 @@ class DatasourceService:
         datasource = self.get_datasource(session, name)
         if datasource:
             try:
-                # Delete the root folder (this will cascade delete all contents)
-                self.db_file_service.delete_folder(session, f"/{name}")
+                # Build full path from datasource name
+                full_path = get_full_path_from_path(name)
+                # Delete the datasource folder and all its contents both in the database and filesystem
+                self.file_manager_service.delete_folder(session, full_path)
                 # Delete the datasource
                 session.delete(datasource)
                 session.commit()

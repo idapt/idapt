@@ -13,16 +13,17 @@ import { CreateDatasourceDialog } from "./create-datasource-dialog";
 
 export function FileManager() {
   const {
-    files,
-    folders,
     currentPath,
     currentDatasource,
-    loading,
+    files,
+    folders,
+    datasources,
     error,
+    loading,
     navigateToFolder,
     refreshContents
   } = useFileManager();
-  
+
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showCreateDatasource, setShowCreateDatasource] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,6 +54,20 @@ export function FileManager() {
         }
       });
     }
+  };
+
+  const handleDatasourceClick = (datasource: Datasource) => {
+    navigateToFolder(`/${datasource.name}`);
+  };
+
+  const displayItems = currentPath === '' ? {
+    files: [],
+    folders: [],
+    datasources: datasources
+  } : {
+    files,
+    folders,
+    datasources: undefined
   };
 
   if (error) {
@@ -136,10 +151,12 @@ export function FileManager() {
         </div>
       ) : ( 
         <FileList 
-          files={files}
-          folders={folders}
+          files={displayItems.files}
+          folders={displayItems.folders}
+          datasources={displayItems.datasources}
           viewMode={viewMode}
           onFolderClick={navigateToFolder}
+          onDatasourceClick={handleDatasourceClick}
           onUploadComplete={refreshContents}
         />
       )}

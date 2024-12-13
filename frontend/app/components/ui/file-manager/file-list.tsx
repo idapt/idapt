@@ -1,19 +1,38 @@
 "use client";
 
 import { FileItem } from "./file-item";
-import { File, Folder } from "@/app/types/files";
+import { File, Folder, Datasource } from "@/app/types/files";
+import { DatasourceItem } from "./datasource-item";
 
 interface FileListProps {
   files: File[];
   folders: Folder[];
+  datasources?: Datasource[];
   viewMode: 'grid' | 'list';
   onFolderClick: (path: string) => void;
+  onDatasourceClick?: (datasource: Datasource) => void;
   onUploadComplete: () => void;
 }
 
-export function FileList({ files, folders, viewMode, onFolderClick, onUploadComplete }: FileListProps) {
+export function FileList({ 
+  files, 
+  folders, 
+  datasources,
+  viewMode, 
+  onFolderClick,
+  onDatasourceClick,
+  onUploadComplete 
+}: FileListProps) {
   return (
     <div className={viewMode === 'grid' ? "grid grid-cols-4 gap-4 p-4" : "space-y-1 p-4"}>
+      {datasources?.map((datasource) => (
+        <DatasourceItem
+          key={`datasource-${datasource.id}`}
+          datasource={datasource}
+          onClick={() => onDatasourceClick?.(datasource)}
+          onRefresh={onUploadComplete}
+        />
+      ))}
       {folders.map((folder) => (
         <FileItem
           key={`folder-${folder.id}`}

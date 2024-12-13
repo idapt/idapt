@@ -24,10 +24,6 @@ class DBFileService:
         # Get all parts of the path
         parts = path.parts
         
-        # Skip the root folder '/'
-        if parts and parts[0] == '/':
-            parts = parts[1:]
-        
         current_folder = None
         current_path = Path()
         

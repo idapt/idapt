@@ -374,6 +374,7 @@ class FolderResponse(BaseModel):
     uploaded_at: float
     accessed_at: float
 
+
 class FolderContentsResponse(BaseModel):
     files: list[FileResponse]
     folders: list[FolderResponse]

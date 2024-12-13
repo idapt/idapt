@@ -7,12 +7,6 @@ export interface Datasource {
   updated_at: number;
 }
 
-export interface FolderContentsResponse {
-  files: File[];
-  folders: Folder[];
-  datasource?: Datasource;  // Include datasource info when at root level
-}
-
 export interface File {
   id: number;
   name: string;

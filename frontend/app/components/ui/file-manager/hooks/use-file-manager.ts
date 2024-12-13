@@ -8,6 +8,7 @@ export function useFileManager() {
   const [currentPath, setCurrentPath] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [datasources, setDatasources] = useState<Datasource[]>([]);
   const [currentDatasource, setCurrentDatasource] = useState<Datasource | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +25,11 @@ export function useFileManager() {
       
       setFiles(data.files);
       setFolders(data.folders);
+      
+      // Get the datasources
+      const datasourcesResponse = await fetch(`${backend}/api/datasources`);
+      const datasources: Datasource[] = await datasourcesResponse.json();
+      setDatasources(datasources);
       setCurrentDatasource(data.datasource);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch folder contents');
@@ -45,6 +51,7 @@ export function useFileManager() {
   return {
     files,
     folders,
+    datasources,
     currentPath,
     currentDatasource,
     loading,
