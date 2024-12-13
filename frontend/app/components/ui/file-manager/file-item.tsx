@@ -155,7 +155,7 @@ export function FileItem({
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[200px] p-2">
+          <DropdownMenuContent align="end" className="w-[200px] p-0.5 bg-white rounded-md shadow-md z-50">
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
               onSelect={handleDownload}
