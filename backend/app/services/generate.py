@@ -1,11 +1,12 @@
 from typing import List, Optional, Dict
 import logging
 import asyncio
-from asyncio import Queue, Task, new_event_loop, set_event_loop
+from asyncio import Queue, Task, new_event_loop, set_event_loop, Lock as AsyncLock
 import threading
 import json
 from pathlib import Path
 from app.services.ingestion_pipeline import IngestionPipelineService
+from threading import Lock as ThreadLock
 
 logger = logging.getLogger(__name__)
 
@@ -16,18 +17,30 @@ class GenerateService:
     Service for managing the generation queue and processing of files through the ingestion pipeline.
     Implements a singleton pattern and handles batched processing of files with similar transformation stacks.
     """
+    _instance = None
+    _instance_lock = ThreadLock()
     _task: Optional[Task] = None
     _processing_loop = None
     _processing_thread = None
     _queue_file = Path("output/queue/generate_queue.json")
     
+    def __new__(cls, *args, **kwargs):
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+            return cls._instance
+    
     def __init__(self, ingestion_pipeline_service: IngestionPipelineService):
         """Initialize the service with a queue and start the processing thread"""
-        self.ingestion_pipeline_service = ingestion_pipeline_service
-        self._queue = Queue()
-        self._ensure_queue_directory()
-        self._load_queue_from_disk()
-        self._start_processing_thread()
+        if not hasattr(self, 'initialized'):
+            self.ingestion_pipeline_service = ingestion_pipeline_service
+            self._queue = Queue()
+            self._queue_lock = AsyncLock()
+            self._thread_lock = ThreadLock()
+            self._ensure_queue_directory()
+            self._load_queue_from_disk()
+            self._start_processing_thread()
+            self.initialized = True
 
     def _ensure_queue_directory(self):
         """Ensure the queue directory exists"""
@@ -57,14 +70,19 @@ class GenerateService:
 
     def _start_processing_thread(self):
         """Start a dedicated thread for queue processing"""
-        if self._processing_thread is None or not self._processing_thread.is_alive():
-            self._processing_thread = threading.Thread(
-                target=self._run_processing_loop,
-                daemon=True,
-                name="GenerateServiceWorker"
-            )
-            self._processing_thread.start()
-            logger.info("Processing thread started")
+        with self._thread_lock:
+            # Only start a new thread if there isn't one running
+            if self._processing_thread is None or not self._processing_thread.is_alive():
+                logger.info("Starting new processing thread")
+                self._processing_thread = threading.Thread(
+                    target=self._run_processing_loop,
+                    daemon=True,
+                    name="GenerateServiceWorker"
+                )
+                self._processing_thread.start()
+                logger.info("Processing thread started")
+            else:
+                logger.info("Processing thread already running")
 
     def _run_processing_loop(self):
         """Initialize and run the async processing loop in the dedicated thread"""
@@ -210,12 +228,12 @@ class GenerateService:
     async def add_to_queue(self, full_file_path: str, transformations_stack_name_list: List[str] = ["default"]):
         """Add a single file to the generation queue"""
         try:
-            await self._queue.put({
-                "path": full_file_path,
-                "transformations_stack_name_list": transformations_stack_name_list
-            })
-            self._persist_queue()
-            logger.info(f"Added file to queue: {full_file_path} with stacks {transformations_stack_name_list}")
+            async with self._queue_lock:
+                await self._queue.put({
+                    "path": full_file_path,
+                    "transformations_stack_name_list": transformations_stack_name_list
+                })
+                await self._persist_queue()
         except Exception as e:
             logger.error(f"Failed to add file to queue: {str(e)}")
             raise
@@ -223,13 +241,14 @@ class GenerateService:
     async def add_batch_to_queue(self, files: List[dict]):
         """Add multiple files to the generation queue"""
         try:
-            for file in files:
-                await self._queue.put({
-                    "path": file["path"],
-                    "transformations_stack_name_list": file.get("transformations_stack_name_list", ["default"])
-                })
-            self._persist_queue()
-            logger.info(f"Added batch of {len(files)} files to queue")
+            async with self._queue_lock:
+                for file in files:
+                    await self._queue.put({
+                        "path": file["path"],
+                        "transformations_stack_name_list": file.get("transformations_stack_name_list", ["default"])
+                    })
+                await self._persist_queue()
+                logger.info(f"Added batch of {len(files)} files to queue")
         except Exception as e:
             logger.error(f"Failed to add batch to queue: {str(e)}")
             raise
