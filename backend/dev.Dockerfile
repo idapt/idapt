@@ -25,8 +25,6 @@ RUN poetry install
 WORKDIR /backend
 
 
-# Run at built container start
-
 # Run the dev backend server
 CMD ["python", "main.py"]
 

@@ -95,15 +95,9 @@ def configure_cors(app: FastAPI):
         async def redirect_to_docs():
             return RedirectResponse(url="/docs")
     else:
-        default_origins = ["http://idapt-backend:8000", "http://idapt-nginx:3030"]
-        trusted_origins = os.getenv("TRUSTED_ORIGINS", "").split(",")
-        all_origins = default_origins + [o.strip() for o in trusted_origins if o.strip()]
-        
-        logger.info(f"Allowed origins: {all_origins}")
-        
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=all_origins,
+            allow_origins=["http://idapt-nginx:3030"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
@@ -130,7 +124,7 @@ app = create_app()
 # Only run these in the main process, not in reloaded processes
 if __name__ == "__main__":
         
-    app_host = os.getenv("APP_HOST", "0.0.0.0")
+    app_host = "0.0.0.0" #os.getenv("HOST_DOMAIN", "0.0.0.0") # For now use 0.0.0.0
     app_port = int(os.getenv("APP_PORT", "8000"))
     reload = environment == "dev"
     

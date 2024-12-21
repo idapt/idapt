@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_BATCH_SIZE = 50  # Maximum files to process in a single batch
 
+# TODO Fix the multiple ingestion threads issue
 class GenerateService:
     """
     Service for managing the generation queue and processing of files through the ingestion pipeline.

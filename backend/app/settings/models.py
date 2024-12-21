@@ -4,10 +4,10 @@ from typing import Literal, Optional
 # Provider-specific settings
 class OllamaSettings(BaseModel):
     llm_model: str = "llama3.1:8b"
-    llm_host: str = "http://idapt-nginx:3030/integrated-ollama"
+    llm_host: str = "http://idapt-ollama:11434"
     llm_request_timeout: float = 300
     embedding_model: str = "Losspost/stella_en_1.5b_v5"
-    embedding_host: str = "http://idapt-nginx:3030/integrated-ollama"
+    embedding_host: str = "http://idapt-ollama:11434"
     embedding_request_timeout: float = 60
 
 class OpenAISettings(BaseModel):
@@ -72,8 +72,8 @@ class AppSettings(BaseModel):
     integrated_ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     custom_ollama: OllamaSettings = Field(
         default_factory=lambda: OllamaSettings(
-            llm_host="http://idapt-nginx:3030/local-ollama",
-            embedding_host="http://idapt-nginx:3030/local-ollama"
+            llm_host="http://localhost:11434",
+            embedding_host="http://localhost:11434"
         )
     )
     openai: OpenAISettings = Field(default_factory=OpenAISettings)

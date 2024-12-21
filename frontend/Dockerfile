@@ -1,4 +1,4 @@
-# Use the node image only to build the application.
+# Build stage
 FROM node:23-alpine AS build
 
 WORKDIR /frontend
@@ -11,15 +11,20 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# ====================================
-# Use the nginx image to serve the built application.
-FROM nginx:alpine
+# =====================
+# Runtime stage - use a minimal static file server
+FROM node:23-alpine
 
-# Copy the built app
-COPY --from=build /frontend/out /usr/share/nginx/html
-# Copy nginx configuration
-#COPY /etc/nginx/nginx.conf /etc/nginx/nginx.conf
+WORKDIR /app
 
-# Run at built container start
-# Run the nginx server to serve the built next.js application
-CMD ["nginx", "-g", "daemon off;"]
+# Copy only the built files
+COPY --from=build /frontend/out ./out
+
+# Install serve for static file serving
+RUN npm install -g serve
+
+# Run with minimal privileges
+USER node
+
+# Serve the static files
+CMD ["serve", "-s", "out", "-l", "3000"]

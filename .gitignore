@@ -38,3 +38,9 @@ output/
 git_ignored_folder/
 cache/
 .github/
+
+# nginx
+certs
+nginx/letsencrypt/
+nginx/certbot_www/
+

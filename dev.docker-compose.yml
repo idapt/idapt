@@ -8,8 +8,8 @@ services:
     expose:
       - "11434"
     networks:
-      idapt-ollama-network:
-        ipv4_address: 172.23.0.15
+      idapt-ollama-external-network: {}
+      idapt-ollama-network: {}
     runtime: nvidia # Remove this if you don't want to use GPU for ollama.
     deploy: # Remove this if you don't want to use GPU for ollama.
       resources:
@@ -19,44 +19,55 @@ services:
               capabilities: ["gpu"]
               count: all
     # Disable for dev to have a faster startup time.
-    #healthcheck: # Causes issues when pulling large models or when api is busy for a long time.
-    #  test: ["CMD", "curl", "-f", "http://localhost:11434"]
-    #  interval: 1s
-    #  timeout: 5s
-    #  retries: 30
+    healthcheck: # Causes issues when pulling large models or when api is busy for a long time.
+      test: ["CMD", "ollama", "--version"]  # Check if Ollama is responding
+      interval: 1s                    # Run the health check every 2 seconds
+      timeout: 5s                     # Timeout for the health check is 30 seconds
+      retries: 30                       # Retry 5 times before marking it as unhealthy
     volumes:
       - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
+    restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
-    restart: always
+    #cap_drop: # TODO
+    #  - ALL
 
 
 
   idapt-postgres:
-    image: postgres:latest
     container_name: idapt-postgres
     build:
       context: ./postgres
       dockerfile: ./Dockerfile
-    ports:
-      - "5432:5432" # Expose database port for remote dev access.
+    #ports:
+    #  - "5432:5432" # Expose database port for remote dev access.
     expose:
       - "5432"
     networks:
-      idapt-postgres-network:
-        ipv4_address: 172.24.0.15
+      idapt-postgres-network: {}
     volumes:
       - postgres_data:/var/lib/postgresql/data # Store the database data in a volume
-    env_file:
-      - ./postgres/.env
+      - postgres_admin_secrets:/postgres_admin_secrets # Store the generated password, not shared to any other container.
+      - postgres_backend_secrets:/postgres_backend_secrets # Store the generated password, shared to the backend container.
+      - postgres_keycloak_secrets:/postgres_keycloak_secrets # Store the generated password, shared to the keycloak container.
+    environment:
+      POSTGRES_USER: 'postgres'
+      # The password is randomly generated and set by the entrypoint script.
+      POSTGRES_DB: 'postgres'
+      POSTGRES_HOST_AUTH_METHOD: 'password' # Allow all connections using password.
+      PGDATA: '/var/lib/postgresql/data'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h localhost || exit 1"]
+      test: ["CMD", "pg_isready", "-h", "localhost", "-U", "postgres"]
       interval: 1s
       timeout: 5s
       retries: 30
+    restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
-    restart: always
+    #cap_drop: # TODO
+    #  - ALL
 
 
 
@@ -69,33 +80,37 @@ services:
     expose:
       - "8000"
     networks:
-      idapt-backend-network:
-        ipv4_address: 172.21.0.15
-      idapt-postgres-network: # Temporarily access database container directly # TODO Use nginx
-        ipv4_address: 172.24.0.14
+      idapt-backend-external-network: {}
+      idapt-backend-network: {}
+      idapt-ollama-network: {}
+      idapt-postgres-network: {}
     depends_on:
       idapt-postgres:
         condition: service_healthy
-      #idapt-ollama:
-      #  condition: service_started
-      idapt-nginx:
+      idapt-ollama:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 1s
       timeout: 5s
       retries: 30
+    environment:
+      ENVIRONMENT: dev
+      HOST_DOMAIN: ${HOST_DOMAIN}
     env_file:
-      - ./postgres/.env # Used to get the default superuser password and other variables.
       - ./backend/.env
-      - ./dev.env # To pass the dev variable.
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - backend_data:/backend_data # The volume where the app data is stored.
-      - data:/data # The volume where the data is stored.
+      - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - postgres_backend_secrets:/postgres_backend_secrets:ro # Give access to the postgres password.
+      - keycloak_backend_client_secret:/keycloak_backend_client_secret:ro # Give access to the keycloak backend client secret.
+    restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
-    restart: always
+    #cap_drop: # TODO
+    #  - ALL
 
 
 
@@ -107,84 +122,205 @@ services:
     expose:
       - "3000"
     networks:
-      idapt-frontend-network:
-        ipv4_address: 172.22.0.15
-    #depends_on:     # Disable for dev to have a faster startup time, backend will not respond at frontend start.
+      idapt-frontend-external-network: {}
+      idapt-frontend-network: {}
+    #depends_on:     # Disable for dev to have a faster startup time, backend will simply not respond at frontend start.
       #idapt-backend:
       #  condition: service_healthy
+    environment:
+      ENVIRONMENT: dev
+      HOST_DOMAIN: ${HOST_DOMAIN}
     env_file:
       - ./frontend/.env
-      - ./dev.env # To pass the dev variable.
     volumes:
       - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
+    restart: always
+    # Container security hardening
+    user: node
     security_opt:
       - no-new-privileges:true
-    restart: always
+    #cap_drop: # TODO
+    #  - ALL
+
 
 
 
 # Nginx to manage every communication between containers and also outside world.
   idapt-nginx:
-    image: nginx:alpine
     container_name: idapt-nginx
+    build:
+      context: ./nginx
+      dockerfile: ./Dockerfile
     ports:
-      - "3030:3030" # Expose the port 3030. The security of this is done at the nginx configuration. As ngix is a proxy, it can secure the access to the app. # TODO : Update this to use 127.0.0.1 ? This way it don't open the port on the host machine firewall ?
+      # Expose the nginx listening ports through the host firewall.
+      # Add 127.0.0.1 to only open ports locally and not through the host firewall.
+      - '80:80/tcp'
+      - '443:443/tcp'
+      - '443:443/udp'
+    volumes:
+      - './nginx/config:/nginx-config-source:ro' # Original nginx config.
+      - './certs:/nginx-certs-source:ro' # Original ssl certificates passed from host if we need to skip certbot.
+      - './nginx/letsencrypt:/etc/letsencrypt' # Persist the certificates to bind mount for dev to avoid harrasing letsencrypt.
+      - './nginx/certbot_www:/var/www/certbot' # Persist the ACME challenge files.
+    # Nginx has access to every container exposed via their own network for routing.
+    networks:
+      idapt-nginx-external-network: {}
+      idapt-keycloak-network: {}
+      idapt-frontend-network: {}
+      idapt-backend-network: {}
+      idapt-oauth2-proxy-network:
+        aliases:
+          - "${HOST_DOMAIN}" # Needed for oauth2 proxy to use the domain host and make requests to keycloak that match host domain.
+    environment:
+      HOST_DOMAIN: ${HOST_DOMAIN}
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL}
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
       timeout: 5s
       retries: 30
-    volumes:
-      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro # Bind mount to reflect changes of the conf file in the containe
-      - ./nginx/docker-entrypoint.sh:/docker-entrypoint.sh:ro
-    # Nginx has access to every container via their own network for routing.
-    entrypoint: ["/docker-entrypoint.sh"]
-    networks:
-      - idapt-frontend-network
-      - idapt-backend-network
-      - idapt-ollama-network
-      - idapt-postgres-network
-    extra_hosts: # Expose the host machine to the nginx container at host.docker.internal to be able to reach the ollama custom host if it is running on the host machine.
-      - "host.docker.internal:host-gateway"
+    restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+    #cap_add:
+    #  - NET_BIND_SERVICE  # Only for nginx
+
+
+
+
+  idapt-keycloak:
+    container_name: 'idapt-keycloak'
+    build:
+      context: ./keycloak
+      dockerfile: ./Dockerfile
+    depends_on:
+      idapt-postgres:
+        condition: service_healthy
+    environment:
+      - HOST_DOMAIN=${HOST_DOMAIN}
+      - KEYCLOAK_USER_EMAIL=${KEYCLOAK_USER_EMAIL}
+      - SMTP_ADDRESS=${SMTP_ADDRESS}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SSL=${SMTP_SSL}
+      - SMTP_STARTTLS=${SMTP_STARTTLS}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      # Required for building, healthcheck
+      - KC_HEALTH_ENABLED=true
+    volumes:
+      #- './keycloak/config:/config' # Config folder.
+      - postgres_keycloak_secrets:/postgres_keycloak_secrets # To get the keycloak database password.
+      - keycloak_oauth2_client_secret:/keycloak_oauth2_client_secret # To set the oauth2 client secret.
+      - keycloak_backend_client_secret:/keycloak_backend_client_secret # To set the backend client secret.
+      - keycloak_initialized:/keycloak_initialized # To check if keycloak is already initialized.
+    networks:
+      idapt-keycloak-external-network: {}
+      idapt-keycloak-network: {}
+      idapt-postgres-network: {}
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /auth/health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q 'UP'"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    restart: always
+    # Container security hardening
+    security_opt:
+      - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+
+
+  idapt-oauth2-proxy:
+    container_name: idapt-oauth2-proxy
+    build:
+      context: ./oauth2
+      dockerfile: ./Dockerfile
+    environment:
+      - HOST_DOMAIN=${HOST_DOMAIN}
+    expose:
+      - "4180"
+    volumes:
+      - keycloak_oauth2_client_secret:/keycloak_oauth2_client_secret:ro # To get the oauth2 client secret.
+      - oauth2_cookie_secret:/oauth2_cookie_secret # To persist the oauth2 cookie secret.
+    networks:
+      idapt-oauth2-proxy-network: {}
+    #depends_on:
+    #  idapt-keycloak:
+    #    condition: service_healthy
     restart: always
 
 
+
 volumes:
-  postgres_data:
   backend_data:
-  ollama_data:
-  data:
+  idapt_data:
+  ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
+  postgres_data:
+  postgres_admin_secrets:
+  postgres_backend_secrets:
+  postgres_keycloak_secrets:
+  letsencrypt:
+  certbot_www:
+  keycloak_oauth2_client_secret:
+  keycloak_backend_client_secret:
+  keycloak_initialized:
+  oauth2_cookie_secret:
 
 
-# One network for each service to keep them isolated and routed through nginx. Each network has its own subnet ip range. Each container is assigned a static ip address on its network to control origins at th nginx level.
+# One network for each service to keep them isolated.
 networks:
+  # Dedicated external networks for services that need internet access
+  idapt-nginx-external-network:
+    attachable: false
+    name: idapt-nginx-external-network
+    driver: bridge
+  idapt-frontend-external-network:
+    attachable: false
+    name: idapt-frontend-external-network
+    driver: bridge
+  idapt-backend-external-network:
+    attachable: false
+    name: idapt-backend-external-network
+    driver: bridge
+  idapt-keycloak-external-network:
+    attachable: false
+    name: idapt-keycloak-external-network
+    driver: bridge
+  idapt-ollama-external-network:
+    attachable: false
+    name: idapt-ollama-external-network
+    driver: bridge
+  # Internal networks for inter container communication.
   idapt-backend-network:
+    internal: true
     attachable: false
     name: idapt-backend-network
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.21.0.0/16
   idapt-frontend-network:
+    internal: true
     attachable: false
     name: idapt-frontend-network
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.22.0.0/16
   idapt-ollama-network:
+    internal: true
     attachable: false
     name: idapt-ollama-network
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.23.0.0/16
   idapt-postgres-network:
+    internal: true
     attachable: false
     name: idapt-postgres-network
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.24.0.0/16
+  idapt-keycloak-network:
+    internal: true
+    attachable: false
+    name: idapt-keycloak-network
+    driver: bridge
+  idapt-oauth2-proxy-network:
+    internal: true
+    attachable: false
+    name: idapt-oauth2-proxy-network
+    driver: bridge

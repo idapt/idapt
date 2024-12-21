@@ -62,10 +62,7 @@ class AppSettingsManager:
         self._update_dependent_services()
     
     def _update_dependent_services(self) -> None:
-        # Update nginx proxy
-        #from app.proxy import NginxProxy
-        #NginxProxy.set_custom_ollama_llm_host(str(self.settings.custom_ollama.llm_host))
-        
+
         # Update llama index settings
         from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
         update_llama_index_settings_from_app_settings()
