@@ -14,7 +14,7 @@ wait_for_client_secret() {
     local secret_file="/keycloak_oauth2_client_secret/OAUTH2_PROXY_CLIENT_SECRET"
     until [ -f "$secret_file" ] && [ -r "$secret_file" ] && [ -s "$secret_file" ]; do
         echo "Waiting for Keycloak client secret..."
-        sleep 5
+        sleep 1
     done
     echo "Client secret is available"
 }
