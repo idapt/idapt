@@ -15,6 +15,7 @@ import PdfDialog from "../widgets/PdfDialog";
 type Document = {
   url: string;
   sources: SourceNode[];
+  id: string;
 };
 
 export function ChatSources({ data }: { data: SourceData }) {
@@ -65,7 +66,7 @@ function SourceInfo({ node, index }: { node?: SourceNode; index: number }) {
     <HoverCard>
       <HoverCardTrigger
         className="cursor-default"
-        onClick={(e) => {
+        onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
           e.preventDefault();
           e.stopPropagation();
         }}

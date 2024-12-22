@@ -1,4 +1,4 @@
-import { FolderContentsResponse, File, Folder, Datasource } from '@/app/types/files';
+import { File, Folder, Datasource } from '@/app/types/files';
 import { useCallback, useEffect, useState } from 'react';
 import { useClientConfig } from '../../chat/hooks/use-config';
 import { encodePathSafe } from '@/app/components/ui/file-manager/utils/path-encoding';
@@ -21,7 +21,7 @@ export function useFileManager() {
       
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch folder contents');
-      const data: FolderContentsResponse = await response.json();
+      const data = await response.json();
       
       setFiles(data.files);
       setFolders(data.folders);

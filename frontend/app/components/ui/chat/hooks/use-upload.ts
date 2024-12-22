@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
 import { decompressData } from '../../file-manager/utils/compression';
@@ -84,12 +84,14 @@ export function useUpload() {
               if (data.event === 'conflict') {
                 setCurrentConflict(JSON.parse(data.data));
                 await new Promise<void>((resolve) => {
-                  const unsubscribe = watch(conflictResolution, (resolution) => {
-                    if (resolution) {
-                      unsubscribe();
+                  const checkResolution = () => {
+                    if (conflictResolution) {
                       resolve();
                     }
-                  });
+                  };
+                  
+                  const interval = setInterval(checkResolution, 100);
+                  return () => clearInterval(interval);
                 });
                 continue;
               }

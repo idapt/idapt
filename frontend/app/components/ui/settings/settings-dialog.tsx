@@ -111,7 +111,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <label className="text-sm font-medium">Model Provider</label>
             <Select
               value={settings.llm_model_provider}
-              onValueChange={(value) => setSettings({...settings, llm_model_provider: value})}
+              onValueChange={(value: string) => setSettings({...settings, llm_model_provider: value})}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a model provider" />
@@ -176,7 +176,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 settings.llm_model_provider === "text-generation-inference" ? (isCustomModel(settings.llm_model_provider, settings.tgi.llm_model) ? "custom" : settings.tgi.llm_model) :
                 ""
               }
-              onValueChange={(value) => {
+              onValueChange={(value: string) => {
                 if (!settings) return;
 
                 const providerSettings = {
@@ -284,7 +284,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <label className="text-sm font-medium">Embedding Model Provider</label>
             <Select
               value={settings.embedding_model_provider}
-              onValueChange={(value) => setSettings({...settings, embedding_model_provider: value})}
+              onValueChange={(value: string) => setSettings({...settings, embedding_model_provider: value})}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select an embedding provider" />
@@ -314,7 +314,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 settings.embedding_model_provider === "fastembed" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.fastembed.embedding_model) ? "custom" : settings.fastembed.embedding_model) :
                 ""
               }
-              onValueChange={(value) => {
+              onValueChange={(value: string) => {
                 const modelKey = 
                   settings.embedding_model_provider === "integrated_ollama" ? "integrated_ollama.embedding_model" :
                   settings.embedding_model_provider === "custom_ollama" ? "custom_ollama.embedding_model" :

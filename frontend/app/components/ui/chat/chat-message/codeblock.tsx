@@ -60,7 +60,7 @@ const CodeBlock: FC<Props> = memo(({ language, value, className }) => {
 
   useEffect(() => {
     if (codeRef.current && codeRef.current.dataset.highlighted !== "yes") {
-      hljs.highlightElement(codeRef.current);
+      hljs.highlightBlock(codeRef.current);
     }
   }, [language, value]);
 

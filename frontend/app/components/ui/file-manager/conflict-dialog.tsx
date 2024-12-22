@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { Button } from "../button";
-import { FileConflict } from "@/app/types/vault";
+import { FileConflict, ConflictResolution } from "@/app/types/vault";
 
 interface ConflictDialogProps {
   conflict: FileConflict;
@@ -17,7 +17,7 @@ export function ConflictDialog({ conflict, onResolve, remainingConflicts }: Conf
         </DialogHeader>
         <div className="space-y-4">
           <p>
-            The file "{conflict.name}" already exists at path "{conflict.path}".
+            The file &quot;{conflict.name}&quot; already exists at path &quot;{conflict.path}&quot;.
             What would you like to do?
           </p>
           <div className="flex justify-end space-x-2">

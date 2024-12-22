@@ -134,6 +134,7 @@ export default function Markdown({
               return (
                 <DocumentInfo
                   document={{
+                    id: href,
                     url: backend
                       ? new URL(decodeURIComponent(href)).href
                       : href,
