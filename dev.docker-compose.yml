@@ -150,7 +150,7 @@ services:
     container_name: idapt-nginx
     build:
       context: ./nginx
-      dockerfile: ./Dockerfile
+      dockerfile: ./dev.Dockerfile
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
@@ -250,8 +250,8 @@ services:
     networks:
       idapt-oauth2-proxy-network: {}
     depends_on:
-    idapt-keycloak:
-    condition: service_healthy
+      idapt-keycloak:
+        condition: service_healthy
     restart: always
 
 

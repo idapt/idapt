@@ -10,8 +10,8 @@ services:
     networks:
       idapt-ollama-external-network: {}
       idapt-ollama-network: {}
-    runtime: nvidia
-    deploy:
+    runtime: nvidia # Remove this if you don't want to use GPU for ollama.
+    deploy: # Remove this if you don't want to use GPU for ollama.
       resources:
         reservations:
           devices:
@@ -19,17 +19,20 @@ services:
               capabilities: ["gpu"]
               count: all
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434"]
+      test: ["CMD", "ollama", "--version"]  # Check if Ollama is responding
       interval: 1s
       timeout: 5s
       retries: 30
     volumes:
-      - ollama_data:/root/.ollama
+      - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
     restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
     #cap_drop: # TODO
     #  - ALL
+
+
 
   idapt-postgres:
     container_name: idapt-postgres
@@ -41,14 +44,15 @@ services:
     networks:
       idapt-postgres-network: {}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - postgres_admin_secrets:/postgres_admin_secrets
-      - postgres_backend_secrets:/postgres_backend_secrets
-      - postgres_keycloak_secrets:/postgres_keycloak_secrets
+      - postgres_data:/var/lib/postgresql/data # Store the database data in a volume
+      - postgres_admin_secrets:/postgres_admin_secrets # Store the generated password, not shared to any other container.
+      - postgres_backend_secrets:/postgres_backend_secrets # Store the generated password, shared to the backend container.
+      - postgres_keycloak_secrets:/postgres_keycloak_secrets # Store the generated password, shared to the keycloak container.
     environment:
       POSTGRES_USER: 'postgres'
+      # The password is randomly generated and set by the entrypoint script.
       POSTGRES_DB: 'postgres'
-      POSTGRES_HOST_AUTH_METHOD: 'password'
+      POSTGRES_HOST_AUTH_METHOD: 'password' # Allow all connections using password.
       PGDATA: '/var/lib/postgresql/data'
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "localhost", "-U", "postgres"]
@@ -56,15 +60,19 @@ services:
       timeout: 5s
       retries: 30
     restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
     #cap_drop: # TODO
     #  - ALL
 
+
+
+  # The backend is the main service of the application.
   idapt-backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile 
     container_name: idapt-backend
     expose:
       - "8000"
@@ -77,8 +85,6 @@ services:
       idapt-postgres:
         condition: service_healthy
       idapt-ollama:
-        condition: service_started
-      idapt-nginx:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
@@ -91,15 +97,18 @@ services:
     env_file:
       - ./backend/.env
     volumes:
-      - backend_data:/backend_data
-      - idapt_data:/data
-      - postgres_backend_secrets:/postgres_backend_secrets:ro
-      - keycloak_backend_client_secret:/keycloak_backend_client_secret
+      - backend_data:/backend_data # The volume where the app data is stored.
+      - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - postgres_backend_secrets:/postgres_backend_secrets:ro # Give access to the postgres password.
+      - keycloak_backend_client_secret:/keycloak_backend_client_secret:ro # Give access to the keycloak backend client secret.
     restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
     #cap_drop: # TODO
     #  - ALL
+
+
 
   idapt-frontend:
     build:
@@ -120,26 +129,32 @@ services:
     env_file:
       - ./frontend/.env
     restart: always
+    # Container security hardening
     user: node
     security_opt:
       - no-new-privileges:true
     #cap_drop: # TODO
     #  - ALL
 
+
+
+
+# Nginx to manage every communication between containers and also outside world.
   idapt-nginx:
     container_name: idapt-nginx
     build:
       context: ./nginx
       dockerfile: ./Dockerfile
     ports:
+      # Expose the nginx listening ports through the host firewall.
+      # Add 127.0.0.1 to only open ports locally and not through the host firewall.
       - '80:80/tcp'
       - '443:443/tcp'
       - '443:443/udp'
     volumes:
-      - './nginx/config:/nginx-config-source:ro'
-      - './certs:/nginx-certs-source:ro'
-      - './nginx/letsencrypt:/etc/letsencrypt'
-      - './nginx/certbot_www:/var/www/certbot'
+      - letsencrypt:/etc/letsencrypt # Store the certificates.
+      - certbot_www:/var/www/certbot # Store the ACME challenge files.
+    # Nginx has access to every container exposed via their own network for routing.
     networks:
       idapt-nginx-external-network: {}
       idapt-keycloak-network: {}
@@ -147,27 +162,26 @@ services:
       idapt-backend-network: {}
       idapt-oauth2-proxy-network:
         aliases:
-          - "${HOST_DOMAIN}"
+          - "${HOST_DOMAIN}" # Needed for oauth2 proxy to use the domain host and make requests to keycloak that match host domain.
     environment:
       HOST_DOMAIN: ${HOST_DOMAIN}
       CERTBOT_EMAIL: ${CERTBOT_EMAIL}
-    depends_on:
-      idapt-oauth2-proxy:
-        condition: service_healthy
-      idapt-keycloak:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
       timeout: 5s
       retries: 30
     restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
     #cap_drop: # TODO
     #  - ALL
     #cap_add:
-    #  - NET_BIND_SERVICE
+    #  - NET_BIND_SERVICE  # Only for nginx
+
+
+
 
   idapt-keycloak:
     container_name: 'idapt-keycloak'
@@ -186,27 +200,29 @@ services:
       - SMTP_STARTTLS=${SMTP_STARTTLS}
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
+      # Required for building, healthcheck
       - KC_HEALTH_ENABLED=true
     volumes:
-      - 'postgres_keycloak_secrets:/postgres_keycloak_secrets'
-      - 'keycloak_oauth2_client_secret:/keycloak_oauth2_client_secret'
-      - 'keycloak_backend_client_secret:/keycloak_backend_client_secret'
-      - 'keycloak_initialized:/keycloak_initialized'
+      - postgres_keycloak_secrets:/postgres_keycloak_secrets # To get the keycloak database password.
+      - keycloak_oauth2_client_secret:/keycloak_oauth2_client_secret # To set the oauth2 client secret.
+      - keycloak_backend_client_secret:/keycloak_backend_client_secret # To set the backend client secret.
+      - keycloak_initialized:/keycloak_initialized # To check if keycloak is already initialized.
     networks:
       idapt-keycloak-external-network: {}
       idapt-keycloak-network: {}
       idapt-postgres-network: {}
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /auth/health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q 'UP'"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+      interval: 1s
+      timeout: 5s
+      retries: 30
     restart: always
+    # Container security hardening
     security_opt:
       - no-new-privileges:true
     #cap_drop: # TODO
     #  - ALL
+
 
   idapt-oauth2-proxy:
     container_name: idapt-oauth2-proxy
@@ -218,16 +234,21 @@ services:
     expose:
       - "4180"
     volumes:
-      - keycloak_oauth2_client_secret:/keycloak_oauth2_client_secret
-      - oauth2_cookie_secret:/oauth2_cookie_secret
+      - keycloak_oauth2_client_secret:/keycloak_oauth2_client_secret:ro # To get the oauth2 client secret.
+      - oauth2_cookie_secret:/oauth2_cookie_secret # To persist the oauth2 cookie secret.
     networks:
       idapt-oauth2-proxy-network: {}
+    depends_on:
+      idapt-keycloak:
+        condition: service_healthy
     restart: always
+
+
 
 volumes:
   backend_data:
   idapt_data:
-  ollama_data:
+  ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
   postgres_data:
   postgres_admin_secrets:
   postgres_backend_secrets:
@@ -239,6 +260,8 @@ volumes:
   keycloak_initialized:
   oauth2_cookie_secret:
 
+
+# One network for each service to keep them isolated.
 networks:
   # Dedicated external networks for services that need internet access
   idapt-nginx-external-network:
