@@ -95,21 +95,92 @@ create_clients() {
     echo -n "$BACKEND_SECRET" > /keycloak_backend_client_secret/BACKEND_CLIENT_SECRET
     echo "Backend client secret saved!"
 
+
+
+    # Create OAuth2 proxy client with recommended configuration
     echo "Creating OAuth2 proxy client..."
-    # Create OAuth2 proxy client
     OAUTH2_CLIENT_ID=$(/opt/keycloak/bin/kcadm.sh create clients -r master \
         -s clientId=idapt-oauth2-proxy \
+        -s name="idapt-oauth2-proxy" \
         -s enabled=true \
         -s publicClient=false \
         -s clientAuthenticatorType=client-secret \
-        -s 'redirectUris=["*"]' \
         -s protocol=openid-connect \
-        -s 'webOrigins=["*"]' \
+        -s standardFlowEnabled=true \
+        -s directAccessGrantsEnabled=false \
+        -s serviceAccountsEnabled=false \
+        -s 'redirectUris=["https://'$HOST_DOMAIN'/oauth2/callback"]' \
+        -s 'webOrigins=["https://'$HOST_DOMAIN'"]' \
+        -s fullScopeAllowed=false \
         -i)
     echo "OAuth2 proxy client created!"
-    
-    echo "Getting OAuth2 proxy client secret..."
+
+    # Create dedicated audience mapper for the client
+    echo "Creating audience mapper for OAuth2 proxy client..."
+    /opt/keycloak/bin/kcadm.sh create clients/${OAUTH2_CLIENT_ID}/protocol-mappers/models \
+        -r master \
+        -s name="audience-mapper" \
+        -s protocol="openid-connect" \
+        -s protocolMapper="oidc-audience-mapper" \
+        -s 'config."included.client.audience"=idapt-oauth2-proxy' \
+        -s 'config."id.token.claim"=true' \
+        -s 'config."access.token.claim"=true'
+    echo "Audience mapper created!"
+
+    # Create groups client scope
+    echo "Creating groups client scope..."
+    GROUPS_SCOPE_ID=$(/opt/keycloak/bin/kcadm.sh create client-scopes -r master \
+        -s name=groups \
+        -s protocol=openid-connect \
+        -s 'attributes={"consent.screen.text":"Group Membership","display.on.consent.screen":"true"}' \
+        -i)
+
+    # Add group membership mapper to groups scope
+    echo "Adding group membership mapper to groups scope..."
+    /opt/keycloak/bin/kcadm.sh create client-scopes/${GROUPS_SCOPE_ID}/protocol-mappers/models \
+        -r master \
+        -s name="groups-mapper" \
+        -s protocol="openid-connect" \
+        -s protocolMapper="oidc-group-membership-mapper" \
+        -s 'config."claim.name"=groups' \
+        -s 'config."full.path"=true' \
+        -s 'config."id.token.claim"=true' \
+        -s 'config."access.token.claim"=true' \
+        -s 'config."userinfo.token.claim"=true'
+
+    # Assign groups scope to OAuth2 proxy client
+    echo "Assigning groups scope to OAuth2 proxy client..."
+    /opt/keycloak/bin/kcadm.sh update clients/${OAUTH2_CLIENT_ID}/optional-client-scopes/${GROUPS_SCOPE_ID} \
+        -r master
+
+    # Create default roles
+    echo "Creating default roles..."
+    # Create realm role
+    /opt/keycloak/bin/kcadm.sh create roles -r master \
+        -s name=idapt-user \
+        -s 'description=Default role for idapt users'
+
+    # Create client role
+    /opt/keycloak/bin/kcadm.sh create clients/${OAUTH2_CLIENT_ID}/roles \
+        -r master \
+        -s name=user \
+        -s 'description=Basic user role for OAuth2 proxy client'
+
+    # Create default group
+    echo "Creating default group..."
+    DEFAULT_GROUP_ID=$(/opt/keycloak/bin/kcadm.sh create groups -r master \
+        -s name=idapt-users \
+        -i)
+
+    # Assign default roles to group
+    echo "Assigning default roles to group..."
+    /opt/keycloak/bin/kcadm.sh add-roles \
+        -r master \
+        --gid ${DEFAULT_GROUP_ID} \
+        --rolename idapt-user
+
     # Get and save OAuth2 proxy client secret
+    echo "Getting OAuth2 proxy client secret..."
     COMMAND_OUTPUT=$(/opt/keycloak/bin/kcadm.sh get clients/$OAUTH2_CLIENT_ID/client-secret -r master)
     OAUTH2_SECRET=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"value" : "\([^"]*\)".*/\1/p')
     echo -n "$OAUTH2_SECRET" > /keycloak_oauth2_client_secret/OAUTH2_PROXY_CLIENT_SECRET
@@ -136,6 +207,7 @@ create_admin_user() {
             -i)
     fi
     echo "New admin user created"
+
 }
 
 # Set temporary password for new admin
