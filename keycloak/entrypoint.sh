@@ -17,7 +17,7 @@ if [ ! -f "/keycloak_initialized/KEYCLOAK_INITIALIZED" ]; then
     &
   
   # Now run the init script
-  /init-keycloak.sh $KEYCLOAK_TEMP_ADMIN_PASSWORD $KEYCLOAK_USER_EMAIL
+  /init-keycloak.sh $KEYCLOAK_TEMP_ADMIN_PASSWORD $KEYCLOAK_USER_EMAIL $DEV_SET_INITIAL_KEYCLOAK_ADMIN_PASSWORD $DEV_INITIAL_KEYCLOAK_ADMIN_PASSWORD
 
   # Create initialization flag that will persist in a volume even if the container is recreated
   touch /keycloak_initialized/KEYCLOAK_INITIALIZED

@@ -8,6 +8,12 @@ echo "Keycloak temp admin password: $KEYCLOAK_TEMP_ADMIN_PASSWORD"
 KEYCLOAK_USER_EMAIL=$2
 echo "Keycloak user email: $KEYCLOAK_USER_EMAIL"
 
+# Get the dev mode settings
+DEV_SET_INITIAL_KEYCLOAK_ADMIN_PASSWORD=$3
+echo "Dev set initial keycloak admin password: $DEV_SET_INITIAL_KEYCLOAK_ADMIN_PASSWORD"
+DEV_INITIAL_KEYCLOAK_ADMIN_PASSWORD=$4
+echo "Dev initial keycloak admin password: $DEV_INITIAL_KEYCLOAK_ADMIN_PASSWORD"
+
 # Function to wait for Keycloak to be ready
 wait_for_keycloak() {
     until exec 3<>/dev/tcp/127.0.0.1/9000 && \
@@ -87,7 +93,6 @@ create_clients() {
     COMMAND_OUTPUT=$(/opt/keycloak/bin/kcadm.sh get clients/$BACKEND_CLIENT_ID/client-secret -r master)
     BACKEND_SECRET=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"value" : "\([^"]*\)".*/\1/p')
     echo -n "$BACKEND_SECRET" > /keycloak_backend_client_secret/BACKEND_CLIENT_SECRET
-    chmod 755 /keycloak_backend_client_secret/BACKEND_CLIENT_SECRET
     echo "Backend client secret saved!"
 
     echo "Creating OAuth2 proxy client..."
@@ -108,40 +113,63 @@ create_clients() {
     COMMAND_OUTPUT=$(/opt/keycloak/bin/kcadm.sh get clients/$OAUTH2_CLIENT_ID/client-secret -r master)
     OAUTH2_SECRET=$(echo "$COMMAND_OUTPUT" | sed -n 's/.*"value" : "\([^"]*\)".*/\1/p')
     echo -n "$OAUTH2_SECRET" > /keycloak_oauth2_client_secret/OAUTH2_PROXY_CLIENT_SECRET
-    chmod 755 /keycloak_oauth2_client_secret/OAUTH2_PROXY_CLIENT_SECRET
     echo "OAuth2 proxy client secret saved!"
 }
 
 # Create new admin user account
 create_admin_user() {
     echo "Creating new admin account..."
-    NEW_ADMIN_ID=$(/opt/keycloak/bin/kcadm.sh create users -r master \
-        -s email=$KEYCLOAK_USER_EMAIL \
-        -s enabled=true \
-        -s emailVerified=true \
-        -s requiredActions='["UPDATE_PASSWORD", "CONFIGURE_OTP"]' \
-        -i)
+    if [ "$DEV_SET_INITIAL_KEYCLOAK_ADMIN_PASSWORD" = "true" ]; then
+        echo "Creating admin account in dev mode without required actions..."
+        NEW_ADMIN_ID=$(/opt/keycloak/bin/kcadm.sh create users -r master \
+            -s email=$KEYCLOAK_USER_EMAIL \
+            -s enabled=true \
+            -s emailVerified=true \
+            -i)
+    else
+        echo "Creating admin account with required password update action..."
+        NEW_ADMIN_ID=$(/opt/keycloak/bin/kcadm.sh create users -r master \
+            -s email=$KEYCLOAK_USER_EMAIL \
+            -s enabled=true \
+            -s emailVerified=true \
+            -s requiredActions='["UPDATE_PASSWORD"]' \
+            -i)
+    fi
     echo "New admin user created"
 }
 
 # Set temporary password for new admin
 set_admin_temp_password() {
-    # Generate a strong random password with:
-    # - 64 characters
-    # - Special characters
-    # - Numbers
-    # - Uppercase letters
-    # - Lowercase letters
-    ADMIN_PASSWORD=$(tr -dc 'A-Za-z0-9!@#$%^&*()_+-=' < /dev/urandom | head -c 64)
+    if [ "$DEV_SET_INITIAL_KEYCLOAK_ADMIN_PASSWORD" = "true" ]; then
+        ADMIN_PASSWORD="$DEV_INITIAL_KEYCLOAK_ADMIN_PASSWORD"
+        echo "Using provided dev admin password"
+    else
+        # Generate a strong random password with:
+        # - 64 characters
+        # - Special characters
+        # - Numbers
+        # - Uppercase letters
+        # - Lowercase letters
+        # While the password do not match the password policy, generate a new one, it needs to be 64 characters long, with special characters, numbers, uppercase and lowercase letters
+        while ! echo "$ADMIN_PASSWORD" | grep -qE '^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+-=])[A-Za-z\d!@#$%^&*()_+-=]{64}$'; do
+            ADMIN_PASSWORD=$(tr -dc 'A-Za-z0-9!@#$%^&*()_+-=' < /dev/urandom | head -c 64)
+        done
+    fi
 
     # Set the temporary password for the new admin
-    echo "Setting temporary password for new admin..."
-    echo "Admin temporary password: $ADMIN_PASSWORD"
+    echo "Setting password for new admin..."
+    echo "Admin password: $ADMIN_PASSWORD"
 
-    /opt/keycloak/bin/kcadm.sh set-password -r master \
-        --userid $NEW_ADMIN_ID \
-        --temporary \
-        -p "$ADMIN_PASSWORD"
+    if [ "$DEV_SET_INITIAL_KEYCLOAK_ADMIN_PASSWORD" = "true" ]; then
+        /opt/keycloak/bin/kcadm.sh set-password -r master \
+            --userid $NEW_ADMIN_ID \
+            -p "$ADMIN_PASSWORD"
+    else
+        /opt/keycloak/bin/kcadm.sh set-password -r master \
+            --userid $NEW_ADMIN_ID \
+            --temporary \
+            -p "$ADMIN_PASSWORD"
+    fi
 }
 
 # Add admin role to new admin user
