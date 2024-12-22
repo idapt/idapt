@@ -18,12 +18,12 @@ services:
             - driver: nvidia
               capabilities: ["gpu"]
               count: all
-    # Disable for dev to have a faster startup time.
-    healthcheck: # Causes issues when pulling large models or when api is busy for a long time.
-      test: ["CMD", "ollama", "--version"]  # Check if Ollama is responding
-      interval: 1s                    # Run the health check every 2 seconds
-      timeout: 5s                     # Timeout for the health check is 30 seconds
-      retries: 30                       # Retry 5 times before marking it as unhealthy
+    # Removed for dev to not clutter the logs.
+    #healthcheck: # Causes issues when pulling large models or when api is busy for a long time.
+    #  test: ["CMD", "ollama", "--version"]  # Check if Ollama is responding
+    #  interval: 1s                    # Run the health check every 2 seconds
+    #  timeout: 5s                     # Timeout for the health check is 30 seconds
+    #  retries: 30                       # Retry 5 times before marking it as unhealthy
     volumes:
       - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
     restart: always
@@ -88,7 +88,7 @@ services:
       idapt-postgres:
         condition: service_healthy
       idapt-ollama:
-        condition: service_healthy
+        condition: service_started # Removed for dev to not clutter the logs.
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 1s
