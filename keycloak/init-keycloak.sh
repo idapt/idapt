@@ -132,7 +132,7 @@ create_admin_user() {
             -s email=$KEYCLOAK_USER_EMAIL \
             -s enabled=true \
             -s emailVerified=true \
-            -s requiredActions='["UPDATE_PASSWORD"]' \
+            -s requiredActions='["UPDATE_PASSWORD", "CONFIGURE_OTP"]' \
             -i)
     fi
     echo "New admin user created"
