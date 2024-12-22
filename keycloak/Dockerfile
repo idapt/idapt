@@ -18,7 +18,8 @@ COPY --from=builder /opt/keycloak/ /opt/keycloak/
 USER root
 RUN mkdir -p /keycloak_oauth2_client_secret /keycloak_backend_client_secret /keycloak_initialized && \
     chown -R keycloak:root /keycloak_oauth2_client_secret /keycloak_backend_client_secret /keycloak_initialized && \
-    chmod 755 /keycloak_oauth2_client_secret /keycloak_backend_client_secret /keycloak_initialized
+    chmod 777 /keycloak_oauth2_client_secret /keycloak_backend_client_secret /keycloak_initialized
+# TODO Maybe use 775 and make it work with the oauth2-proxy container.
 
 USER keycloak
 

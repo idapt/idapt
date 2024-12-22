@@ -2,12 +2,11 @@ FROM quay.io/oauth2-proxy/oauth2-proxy:v7.7.1-alpine
 
 USER root
 # Install required packages
-RUN apk add --no-cache bash curl gettext
-
-# Create directories with correct permissions
-RUN mkdir -p /keycloak_oauth2_client_secret /oauth2_cookie_secret /etc/oauth2-proxy && \
-    chown -R nobody:nobody /keycloak_oauth2_client_secret /oauth2_cookie_secret /etc/oauth2-proxy && \
-    chmod 755 /keycloak_oauth2_client_secret /oauth2_cookie_secret /etc/oauth2-proxy
+RUN apk add --no-cache bash gettext && \
+    # Create the required directories with the correct permissions
+    mkdir -p /oauth2_cookie_secret /etc/oauth2-proxy && \
+    chown -R nobody:nobody /oauth2_cookie_secret /etc/oauth2-proxy && \
+    chmod 775 /oauth2_cookie_secret /etc/oauth2-proxy
 
 # Copy scripts and config with correct permissions
 COPY --chmod=755 entrypoint.sh /entrypoint.sh

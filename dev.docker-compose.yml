@@ -249,9 +249,9 @@ services:
       - oauth2_cookie_secret:/oauth2_cookie_secret # To persist the oauth2 cookie secret.
     networks:
       idapt-oauth2-proxy-network: {}
-    #depends_on:
-    #  idapt-keycloak:
-    #    condition: service_healthy
+    depends_on:
+    idapt-keycloak:
+    condition: service_healthy
     restart: always
 
 
