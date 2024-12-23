@@ -1,4 +1,3 @@
-from app.settings.manager import AppSettingsManager
 from app.settings.models import *
 from app.settings.model_providers import *
 

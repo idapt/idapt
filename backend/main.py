@@ -116,7 +116,7 @@ def mount_static_files(app: FastAPI):
     # Mount the data files to serve the file viewer
     mount_directory(DATA_DIR, "/api/files/data")
     # Mount the output files from tools
-    mount_directory("output", "/api/files/output")
+    mount_directory("/backend_data/output", "/api/files/output")
 
 # Create the app instance
 app = create_app()
