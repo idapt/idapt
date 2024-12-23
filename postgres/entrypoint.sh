@@ -17,8 +17,15 @@ generate_password() {
     fi
 }
 
-# Generate passwords if they don't exist
-generate_password "/postgres_admin_secrets/POSTGRES_PASSWORD"
+# Set or generate admin password based on DEV_DB_PASSWORD
+if [ -n "$DEV_DB_PASSWORD" ]; then
+    echo "$DEV_DB_PASSWORD" > "/postgres_admin_secrets/POSTGRES_PASSWORD"
+    echo "Using DEV_DB_PASSWORD for admin password"
+else
+    generate_password "/postgres_admin_secrets/POSTGRES_PASSWORD"
+fi
+
+# Generate passwords for other users
 generate_password "/postgres_backend_secrets/IDAPT_BACKEND_PASSWORD"
 generate_password "/postgres_keycloak_secrets/IDAPT_KEYCLOAK_PASSWORD"
 

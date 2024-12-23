@@ -40,8 +40,8 @@ services:
     build:
       context: ./postgres
       dockerfile: ./Dockerfile
-    #ports:
-    #  - "5432:5432" # Expose database port for remote dev access.
+    ports:
+      - "5432:5432" # Expose database port for remote dev access.
     expose:
       - "5432"
     networks:
@@ -54,6 +54,7 @@ services:
     environment:
       POSTGRES_USER: 'postgres'
       # The password is randomly generated and set by the entrypoint script.
+      DEV_DB_PASSWORD: ${DEV_DB_PASSWORD}
       POSTGRES_DB: 'postgres'
       POSTGRES_HOST_AUTH_METHOD: 'password' # Allow all connections using password.
       PGDATA: '/var/lib/postgresql/data'
@@ -309,7 +310,7 @@ networks:
     name: idapt-ollama-network
     driver: bridge
   idapt-postgres-network:
-    internal: true
+    #internal: true
     attachable: false
     name: idapt-postgres-network
     driver: bridge
