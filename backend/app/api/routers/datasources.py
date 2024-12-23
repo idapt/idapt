@@ -21,6 +21,7 @@ class DatasourceCreate(BaseModel):
 
 class DatasourceResponse(BaseModel):
     id: int
+    identifier: str
     name: str
     type: str
     description: Optional[str] = None
@@ -37,27 +38,29 @@ async def get_datasources(
     datasources = service.get_all_datasources(session)
     # Convert to DatasourceResponse manually
     return [DatasourceResponse(
-        id=ds.id,
-        name=ds.name,
-        type=ds.type,
-        description=ds.description,
-        settings=ds.settings,
-    ) for ds in datasources]
+        id=datasource.id,
+        identifier=datasource.identifier,
+        name=datasource.name,
+        type=datasource.type,
+        description=datasource.description,
+        settings=datasource.settings,
+    ) for datasource in datasources]
 
-@datasources_router.get("/{encoded_name}", response_model=DatasourceResponse)
+@datasources_router.get("/{encoded_identifier}", response_model=DatasourceResponse)
 async def get_datasource(
-    encoded_name: str,
+    encoded_identifier: str,
     service = Depends(get_datasource_service),
     session: Session = Depends(get_db_session)
 ):
     try:
-        name = urlsafe_b64decode(encoded_name.encode()).decode()
-        datasource = service.get_datasource(session, name)
+        identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
+        datasource = service.get_datasource(session, identifier)
         if not datasource:
             raise HTTPException(status_code=404, detail="Datasource not found")
         # Convert to DatasourceResponse manually
         return DatasourceResponse(
             id=datasource.id,
+            identifier=datasource.identifier,
             name=datasource.name,
             type=datasource.type,
             description=datasource.description,
@@ -84,6 +87,7 @@ async def create_datasource(
         # Convert to DatasourceResponse manually
         return DatasourceResponse(
             id=created.id,
+            identifier=created.identifier,
             name=created.name,
             type=created.type,
             description=created.description,
@@ -92,15 +96,15 @@ async def create_datasource(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@datasources_router.delete("/{encoded_name}")
+@datasources_router.delete("/{encoded_identifier}")
 async def delete_datasource(
-    encoded_name: str,
+    encoded_identifier: str,
     service = Depends(get_datasource_service),
     session: Session = Depends(get_db_session)
 ):
     try:
-        name = urlsafe_b64decode(encoded_name.encode()).decode()
-        success = service.delete_datasource(session, name)
+        identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
+        success = service.delete_datasource(session, identifier)
         if not success:
             raise HTTPException(status_code=404, detail="Datasource not found")
         return {"message": "Datasource deleted successfully"}
@@ -109,17 +113,17 @@ async def delete_datasource(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@datasources_router.patch("/{encoded_name}")
+@datasources_router.patch("/{encoded_identifier}")
 async def update_datasource(
-    encoded_name: str,
+    encoded_identifier: str,
     update: DatasourceUpdate,
     service = Depends(get_datasource_service),
     session: Session = Depends(get_db_session)
 ):
     try:
-        name = urlsafe_b64decode(encoded_name.encode()).decode()
+        identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
         if update.description is not None:
-            success = service.update_datasource_description(session, name, update.description)
+            success = service.update_datasource_description(session, identifier, update.description)
             if not success:
                 raise HTTPException(status_code=404, detail="Datasource not found")
         return {"message": "Datasource updated successfully"}

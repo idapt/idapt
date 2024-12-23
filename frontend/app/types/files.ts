@@ -1,5 +1,6 @@
 export interface Datasource {
   id: number;
+  identifier: string;
   name: string;
   type: string;
   description?: string;

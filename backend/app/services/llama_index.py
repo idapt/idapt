@@ -15,13 +15,13 @@ class LlamaIndexService:
             service_manager = ServiceManager.get_instance()
             datasource_service = service_manager.datasource_service
 
-            from app.services.datasource import get_datasource_name_from_path
+            from app.services.datasource import get_datasource_identifier_from_path
             # Get the datasource name from the path
-            datasource_name = get_datasource_name_from_path(full_path)
+            datasource_identifier = get_datasource_identifier_from_path(full_path)
 
             # Get the datasource vector store and docstore
-            vector_store = datasource_service.get_vector_store(datasource_name)
-            doc_store = datasource_service.get_doc_store(datasource_name)
+            vector_store = datasource_service.get_vector_store(datasource_identifier)
+            doc_store = datasource_service.get_doc_store(datasource_identifier)
 
             # Delete the file from the vector store
             vector_store.delete(full_path)
@@ -41,13 +41,13 @@ class LlamaIndexService:
             service_manager = ServiceManager.get_instance()
             datasource_service = service_manager.datasource_service
 
-            from app.services.datasource import get_datasource_name_from_path
+            from app.services.datasource import get_datasource_identifier_from_path
             # Get the datasource name from the path 
-            datasource_name = get_datasource_name_from_path(full_old_path)
+            datasource_identifier = get_datasource_identifier_from_path(full_old_path)
 
             # Get the datasource vector store and docstore
-            vector_store = datasource_service.get_vector_store(datasource_name)
-            doc_store = datasource_service.get_doc_store(datasource_name)
+            vector_store = datasource_service.get_vector_store(datasource_identifier)
+            doc_store = datasource_service.get_doc_store(datasource_identifier)
 
             # For now simply delete the old file from the vector store and docstore
             vector_store.delete(full_old_path)

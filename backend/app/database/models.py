@@ -43,8 +43,9 @@ class Datasource(Base):
     __tablename__ = 'datasources'
     
     id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False, unique=True)
-    type = Column(String, nullable=False)  # e.g., 'files', 'database', 'api'
+    identifier = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
+    type = Column(String, nullable=False)
     description = Column(String, nullable=True)
     settings = Column(JSON, nullable=True)
     

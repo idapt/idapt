@@ -46,7 +46,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
     try {
       setError(null);
       setIsSaving(true);
-      const response = await fetch(`${backend}/api/datasources/${encodePathSafe(datasource.name)}`, {
+      const response = await fetch(`${backend}/api/datasources/${encodePathSafe(datasource.identifier)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

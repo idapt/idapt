@@ -23,7 +23,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def get_chat_engine(datasource_name: str = None, filters=None, params=None, event_handlers=None, **kwargs):
+def get_chat_engine(datasource_identifier: str = None, filters=None, params=None, event_handlers=None, **kwargs):
     try:
         # The tools that will be used by the agent
         tools: List[BaseTool] = []
@@ -32,9 +32,9 @@ def get_chat_engine(datasource_name: str = None, filters=None, params=None, even
 
         datasource_service = ServiceManager.get_instance().datasource_service
         
-        if datasource_name:
+        if datasource_identifier:
             # Get specific datasource tool
-            tool = datasource_service.get_query_tool(datasource_name)
+            tool = datasource_service.get_query_tool(datasource_identifier)
             tools.append(tool)
         else:
             # Get all datasource tools

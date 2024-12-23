@@ -6,7 +6,7 @@ import threading
 import json
 from pathlib import Path
 from app.services.ingestion_pipeline import IngestionPipelineService
-from app.services.datasource import get_datasource_name_from_path
+from app.services.datasource import get_datasource_identifier_from_path
 from threading import Lock as ThreadLock
 
 logger = logging.getLogger(__name__)
@@ -130,9 +130,9 @@ class GenerateService:
                     item = await self._queue.get()
                     items_to_process.append(item)
                     # Create composite key from datasource and transformation stack
-                    datasource_name = get_datasource_name_from_path(item["path"])
+                    datasource_identifier = get_datasource_identifier_from_path(item["path"])
                     stack_key = tuple(sorted(item["transformations_stack_name_list"]))
-                    batch_key = (datasource_name, stack_key)
+                    batch_key = (datasource_identifier, stack_key)
                     if batch_key not in batches:
                         batches[batch_key] = []
                     batches[batch_key].append(item)
@@ -143,8 +143,8 @@ class GenerateService:
                 problematic_files = []
 
                 # Process each datasource and transformation stack group
-                for (datasource_name, stack_list), items in batches.items():
-                    logger.info(f"Processing {len(items)} files for datasource '{datasource_name}' with transformation stack: {list(stack_list)}")
+                for (datasource_identifier, stack_list), items in batches.items():
+                    logger.info(f"Processing {len(items)} files for datasource '{datasource_identifier}' with transformation stack: {list(stack_list)}")
                     file_paths = [item["path"] for item in items]
                     stack_processed = 0
                     current_batch_size = batch_size
@@ -158,7 +158,7 @@ class GenerateService:
                         try:
                             await self.ingestion_pipeline_service.process_files(
                                 full_file_paths=sub_batch,
-                                datasource_name=datasource_name,
+                                datasource_identifier=datasource_identifier,
                                 transformations_stack_name_list=list(stack_list)
                             )
                             
@@ -173,7 +173,7 @@ class GenerateService:
                             
                             # Log progress
                             logger.info(
-                                f"Progress - Datasource '{datasource_name}' Stack {list(stack_list)}: "
+                                f"Progress - Datasource '{datasource_identifier}' Stack {list(stack_list)}: "
                                 f"{stack_processed}/{len(items)} files | "
                                 f"Total: {total_processed}/{total_items} files ({(total_processed/total_items)*100:.1f}%)"
                             )

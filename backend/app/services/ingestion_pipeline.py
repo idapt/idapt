@@ -92,7 +92,7 @@ class IngestionPipelineService:
     }
 
     # At this point the files are grouped by ingestion stack
-    async def process_files(self, full_file_paths: List[str], datasource_name: str, transformations_stack_name_list: List[str] = ["default"]):
+    async def process_files(self, full_file_paths: List[str], datasource_identifier: str, transformations_stack_name_list: List[str] = ["default"]):
         """Process a list of files through the ingestion pipeline"""
         try:
 
@@ -139,7 +139,7 @@ class IngestionPipelineService:
 
 
             # Create the ingestion pipeline for the datasource
-            vector_store, doc_store, _ = self.datasource_service.get_storage_components(datasource_name)
+            vector_store, doc_store, _ = self.datasource_service.get_storage_components(datasource_identifier)
 
             ingestion_pipeline = IngestionPipeline(
                 docstore=doc_store,
@@ -149,10 +149,10 @@ class IngestionPipelineService:
 
             # Load/create pipeline cache
             try:
-                ingestion_pipeline.load(f"/backend_data/output/pipeline_storage_{datasource_name}")
+                ingestion_pipeline.load(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
             except Exception as e:
                 self.logger.error(f"No existing pipeline cache found: {str(e)}")
-                ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_name}")
+                ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
 
 
             # For each transformations stack we need to apply
@@ -183,7 +183,7 @@ class IngestionPipelineService:
                         nodes=nodes,
                         show_progress=True,
                         docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
-                        num_workers=16
+                        num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
                     )
                     # No need to insert nodes into index as we use a vector store
 
@@ -198,12 +198,12 @@ class IngestionPipelineService:
                         documents=documents,
                         show_progress=True,
                         docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off # ? Mess up the stack if there is more than one ingestion transformation stack ?
-                        num_workers=16
+                        num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
                     )
                     # No need to insert nodes into index as we use a vector store
 
             # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
-            ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_name}")
+            ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
 
             self.logger.info(f"Ingested {len(documents)} documents")
 

@@ -46,7 +46,7 @@ class DatasourceService:
 
     def _init_default_datasources(self, session: Session):
         """Initialize default datasources if they don't exist"""
-        if not self.get_datasource(session, "Files"):
+        if not self.get_datasource(session, "files"):
             self.create_datasource(
                 session=session,
                 name="Files",
@@ -54,48 +54,49 @@ class DatasourceService:
                 settings={"description": "Default file storage"}
             )
 
-    def get_storage_components(self, datasource_name: str) -> Tuple[PGVectorStore, PostgresDocumentStore, PostgresIndexStore]:
+    def get_storage_components(self, datasource_identifier: str) -> Tuple[PGVectorStore, PostgresDocumentStore, PostgresIndexStore]:
         """Get or create all storage components for a datasource"""
-        vector_store = self.get_vector_store(datasource_name)
-        doc_store = self.get_doc_store(datasource_name)
-        index_store = self.get_index_store(datasource_name)
+        vector_store = self.get_vector_store(datasource_identifier)
+        doc_store = self.get_doc_store(datasource_identifier)
+        index_store = self.get_index_store(datasource_identifier)
         return vector_store, doc_store, index_store
 
-    def get_vector_store(self, datasource_name: str) -> PGVectorStore:
-        if datasource_name not in self._vector_stores:
-            self._vector_stores[datasource_name] = self._create_vector_store(datasource_name)
-        return self._vector_stores[datasource_name]
+    def get_vector_store(self, datasource_identifier: str) -> PGVectorStore:
+        if datasource_identifier not in self._vector_stores:
+            self._vector_stores[datasource_identifier] = self._create_vector_store(datasource_identifier)
+        return self._vector_stores[datasource_identifier]
 
-    def get_doc_store(self, datasource_name: str) -> PostgresDocumentStore:
-        if datasource_name not in self._doc_stores:
-            self._doc_stores[datasource_name] = self._create_doc_store(datasource_name)
-        return self._doc_stores[datasource_name]
+    def get_doc_store(self, datasource_identifier: str) -> PostgresDocumentStore:
+        if datasource_identifier not in self._doc_stores:
+            self._doc_stores[datasource_identifier] = self._create_doc_store(datasource_identifier)
+        return self._doc_stores[datasource_identifier]
 
-    def get_index_store(self, datasource_name: str) -> PostgresIndexStore:
-        if datasource_name not in self._index_stores:
-            self._index_stores[datasource_name] = self._create_index_store(datasource_name)
-        return self._index_stores[datasource_name]
+    def get_index_store(self, datasource_identifier: str) -> PostgresIndexStore:
+        if datasource_identifier not in self._index_stores:
+            self._index_stores[datasource_identifier] = self._create_index_store(datasource_identifier)
+        return self._index_stores[datasource_identifier]
 
-    def get_index(self, datasource_name: str) -> VectorStoreIndex:
-        if datasource_name not in self._indices:
-            self._indices[datasource_name] = self._create_index(datasource_name)
-        return self._indices[datasource_name]
+    def get_index(self, datasource_identifier: str) -> VectorStoreIndex:
+        if datasource_identifier not in self._indices:
+            self._indices[datasource_identifier] = self._create_index(datasource_identifier)
+        return self._indices[datasource_identifier]
 
-    def get_query_tool(self, datasource_name: str) -> BaseTool:
-        if datasource_name not in self._tools:
-            self._tools[datasource_name] = self._create_query_tool(datasource_name)
-        return self._tools[datasource_name]
+    def get_query_tool(self, datasource_identifier: str) -> BaseTool:
+        if datasource_identifier not in self._tools:
+            self._tools[datasource_identifier] = self._create_query_tool(datasource_identifier)
+        return self._tools[datasource_identifier]
 
     def create_datasource(self, session: Session, name: str, type: str, settings: dict = None) -> Datasource:
         """Create a new datasource with its root folder and all required components"""
         try:
-            path = name
+            identifier = generate_identifier(name)
+            path = identifier
             full_path = get_full_path_from_path(path)
             root_folder_id = self.db_file_service.get_folder_id(session, "/data")
 
             # Create root folder for datasource
             datasource_folder = Folder(
-                name=name,
+                name=name,  # Use display name for folder
                 path=full_path,
                 parent_id=root_folder_id
             )
@@ -104,6 +105,7 @@ class DatasourceService:
 
             # Create datasource
             datasource = Datasource(
+                identifier=identifier,  # Add identifier
                 name=name,
                 type=type,
                 settings=settings,
@@ -112,10 +114,10 @@ class DatasourceService:
             session.add(datasource)
             session.commit()
 
-            # Initialize all llama-index components
-            self.get_storage_components(name)
-            self.get_index(name)
-            self.get_query_tool(name)
+            # Initialize all llama-index components using identifier
+            self.get_storage_components(identifier)
+            self.get_index(identifier)
+            self.get_query_tool(identifier)
 
             return datasource
         except Exception as e:
@@ -123,10 +125,10 @@ class DatasourceService:
             self.logger.error(f"Error creating datasource: {str(e)}")
             raise
 
-    def delete_datasource(self, session: Session, name: str) -> bool:
+    def delete_datasource(self, session: Session, identifier: str) -> bool:
         """Delete a datasource and all its components"""
         try:
-            datasource = self.get_datasource(session, name)
+            datasource = self.get_datasource(session, identifier)
             if datasource:
                 # Delete filesystem and database entries
                 self.file_manager_service.delete_folder(session, datasource.root_folder.path)
@@ -134,7 +136,7 @@ class DatasourceService:
                 session.commit()
 
                 # Delete llama-index components
-                self._delete_llama_index_components(name)
+                self._delete_llama_index_components(identifier)
                 return True
             return False
         except Exception as e:
@@ -142,25 +144,29 @@ class DatasourceService:
             self.logger.error(f"Error deleting datasource: {str(e)}")
             raise
 
-    def _delete_llama_index_components(self, datasource_name: str):
+    def _delete_llama_index_components(self, datasource_identifier: str):
         """Delete all llama-index components for a datasource"""
-        if datasource_name in self._vector_stores:
-            self._vector_stores[datasource_name].delete_index()
-            del self._vector_stores[datasource_name]
-            
-        if datasource_name in self._doc_stores:
-            self._doc_stores[datasource_name].delete_index()
-            del self._doc_stores[datasource_name]
-            
-        if datasource_name in self._index_stores:
-            self._index_stores[datasource_name].delete_index()
-            del self._index_stores[datasource_name]
-            
-        if datasource_name in self._indices:
-            del self._indices[datasource_name]
-            
-        if datasource_name in self._tools:
-            del self._tools[datasource_name]
+        try:
+            if datasource_identifier in self._vector_stores:
+                self._vector_stores[datasource_identifier].delete_index()
+                del self._vector_stores[datasource_identifier]
+                
+            if datasource_identifier in self._doc_stores:
+                self._doc_stores[datasource_identifier].delete_index()
+                del self._doc_stores[datasource_identifier]
+                
+            if datasource_identifier in self._index_stores:
+                self._index_stores[datasource_identifier].delete_index()
+                del self._index_stores[datasource_identifier]
+                
+            if datasource_identifier in self._indices:
+                del self._indices[datasource_identifier]
+                
+            if datasource_identifier in self._tools:
+                del self._tools[datasource_identifier]
+        except Exception as e:
+            self.logger.error(f"Error deleting llama-index components: {str(e)}")
+            raise
 
     # Private methods for creating components
     def _create_vector_store(self, datasource_identifier: str) -> PGVectorStore:
@@ -189,22 +195,22 @@ class DatasourceService:
             self.logger.error(f"Error creating vector store: {str(e)}")
             raise
 
-    def _create_doc_store(self, datasource_name: str) -> PostgresDocumentStore:
+    def _create_doc_store(self, datasource_identifier: str) -> PostgresDocumentStore:
         return PostgresDocumentStore.from_uri(
             uri=get_connection_string(),
             schema_name="public",
-            table_name=f"docstore_{datasource_name.lower()}"
+            table_name=f"docstore_{datasource_identifier.lower()}"
         )
 
-    def _create_index_store(self, datasource_name: str) -> PostgresIndexStore:
+    def _create_index_store(self, datasource_identifier: str) -> PostgresIndexStore:
         return PostgresIndexStore.from_uri(
             uri=get_connection_string(),
             schema_name="public",
-            table_name=f"index_{datasource_name.lower()}"
+            table_name=f"index_{datasource_identifier.lower()}"
         )
 
-    def _create_index(self, datasource_name: str) -> VectorStoreIndex:
-        vector_store, doc_store, index_store = self.get_storage_components(datasource_name)
+    def _create_index(self, datasource_identifier: str) -> VectorStoreIndex:
+        vector_store, doc_store, index_store = self.get_storage_components(datasource_identifier)
         storage_context = StorageContext.from_defaults(
             vector_store=vector_store,
             docstore=doc_store,
@@ -215,8 +221,8 @@ class DatasourceService:
             storage_context=storage_context
         )
 
-    def _create_query_tool(self, datasource_name: str) -> BaseTool:
-        index = self.get_index(datasource_name)
+    def _create_query_tool(self, datasource_identifier: str) -> BaseTool:
+        index = self.get_index(datasource_identifier)
         retriever = VectorIndexRetriever(
             index=index,
             similarity_top_k=int(app_settings.top_k)
@@ -238,11 +244,11 @@ class DatasourceService:
         
         # Get datasource from database
         session = self.database_service.get_session()
-        datasource = session.query(Datasource).filter(Datasource.name == datasource_name).first()
+        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
         # Create tool description
         description = ""
         if not datasource.description or datasource.description == "":
-            description = f"Query engine for the {datasource_name} datasource"
+            description = f"Query engine for the {datasource_identifier} datasource"
         else:
             description = datasource.description
 
@@ -252,46 +258,54 @@ class DatasourceService:
         return FilteredQueryEngineTool(
             query_engine=query_engine,
             metadata=ToolMetadata(
-                name=f"{datasource_name.lower()}_query_engine",
+                name=f"{datasource_identifier.lower()}_query_engine",
                 description=tool_description
             ),
         )
 
-    def get_datasource(self, session: Session, name: str) -> Optional[Datasource]:
-        """Get a datasource by name"""
-        return session.query(Datasource).filter(Datasource.name == name).first()
+    def get_datasource(self, session: Session, identifier: str) -> Optional[Datasource]:
+        """Get a datasource by identifier"""
+        return session.query(Datasource).filter(Datasource.identifier == identifier).first()
 
     def get_all_datasources(self, session: Session) -> List[Datasource]:
         """Get all datasources"""
         return session.query(Datasource).all()
     
-    def update_datasource_description(self, session: Session, name: str, description: str) -> bool:
+    def _update_tool_description(self, identifier: str, description: str):
+        """Update the query tool description for a datasource"""
+        if identifier not in self._tools:
+            return
+        
+        # Create new tool description
+        tool_description = f"{description}\nUse a detailed plain text question as input to the tool."
+        
+        self.logger.error(f"Updating tool description for {identifier} to {tool_description}")
+
+        # Get existing query engine from current tool
+        existing_tool = self._tools[identifier]
+        if isinstance(existing_tool, FilteredQueryEngineTool):
+            query_engine = existing_tool._query_engine
+            
+            # Create new tool with updated description
+            self._tools[identifier] = FilteredQueryEngineTool(
+                query_engine=query_engine,
+                metadata=ToolMetadata(
+                    name=f"{identifier.lower()}_query_engine",
+                    description=tool_description
+                ),
+            )
+
+    def update_datasource_description(self, session: Session, identifier: str, description: str) -> bool:
         """Update a datasource's description and its associated query tool"""
         try:
-            datasource = self.get_datasource(session, name)
+            datasource = self.get_datasource(session, identifier)
             if datasource:
                 # Update description in database
                 datasource.description = description
                 session.commit()
 
-                # Update the query tool if it exists
-                if name in self._tools:
-                    # Create new tool description
-                    tool_description = f"{description}\nUse a detailed plain text question as input to the tool."
-                    
-                    # Get existing query engine from current tool
-                    existing_tool = self._tools[name]
-                    if isinstance(existing_tool, FilteredQueryEngineTool):
-                        query_engine = existing_tool._query_engine
-                        
-                        # Create new tool with updated description
-                        self._tools[name] = FilteredQueryEngineTool(
-                            query_engine=query_engine,
-                            metadata=ToolMetadata(
-                                name=f"{name.lower()}_query_engine",
-                                description=tool_description
-                            ),
-                        )
+                # Update the query tool description
+                self._update_tool_description(identifier, description)
 
                 return True
             return False
@@ -300,11 +314,21 @@ class DatasourceService:
             self.logger.error(f"Error updating datasource description: {str(e)}")
             raise
     
-def get_datasource_name_from_path(path: str) -> str:
-    """Get the datasource name from a path"""
+def get_datasource_identifier_from_path(path: str) -> str:
+    """Get the datasource identifier from a path"""
     # Extract datasource name from path (first component after /data/)
     path_parts = path.split("/")
     data_index = path_parts.index("data")
     if data_index + 1 >= len(path_parts):
         raise ValueError(f"Invalid file path structure: {path}")
     return path_parts[data_index + 1]
+
+def generate_identifier(name: str) -> str:
+    """Generate a safe identifier from a name"""
+    # Convert to lowercase and replace spaces/special chars with underscores
+    identifier = re.sub(r'[^a-zA-Z0-9]', '_', name.lower())
+    # Remove consecutive underscores
+    identifier = re.sub(r'_+', '_', identifier)
+    # Remove leading/trailing underscores
+    identifier = identifier.strip('_')
+    return identifier
