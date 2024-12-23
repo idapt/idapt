@@ -247,7 +247,7 @@ class DatasourceService:
         datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
         # Create tool description
         description = ""
-        if not datasource.description or datasource.description == "":
+        if not datasource or not datasource.description or datasource.description == "":
             description = f"Query engine for the {datasource_identifier} datasource"
         else:
             description = datasource.description
