@@ -6,6 +6,7 @@ load_dotenv()
 
 import logging
 import os
+from contextlib import asynccontextmanager
 
 # Set up logging configuration early
 environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
@@ -48,26 +49,43 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-logger.info("Starting application initialization")
+logger.info(f"Starting application initialization in process {os.getpid()}")
 
-def create_app() -> FastAPI:
-
-    app = FastAPI()
-
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for FastAPI application"""
+    # Startup
+    current_pid = os.getpid()
+    logger.info(f"Starting up application in process {current_pid}")
+    
+    # Initialize observability first
     from app.observability import init_observability
     init_observability()
     
-    # Initialize the application settings using SettingsManager, as the settings are new, it will update the dependent services
+    # Initialize settings
     from app.settings.manager import AppSettingsManager
     AppSettingsManager.get_instance().settings
-
-    # Initialize the database
+    
+    # Initialize database
     from app.database.init_db import initialize_database
     initialize_database()
-
-    # Initialize all services
+    
+    # Initialize services
     from app.services import ServiceManager
-    ServiceManager.get_instance()
+    service_manager = ServiceManager.get_instance()
+    logger.info(f"Services initialized in process {current_pid}")
+    
+    yield  # Application runs here
+    
+    # Shutdown
+    logger.info(f"Shutting down application in process {current_pid}")
+    # Add any cleanup code here
+
+def create_app() -> FastAPI:
+    app = FastAPI(
+        title="idapt API",
+        lifespan=lifespan
+    )
     
     # Configure CORS
     configure_cors(app)
@@ -75,7 +93,7 @@ def create_app() -> FastAPI:
     # Mount static files
     mount_static_files(app)
     
-    # Include API router to init the API endpoints
+    # Include API router
     from app.api.routers import api_router
     app.include_router(api_router, prefix="/api")
     
@@ -121,11 +139,32 @@ def mount_static_files(app: FastAPI):
 # Create the app instance
 app = create_app()
 
+
 # Only run these in the main process, not in reloaded processes
 if __name__ == "__main__":
-        
+
     app_host = "0.0.0.0" #os.getenv("HOST_DOMAIN", "0.0.0.0") # For now use 0.0.0.0
     app_port = int(os.getenv("APP_PORT", "8000"))
-    reload = environment == "dev"
     
-    uvicorn.run(app="main:app", host=app_host, port=app_port, reload=reload, log_level="info")
+    if environment == "dev":
+        logger.info("Starting in development mode with hot reload")
+        uvicorn.run(
+            "main:app",
+            host=app_host,
+            port=app_port,
+            reload=True,
+            workers=1,
+            reload_includes=['*.py'],
+            reload_dirs=['app'],
+            log_level="info"
+        )
+    else:
+        logger.info("Starting in production mode")
+        uvicorn.run(
+            "main:app",
+            host=app_host,
+            port=app_port,
+            reload=False,
+            workers=1,
+            log_level="info"
+        )
