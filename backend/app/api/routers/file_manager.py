@@ -4,7 +4,8 @@ from fastapi.responses import Response
 from sse_starlette.sse import EventSourceResponse
 from base64 import urlsafe_b64decode
 
-from app.api.models.models import FileUploadRequest, FolderContentsResponse, FileResponse, FolderResponse
+from app.api.models.models import FolderContentsResponse, FileResponse, FolderResponse
+from app.api.models.file_models import FileUploadRequest
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path
 from app.services.file_manager import FileManagerService
 from app.services import ServiceManager

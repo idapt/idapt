@@ -13,7 +13,7 @@ from app.services.db_file import DBFileService
 from app.services.file_system import FileSystemService
 from app.services.llama_index import LlamaIndexService
 from app.services.file_system import get_full_path_from_path
-from app.api.models.models import FileUploadItem, FileUploadRequest, FileUploadProgress
+from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
 from app.database.models import File, Folder
 from app.services.database import DatabaseService
 
