@@ -160,23 +160,31 @@ class DatasourceService:
             del self._tools[datasource_name]
 
     # Private methods for creating components
-    def _create_vector_store(self, datasource_name: str) -> PGVectorStore:
-        original_conn_string = get_connection_string()
-        original_scheme = urlparse(original_conn_string).scheme + "://"
-        conn_string = original_conn_string.replace(
-            original_scheme, "postgresql+psycopg2://"
-        )
-        async_conn_string = original_conn_string.replace(
-            original_scheme, "postgresql+asyncpg://"
-        )
-        
-        return PGVectorStore(
-            connection_string=conn_string,
-            async_connection_string=async_conn_string,
-            schema_name="public",
-            table_name=f"embeddings_{datasource_name.lower()}",
-            embed_dim=int(app_settings.embedding_dim),
-        )
+    def _create_vector_store(self, datasource_identifier: str) -> PGVectorStore:
+        try:
+            connection_string = get_connection_string()
+            url = make_url(connection_string)
+            vector_store = PGVectorStore.from_params(
+                database=url.database,
+                host=url.host,
+                password=url.password,
+                port=url.port,
+                user=url.username,
+                schema_name="public",
+                table_name=f"embeddings_{datasource_identifier}",
+                embed_dim=int(app_settings.embedding_dim),
+                perform_setup=True,
+                #hnsw_kwargs={
+                #    "hnsw_m": 16,
+                #    "hnsw_ef_construction": 64,
+                #    "hnsw_ef_search": 40,
+                #    "hnsw_dist_method": "vector_cosine_ops",
+                #},
+            )
+            return vector_store
+        except Exception as e:
+            self.logger.error(f"Error creating vector store: {str(e)}")
+            raise
 
     def _create_doc_store(self, datasource_name: str) -> PostgresDocumentStore:
         return PostgresDocumentStore.from_uri(
