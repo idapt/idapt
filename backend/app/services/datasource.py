@@ -46,20 +46,28 @@ class DatasourceService:
 
     def _init_default_datasources(self, session: Session):
         """Initialize default datasources if they don't exist"""
-        if not self.get_datasource(session, "files"):
-            self.create_datasource(
-                session=session,
-                name="Files",
-                type="files",
-                settings={"description": "Default file storage"}
-            )
+        try:
+            if not self.get_datasource(session, "files"):
+                self.create_datasource(
+                    session=session,
+                    name="Files",
+                    type="files",
+                    settings={"description": "Default file storage"}
+                )
+        except Exception as e:
+            self.logger.error(f"Error initializing default datasources: {str(e)}")
+            raise
 
     def get_storage_components(self, datasource_identifier: str) -> Tuple[PGVectorStore, PostgresDocumentStore, PostgresIndexStore]:
         """Get or create all storage components for a datasource"""
-        vector_store = self.get_vector_store(datasource_identifier)
-        doc_store = self.get_doc_store(datasource_identifier)
-        index_store = self.get_index_store(datasource_identifier)
-        return vector_store, doc_store, index_store
+        try:
+            vector_store = self.get_vector_store(datasource_identifier)
+            doc_store = self.get_doc_store(datasource_identifier)
+            index_store = self.get_index_store(datasource_identifier)
+            return vector_store, doc_store, index_store
+        except Exception as e:
+            self.logger.error(f"Error getting storage components: {str(e)}")
+            raise
 
     def get_vector_store(self, datasource_identifier: str) -> PGVectorStore:
         if datasource_identifier not in self._vector_stores:
@@ -196,72 +204,89 @@ class DatasourceService:
             raise
 
     def _create_doc_store(self, datasource_identifier: str) -> PostgresDocumentStore:
-        return PostgresDocumentStore.from_uri(
-            uri=get_connection_string(),
-            schema_name="public",
-            table_name=f"docstore_{datasource_identifier.lower()}"
-        )
+        try:
+            return PostgresDocumentStore.from_uri(
+                uri=get_connection_string(),
+                schema_name="public",
+                table_name=f"docstore_{datasource_identifier.lower()}"
+            )
+        except Exception as e:
+            self.logger.error(f"Error creating doc store: {str(e)}")
+            raise
+
 
     def _create_index_store(self, datasource_identifier: str) -> PostgresIndexStore:
-        return PostgresIndexStore.from_uri(
-            uri=get_connection_string(),
-            schema_name="public",
-            table_name=f"index_{datasource_identifier.lower()}"
-        )
+        try:
+            return PostgresIndexStore.from_uri(
+                uri=get_connection_string(),
+                schema_name="public",
+                table_name=f"index_{datasource_identifier.lower()}"
+            )
+        except Exception as e:
+            self.logger.error(f"Error creating index store: {str(e)}")
+            raise
 
     def _create_index(self, datasource_identifier: str) -> VectorStoreIndex:
-        vector_store, doc_store, index_store = self.get_storage_components(datasource_identifier)
-        storage_context = StorageContext.from_defaults(
-            vector_store=vector_store,
-            docstore=doc_store,
-            index_store=index_store
-        )
-        return VectorStoreIndex(
-            [],  # Empty nodes list for initial creation
-            storage_context=storage_context
-        )
+        try:
+            vector_store, doc_store, index_store = self.get_storage_components(datasource_identifier)
+            storage_context = StorageContext.from_defaults(
+                vector_store=vector_store,
+                docstore=doc_store,
+                index_store=index_store
+            )
+            return VectorStoreIndex(
+                [],  # Empty nodes list for initial creation
+                storage_context=storage_context
+            )
+        except Exception as e:
+            self.logger.error(f"Error creating index: {str(e)}")
+            raise
 
     def _create_query_tool(self, datasource_identifier: str) -> BaseTool:
-        index = self.get_index(datasource_identifier)
-        retriever = VectorIndexRetriever(
-            index=index,
-            similarity_top_k=int(app_settings.top_k)
-        )
-        retriever = AutoMergingRetriever(
-            retriever,
-            storage_context=index.storage_context,
-            verbose=True
-        )
-        response_synthesizer = get_response_synthesizer(
-            response_mode="compact",
-            llm=Settings.llm
-        )
+        try:
+            index = self.get_index(datasource_identifier)
+            retriever = VectorIndexRetriever(
+                index=index,
+                similarity_top_k=int(app_settings.top_k)
+            )
+            retriever = AutoMergingRetriever(
+                retriever,
+                storage_context=index.storage_context,
+                verbose=True
+            )
+            response_synthesizer = get_response_synthesizer(
+                response_mode="compact",
+                llm=Settings.llm
+            )
 
-        query_engine = RetrieverQueryEngine.from_args(
-            retriever=retriever,
-            response_synthesizer=response_synthesizer,
-        )
-        
-        # Get datasource from database
-        session = self.database_service.get_session()
-        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
-        # Create tool description
-        description = ""
-        if not datasource or not datasource.description or datasource.description == "":
-            description = f"Query engine for the {datasource_identifier} datasource"
-        else:
-            description = datasource.description
+            query_engine = RetrieverQueryEngine.from_args(
+                retriever=retriever,
+                response_synthesizer=response_synthesizer,
+            )
+            
+            # Get datasource from database
+            session = self.database_service.get_session()
+            datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
+            # Create tool description
+            description = ""
+            if not datasource or not datasource.description or datasource.description == "":
+                description = f"Query engine for the {datasource_identifier} datasource"
+            else:
+                description = datasource.description
 
-        # Add this instruction to the tool description for the agent to know how to use the tool # ? Great ?
-        tool_description = f"{description}\nUse a detailed plain text question as input to the tool."
-        
-        return FilteredQueryEngineTool(
-            query_engine=query_engine,
-            metadata=ToolMetadata(
-                name=f"{datasource_identifier}_query_engine",
-                description=tool_description
-            ),
-        )
+            # Add this instruction to the tool description for the agent to know how to use the tool # ? Great ?
+            tool_description = f"{description}\nUse a detailed plain text question as input to the tool."
+            
+            return FilteredQueryEngineTool(
+                query_engine=query_engine,
+                metadata=ToolMetadata(
+                    name=f"{datasource_identifier}_query_engine",
+                    description=tool_description
+                ),
+            )
+        except Exception as e:
+            self.logger.error(f"Error creating query tool: {str(e)}")
+            raise
 
     def get_datasource(self, session: Session, identifier: str) -> Optional[Datasource]:
         """Get a datasource by identifier"""
@@ -292,19 +317,27 @@ class DatasourceService:
     
 def get_datasource_identifier_from_path(path: str) -> str:
     """Get the datasource identifier from a path"""
-    # Extract datasource name from path (first component after /data/)
-    path_parts = path.split("/")
-    data_index = path_parts.index("data")
-    if data_index + 1 >= len(path_parts):
+    try:
+        # Extract datasource name from path (first component after /data/)
+        path_parts = path.split("/")
+        data_index = path_parts.index("data")
+        if data_index + 1 >= len(path_parts):
+            raise ValueError(f"Invalid file path structure: {path}")
+        return path_parts[data_index + 1]
+    except Exception as e:
+        # Do not use logger here
         raise ValueError(f"Invalid file path structure: {path}")
-    return path_parts[data_index + 1]
 
 def generate_identifier(name: str) -> str:
     """Generate a safe identifier from a name"""
-    # Convert to lowercase and replace spaces/special chars with underscores
-    identifier = re.sub(r'[^a-zA-Z0-9]', '_', name.lower())
-    # Remove consecutive underscores
-    identifier = re.sub(r'_+', '_', identifier)
-    # Remove leading/trailing underscores
-    identifier = identifier.strip('_')
-    return identifier
+    try:
+        # Convert to lowercase and replace spaces/special chars with underscores
+        identifier = re.sub(r'[^a-zA-Z0-9]', '_', name.lower())
+        # Remove consecutive underscores
+        identifier = re.sub(r'_+', '_', identifier)
+        # Remove leading/trailing underscores
+        identifier = identifier.strip('_')
+        return identifier
+    except Exception as e:
+        # Do not use logger here
+        raise ValueError(f"Invalid name: {name}")
