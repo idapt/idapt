@@ -258,7 +258,7 @@ class DatasourceService:
         return FilteredQueryEngineTool(
             query_engine=query_engine,
             metadata=ToolMetadata(
-                name=f"{datasource_identifier.lower()}_query_engine",
+                name=f"{datasource_identifier}_query_engine",
                 description=tool_description
             ),
         )
@@ -270,30 +270,6 @@ class DatasourceService:
     def get_all_datasources(self, session: Session) -> List[Datasource]:
         """Get all datasources"""
         return session.query(Datasource).all()
-    
-    def _update_tool_description(self, identifier: str, description: str):
-        """Update the query tool description for a datasource"""
-        if identifier not in self._tools:
-            return
-        
-        # Create new tool description
-        tool_description = f"{description}\nUse a detailed plain text question as input to the tool."
-        
-        self.logger.error(f"Updating tool description for {identifier} to {tool_description}")
-
-        # Get existing query engine from current tool
-        existing_tool = self._tools[identifier]
-        if isinstance(existing_tool, FilteredQueryEngineTool):
-            query_engine = existing_tool._query_engine
-            
-            # Create new tool with updated description
-            self._tools[identifier] = FilteredQueryEngineTool(
-                query_engine=query_engine,
-                metadata=ToolMetadata(
-                    name=f"{identifier.lower()}_query_engine",
-                    description=tool_description
-                ),
-            )
 
     def update_datasource_description(self, session: Session, identifier: str, description: str) -> bool:
         """Update a datasource's description and its associated query tool"""
@@ -304,8 +280,8 @@ class DatasourceService:
                 datasource.description = description
                 session.commit()
 
-                # Update the query tool description
-                self._update_tool_description(identifier, description)
+                # Update the query tool description by recreating the tool
+                self._tools[identifier] = self._create_query_tool(identifier)
 
                 return True
             return False
