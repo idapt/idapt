@@ -35,6 +35,8 @@ class IngestionPipelineService:
     def __init__(self, db_file_service: DBFileService, db_service: DatabaseService, datasource_service: DatasourceService):
 
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)  # Set log level as we are in a child thread
+
         self.db_service = db_service
         
         self.db_file_service = db_file_service
