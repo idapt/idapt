@@ -208,14 +208,15 @@ class FileManagerService:
 
             # Delete from filesystem
             await self.file_system.delete_file(full_path)
-            
+
+            # Do this before deleting from database as we need to get the ref_doc_ids
+            # Remove from LlamaIndex
+            self.llama_index.delete_file(full_path)
+
             # Delete from database
             result = self.db_file_service.delete_file(session, full_path)
             if not result:
                 self.logger.warning(f"Failed to delete file from database for path: {full_path}")
-
-            # Remove from LlamaIndex
-            self.llama_index.delete_file(full_path)
 
         except Exception as e:
             self.logger.error(f"Error deleting file: {str(e)}")

@@ -16,7 +16,6 @@ from llama_index.core.retrievers import AutoMergingRetriever, VectorIndexRetriev
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.settings import Settings
-from urllib.parse import urlparse
 from app.database.connection import get_connection_string
 from app.settings.manager import AppSettingsManager
 import logging
@@ -53,7 +52,7 @@ class DatasourceService:
                     session=session,
                     name="Files",
                     type="files",
-                    settings={"description": "Default file storage"}
+                    settings={}
                 )
         except Exception as e:
             self.logger.error(f"Error initializing default datasources: {str(e)}")
@@ -99,6 +98,10 @@ class DatasourceService:
         """Create a new datasource with its root folder and all required components"""
         try:
             identifier = generate_identifier(name)
+            # Check if the identifier is already used
+            if self.get_datasource(session, identifier):
+                raise ValueError(f"Datasource with identifier '{identifier}' already exists")
+
             path = identifier
             full_path = get_full_path_from_path(path)
             root_folder_id = self.db_file_service.get_folder_id(session, "/data")
@@ -285,6 +288,7 @@ class DatasourceService:
                     name=f"{datasource_identifier}_query_engine",
                     description=tool_description
                 ),
+                resolve_input_errors=True
             )
         except Exception as e:
             self.logger.error(f"Error creating query tool: {str(e)}")

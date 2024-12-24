@@ -1,3 +1,4 @@
+import json
 import logging
 
 from llama_index.core import Document
@@ -9,25 +10,34 @@ class LlamaIndexService:
 
     def delete_file(self, full_path: str):
         try:
-
             # Get the service manager instance to avoid circular dependencies
             from app.services import ServiceManager
             service_manager = ServiceManager.get_instance()
             datasource_service = service_manager.datasource_service
 
-            from app.services.datasource import get_datasource_identifier_from_path
-            # Get the datasource name from the path
-            datasource_identifier = get_datasource_identifier_from_path(full_path)
+            # Get the file's ref_doc_ids from the database
+            with service_manager.db_service.get_session() as session:
+                file = service_manager.db_file_service.get_file(session, full_path)
+                if not file or not file.ref_doc_ids:
+                    self.logger.warning(f"No ref_doc_ids found for file: {full_path}")
+                    return
 
-            # Get the datasource vector store and docstore
-            vector_store = datasource_service.get_vector_store(datasource_identifier)
-            doc_store = datasource_service.get_doc_store(datasource_identifier)
+                from app.services.datasource import get_datasource_identifier_from_path
+                # Get the datasource name from the path
+                datasource_identifier = get_datasource_identifier_from_path(full_path)
 
-            # Delete the file from the vector store
-            vector_store.delete(full_path)
+                # Get the datasource vector store and docstore
+                vector_store = datasource_service.get_vector_store(datasource_identifier)
+                doc_store = datasource_service.get_doc_store(datasource_identifier)
 
-            # Delete the file from the docstore
-            doc_store.delete_ref_doc(full_path)
+                # Delete each ref_doc_id from the vector store and docstore
+                # Parse the json ref_doc_ids as a list
+                ref_doc_ids = json.loads(file.ref_doc_ids) if file.ref_doc_ids else []
+                for ref_doc_id in ref_doc_ids:
+                    # Delete the ref_doc_id from the vector store
+                    vector_store.delete(ref_doc_id)
+                    # Delete the ref_doc_id from the docstore
+                    doc_store.delete_ref_doc(ref_doc_id)
 
         except Exception as e:
             self.logger.error(f"Error deleting file from LlamaIndex: {str(e)}")

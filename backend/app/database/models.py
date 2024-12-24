@@ -35,6 +35,9 @@ class File(Base):
     uploaded_at = Column(DateTime, server_default=func.now())
     accessed_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
+    # LlamaIndex document references
+    ref_doc_ids = Column(JSON, nullable=True)
+    
     # Relationships
     folder_id = Column(Integer, ForeignKey('folders.id'))
     folder = relationship("Folder", back_populates="files")

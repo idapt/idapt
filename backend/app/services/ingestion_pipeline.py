@@ -1,3 +1,4 @@
+import json
 from typing import List
 from fastapi import HTTPException
 
@@ -65,21 +66,25 @@ class IngestionPipelineService:
             TitleExtractor(
                 nodes=5,
             ),
+            Settings.embed_model,
         ],
         "questions": [
             QuestionsAnsweredExtractor(
                 questions=3,
             ),
+            Settings.embed_model,
         ],
         "summary": [
             SummaryExtractor(
                 summaries=["prev", "self"],
             ),
+            Settings.embed_model,
         ],
         "keywords": [
             KeywordExtractor(
                 keywords=10,
             ),
+            Settings.embed_model,
         ],
         #"entities": [
         #    EntityExtractor(prediction_threshold=0.5),
@@ -98,7 +103,7 @@ class IngestionPipelineService:
 
             self.logger.info(f"Starting batch ingestion pipeline for {len(full_file_paths)} files")
             
-            # Read all files in batch
+            # Use SimpleDirectoryReader from llama index as it try to use existing apropriate readers based on the file type to get the most metadata from it
             reader = SimpleDirectoryReader(
                 input_files=full_file_paths,
                 filename_as_id=True,
@@ -146,10 +151,12 @@ class IngestionPipelineService:
                 name=f"ingestion_pipeline_{datasource_identifier}",
                 docstore=doc_store,
                 vector_store=vector_store,
-                docstore_strategy=DocstoreStrategy.DUPLICATES_ONLY, # Otherwise it dont work with the hierarchical node parser
+                docstore_strategy=DocstoreStrategy.DUPLICATES_ONLY, # Otherwise it dont work with the hierarchical node parser because it always upserts all previous nodes for this document
+                # TODO Make a hierarchical node parser that works with the ingestion pipeline
                 # Could be set to UPSERTS to allow the ingestion pipeline to resume from where it left off if it crashes
                 # But this mess up the stack if there is more than one ingestion transformation stack
                 # TODO Add multiple ingestion pipeline stacks support to the ingestion pipeline
+                # TODO It still does not work as when we add a document with a new doc id, it upserts the old red doc id but it works well with single ingestion stack
             )
 
             # Load/create pipeline cache
@@ -167,10 +174,33 @@ class IngestionPipelineService:
                 transformations = self.TRANSFORMATIONS_STACKS[transformations_stack_name]
 
                 # Set the transformations stack name for the datasource_documents
-                for doc in documents:   
+                for doc in documents:
                     doc.metadata["transformations_stack_name"] = transformations_stack_name
                     doc.excluded_embed_metadata_keys.append("transformations_stack_name")
                     doc.excluded_llm_metadata_keys.append("transformations_stack_name")
+
+                    # Modify the doc id to append the transformation stack at the end so that they are treated as different documents by the docstore upserts
+                    # If its the first iteration of the loop append the transformation stack name at the end of the doc id
+                    if transformations_stack_name == transformations_stack_name_list[0]:
+                        doc.doc_id = f"{doc.doc_id}_{transformations_stack_name}"
+                    else:
+                        # If its not the first iteration of the loop replace the end part of the doc id with the transformation stack name
+                        # Split the doc id by the underscore and replace the last part with the transformation stack name
+                        doc_id_parts = doc.doc_id.split("_")
+                        doc_id_parts[-1] = transformations_stack_name
+                        doc.doc_id = "_".join(doc_id_parts)
+
+                    # Update the file in the database with the ref_doc_ids
+                    with self.db_service.get_session() as session:
+                        file = self.db_file_service.get_file(session, doc.metadata["file_path"])
+                        if file:
+                            # Parse the json ref_doc_ids as a list
+                            file_ref_doc_ids = json.loads(file.ref_doc_ids) if file.ref_doc_ids else []
+                            # Add the new doc id to the list
+                            file_ref_doc_ids.append(doc.doc_id)
+                            # Update the file in the database
+                            file.ref_doc_ids = json.dumps(file_ref_doc_ids)
+                            session.commit()
 
                 # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
                 if transformations_stack_name == "hierarchical":
