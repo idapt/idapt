@@ -38,7 +38,7 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
             tools.append(tool)
         else:
             # Get all datasource tools
-            with ServiceManager.get_instance().db_service.get_db() as session:
+            with ServiceManager.get_instance().db_service.get_session() as session:
                 datasources = datasource_service.get_all_datasources(session)
                 for ds in datasources:
                     tool = datasource_service.get_query_tool(ds.identifier)
