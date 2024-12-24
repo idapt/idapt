@@ -98,7 +98,7 @@ class ImageGeneratorTool:
                 image_url=image_url,
             )
         except Exception as e:
-            logger.exception(e, exc_info=True)
+            logger.error(f"Error in image generator: {e}")
             return ImageGeneratorToolOutput(
                 is_success=False,
                 error_message=str(e),

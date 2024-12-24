@@ -122,7 +122,6 @@ class E2BCodeInterpreter:
                             )
                         )
         except Exception as error:
-            logger.exception(error, exc_info=True)
             logger.error("Error when parsing output from E2b interpreter tool", error)
 
         return output
