@@ -22,7 +22,7 @@ async def update_settings(
 ):
     """Update application settings"""
     try:
-        app_settings_manager.settings.update(**settings.model_dump())
+        app_settings_manager.update(**settings.model_dump())
         return {"status": "success"}
     except ValidationError as e:
         errors = []
