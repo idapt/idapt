@@ -59,7 +59,7 @@ class IngestionPipelineService:
                 chunk_sizes=[512, 256, 64], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum size, we also chunk it into The smallest sentences possible to capture as much atomic meaning of the sentence as possible.
                 chunk_overlap=0
             ),
-            Settings.embed_model,
+            # Embedding is present at ingestion pipeline level
         ],
         "titles": [
             TitleExtractor(
@@ -141,18 +141,23 @@ class IngestionPipelineService:
             # Create the ingestion pipeline for the datasource
             vector_store, doc_store, _ = self.datasource_service.get_storage_components(datasource_identifier)
 
+            # Create the ingestion pipeline for the datasource
             ingestion_pipeline = IngestionPipeline(
+                name=f"ingestion_pipeline_{datasource_identifier}",
                 docstore=doc_store,
                 vector_store=vector_store,
-                docstore_strategy=DocstoreStrategy.DUPLICATES_ONLY,
+                docstore_strategy=DocstoreStrategy.DUPLICATES_ONLY, # Otherwise it dont work with the hierarchical node parser
+                # Could be set to UPSERTS to allow the ingestion pipeline to resume from where it left off if it crashes
+                # But this mess up the stack if there is more than one ingestion transformation stack
+                # TODO Add multiple ingestion pipeline stacks support to the ingestion pipeline
             )
 
             # Load/create pipeline cache
-            try:
-                ingestion_pipeline.load(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
-            except Exception as e:
-                self.logger.error(f"No existing pipeline cache found: {str(e)}")
-                ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
+            #try:
+                #ingestion_pipeline.load(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
+            #except Exception as e:
+            #    self.logger.error(f"No existing pipeline cache found: {str(e)}")
+                #ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
 
 
             # For each transformations stack we need to apply
@@ -170,20 +175,19 @@ class IngestionPipelineService:
                 # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
                 if transformations_stack_name == "hierarchical":
                     # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
-                    nodes = transformations[0].get_nodes_from_documents(
+                    hierarchical_nodes = transformations[0].get_nodes_from_documents(
                         documents, 
                         show_progress=True
                     )
                     
                     # Set the transformations for the ingestion pipeline
-                    ingestion_pipeline.transformations = [] # HierarchicalNodeParser embed the nodes using the Settings.embed_model so no need to re-embed them
-
+                    ingestion_pipeline.transformations = [Settings.embed_model] # Only keep the embedding as the nodes are parsed with the HierarchicalNodeParser
+                    
                     # Run the ingestion pipeline on the resulting nodes to add the nodes to the docstore and vector store
                     nodes = await ingestion_pipeline.arun(
-                        nodes=nodes,
+                        nodes=hierarchical_nodes,
                         show_progress=True,
-                        docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off
-                        num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
+                        #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
                     )
                     # No need to insert nodes into index as we use a vector store
 
@@ -197,16 +201,14 @@ class IngestionPipelineService:
                     nodes = await ingestion_pipeline.arun(
                         documents=documents,
                         show_progress=True,
-                        docstore_strategy=DocstoreStrategy.UPSERTS, # This allows that if there is a crash during ingestion it can resume from where it left off # ? Mess up the stack if there is more than one ingestion transformation stack ?
-                        num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
+                        #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
                     )
                     # No need to insert nodes into index as we use a vector store
 
             # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
-            ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
+            #ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
 
             self.logger.info(f"Ingested {len(documents)} documents")
-
 
         except Exception as e:
             self.logger.error(f"Error in ingestion pipeline: {str(e)}")
