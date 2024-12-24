@@ -11,14 +11,16 @@ from sqlalchemy.orm import sessionmaker
 class DatabaseService:
     def __init__(self):
         connection_string : str = get_connection_string().replace("+asyncpg", "+psycopg2")
-        engine : Engine = create_engine(
+        self.engine : Engine = create_engine(
             connection_string,
             poolclass=QueuePool,
             pool_size=20,
             max_overflow=30,
-            pool_timeout=60
+            pool_timeout=60,
+            pool_pre_ping=True,  # Add connection health check
+            pool_recycle=3600    # Recycle connections after 1 hour
         )
-        self.session_factory : sessionmaker = sessionmaker(bind=engine)
+        self.session_factory : sessionmaker = sessionmaker(bind=self.engine)
     
     def get_session(self) -> Session:
         """Get a database session directly"""
@@ -37,6 +39,7 @@ class DatabaseService:
         finally:
             session.close()
     
+    # TODO Use the get db with a context manager to terminate the session when finished in the api instead of using the get_session() method
     def get_db(self) -> Generator[Session, None, None]:
         """FastAPI dependency for database sessions"""
         with self.session_scope() as session:

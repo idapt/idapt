@@ -31,7 +31,8 @@ class FileManagerService:
         self.file_system = file_system_service
         self.llama_index = llama_index_service
         
-        self._create_default_filestructure(self.db_service.get_session())
+        with self.db_service.get_session() as session:
+            self._create_default_filestructure(session)
 
     def _create_default_filestructure(self, session: Session):
         """Create the default filestructure in the database"""

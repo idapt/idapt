@@ -42,7 +42,8 @@ class DatasourceService:
         self._tools: Dict[str, BaseTool] = {}
         
         # Init the default datasource
-        self._init_default_datasources(self.database_service.get_session())
+        with self.database_service.get_session() as session:
+            self._init_default_datasources(session)
 
     def _init_default_datasources(self, session: Session):
         """Initialize default datasources if they don't exist"""
@@ -265,8 +266,9 @@ class DatasourceService:
             )
             
             # Get datasource from database
-            session = self.database_service.get_session()
-            datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
+            datasource = None
+            with self.database_service.get_session() as session:
+                datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
             # Create tool description
             description = ""
             if not datasource or not datasource.description or datasource.description == "":
