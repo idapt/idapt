@@ -38,8 +38,8 @@ export function ChatSources({ data }: { data: SourceData }) {
       .map(([url, sources]) => ({
         url,
         sources,
-        // Add timestamp to ensure uniqueness across streaming updates
-        id: `${url}-${sources.map(s => s.id).join('-')}-${Date.now()}-${Math.random()}`
+        // Use stable ID based only on URL and source IDs
+        id: `${url}-${sources.map(s => s.id).join('-')}`
       }));
   }, [data.nodes]);
 

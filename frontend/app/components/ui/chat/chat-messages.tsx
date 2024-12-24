@@ -40,8 +40,16 @@ export default function ChatMessages(
   const isPending = props.isLoading && !isLastMessageFromAssistant;
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messageLength, lastMessage]);
+    // Only scroll if we're at or near the bottom already
+    if (scrollableChatContainerRef.current) {
+      const { scrollHeight, scrollTop, clientHeight } = scrollableChatContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      
+      if (isNearBottom || isPending) {
+        scrollToBottom();
+      }
+    }
+  }, [messageLength, isPending]);
 
   useEffect(() => {
     if (!starterQuestions) {
