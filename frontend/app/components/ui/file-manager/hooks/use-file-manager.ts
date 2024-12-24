@@ -41,7 +41,7 @@ export function useFileManager() {
         const pathParts = path.split('/').filter(Boolean);
         if (pathParts.length > 0) {
           const datasourceIdentifier = pathParts[0];
-          const currentDatasource = datasources.find(d => d.identifier === datasourceIdentifier);
+          const currentDatasource = datasources.find((d: Datasource) => d.identifier === datasourceIdentifier);
           setCurrentDatasource(currentDatasource);
         }
       } else {
