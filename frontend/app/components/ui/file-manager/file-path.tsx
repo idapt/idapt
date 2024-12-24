@@ -21,33 +21,45 @@ export function FilePath({ currentPath, currentDatasource, onNavigate }: FilePat
         className="flex items-center gap-1"
         onClick={() => onNavigate("")}
       >
-        {currentDatasource ? (
-          <>
-            <Database className="w-4 h-4" />
-            <span>{currentDatasource.name}</span>
-          </>
-        ) : (
-          <>
-            <Home className="w-4 h-4" />
-            <span>Datasources</span>
-          </>
-        )}
+        <Home className="w-4 h-4" />
+        <span>Datasources</span>
       </Button>
       
       {pathParts.length > 0 && pathParts.map((part, index) => {
+        // Rebuild the path up to here for the navigation
         const pathUpToHere = pathParts.slice(0, index + 1).join('/');
-        return (
-          <div key={pathUpToHere} className="flex items-center">
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onNavigate(pathUpToHere)}
-            >
-              {part}
-            </Button>
-          </div>
-        );
+        // If this is a datasource, display using database object
+        if (index === 0 && part == currentDatasource?.identifier) {
+          return (
+            <div key={pathUpToHere} className="flex items-center gap-1">
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-1"
+                onClick={() => onNavigate(pathUpToHere)}
+              >
+                <Database className="w-4 h-4" />
+                <span>{currentDatasource.name}</span>
+              </Button>
+            </div>
+          );
+        }
+        else {
+          return (
+            <div key={pathUpToHere} className="flex items-center gap-1">
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-1"
+                onClick={() => onNavigate(pathUpToHere)}
+              >
+                {part}
+              </Button>
+            </div>
+          );
+        }
       })}
     </div>
   );

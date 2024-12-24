@@ -17,20 +17,36 @@ export function useFileManager() {
     try {
       setLoading(true);
       const encodedPath = path ? encodePathSafe(path) : '';
-      const url = `${backend}/api/file-manager/folder/${encodedPath}`;
       
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch folder contents');
-      const data = await response.json();
-      
-      setFiles(data.files);
-      setFolders(data.folders);
-      
-      // Get the datasources
-      const datasourcesResponse = await fetch(`${backend}/api/datasources`);
-      const datasources: Datasource[] = await datasourcesResponse.json();
+      // Make requests in parallel using Promise.all
+      const [folderResponse, datasourcesResponse] = await Promise.all([
+        fetch(`${backend}/api/file-manager/folder/${encodedPath}`),
+        fetch(`${backend}/api/datasources`)
+      ]);
+
+      if (!folderResponse.ok) throw new Error('Failed to fetch folder contents');
+      if (!datasourcesResponse.ok) throw new Error('Failed to fetch datasources');
+
+      const [folderData, datasources] = await Promise.all([
+        folderResponse.json(),
+        datasourcesResponse.json()
+      ]);
+
+      setFiles(folderData.files);
+      setFolders(folderData.folders);
       setDatasources(datasources);
-      setCurrentDatasource(data.datasource);
+
+      // Set current datasource
+      if (path) {
+        const pathParts = path.split('/').filter(Boolean);
+        if (pathParts.length > 0) {
+          const datasourceIdentifier = pathParts[0];
+          const currentDatasource = datasources.find(d => d.identifier === datasourceIdentifier);
+          setCurrentDatasource(currentDatasource);
+        }
+      } else {
+        setCurrentDatasource(undefined);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch folder contents');
     } finally {
