@@ -17,16 +17,16 @@ config.set_main_option('sqlalchemy.url', connection_string)
 target_metadata = Base.metadata
 
 # Ignore tables managed by llama index
-TABLES_TO_IGNORE = ["data_docstore", "data_embeddings"]
+TABLES_TO_INCLUDE = ["files", "folders", "datasources"]
 
 # Ignore the data_embeddings table
 def include_object(object, name, type_, reflected, compare_to):
     """
     Should you include this table or not?
     """
-    if type_ == "table" and name in TABLES_TO_IGNORE:
-        return False
-    return True
+    if type_ == "table" and name in TABLES_TO_INCLUDE:
+        return True
+    return False
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
