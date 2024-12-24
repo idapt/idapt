@@ -86,7 +86,8 @@ export default function FileUploader({
         accept={allowedExtensions?.join(",")}
         disabled={config?.disabled || uploading}
       />
-      <label
+      {/* Disabled for now as it is not implemented yet */}
+      {/*<label
         htmlFor={inputId}
         className={cn(
           buttonVariants({ variant: "secondary", size: "icon" }),
@@ -99,7 +100,7 @@ export default function FileUploader({
         ) : (
           <Paperclip className="-rotate-45 w-4 h-4" />
         )}
-      </label>
+      </label>*/}
     </div>
   );
 }
