@@ -54,17 +54,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       await updateSettings(settings);
       onClose();
     } catch (error) {
-      if (error instanceof Error) {
-        try {
-          const errorData = JSON.parse(error.message);
-          if (errorData.errors) {
-            // Handle validation errors
-            setSaveError(errorData.errors.join('\n'));
-          } else {
-            setSaveError(errorData.message || 'An unexpected error occurred');
-          }
-        } catch {
-          setSaveError(error.message);
+      // The error is now the direct response from the backend
+      if (error && typeof error === 'object' && 'detail' in error) {
+        const detail = error.detail;
+        if (typeof detail === 'object' && detail !== null && 'message' in detail && 'error' in detail) {
+          setSaveError(`${detail.message}: ${detail.error}`);
+        } else {
+          setSaveError(String(detail));
         }
       } else {
         setSaveError('An unexpected error occurred');

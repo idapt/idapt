@@ -18,14 +18,7 @@ export async function updateSettings(settings: AppSettings): Promise<void> {
   });
   
   if (!response.ok) {
-    const text = await response.text();
-    let errorMessage: string;
-    try {
-      const errorData = JSON.parse(text);
-      errorMessage = errorData.detail || "Failed to update settings";
-    } catch {
-      errorMessage = text;
-    }
-    throw new Error(errorMessage);
+    const errorData = await response.json();
+    throw errorData;
   }
 }
