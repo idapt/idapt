@@ -3,14 +3,22 @@ from typing import Generator
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.database.connection import get_connection_string
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Engine
+from sqlalchemy.pool import QueuePool
 from sqlalchemy.orm import sessionmaker
 
 
 class DatabaseService:
     def __init__(self):
-        engine = create_engine(get_connection_string().replace("+asyncpg", "+psycopg2"))
-        self.session_factory = sessionmaker(bind=engine)
+        connection_string : str = get_connection_string().replace("+asyncpg", "+psycopg2")
+        engine : Engine = create_engine(
+            connection_string,
+            poolclass=QueuePool,
+            pool_size=20,
+            max_overflow=30,
+            pool_timeout=60
+        )
+        self.session_factory : sessionmaker = sessionmaker(bind=engine)
     
     def get_session(self) -> Session:
         """Get a database session directly"""
