@@ -227,27 +227,36 @@ class DBFileService:
         file_path: str,
         status: FileStatus,
         # Json object
-        stacks_to_process: dict = None,
+        stacks_to_process: List[str] = ["default"],
     ) -> File:
         """Update file status and stacks to process"""
-        file = self.get_file(session, file_path)
-        if not file:
-            raise ValueError(f"File not found: {file_path}")
+        try:
+            file = self.get_file(session, file_path)
+            if not file:
+                raise ValueError(f"File not found: {file_path}")
+                
+            file.status = status
             
-        file.status = status
-        
-        # If the file is already queued just add the stacks to the stacks to process
-        if file.status == FileStatus.QUEUED and status == FileStatus.QUEUED and stacks_to_process:
-            stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
-            stacks_to_process.extend(stacks_to_process)
-            self.logger.error(f"Stacks to process: {stacks_to_process}")
-        else:
-            # Format the stacks to process into a json string and update the file
-            file.stacks_to_process = json.dumps(stacks_to_process)
+            # If the file is already queued just add the stacks to the stacks to process
+            if status == FileStatus.QUEUED:
+                # Try to load the stacks_to_process as a json list
+                existing_stacks_to_process : List[str] = []
+                if file.stacks_to_process:
+                    existing_stacks_to_process = json.loads(file.stacks_to_process)
+                self.logger.error(f"Existing stacks to process: {existing_stacks_to_process}")
+                # Convert stacks_to_process str
+                existing_stacks_to_process.extend(stacks_to_process)
+                self.logger.error(f"Existing stacks to process after extend: {existing_stacks_to_process}")
+                # Convert back to json string
+                file.stacks_to_process = json.dumps(existing_stacks_to_process)
+                self.logger.error(f"Existing stacks to process after convert back to json string: {file.stacks_to_process}")              
             
-        
-        session.commit()
-        return file
+            session.commit()
+            return file
+        except Exception as e:
+            session.rollback()
+            self.logger.error(f"Error updating file status: {str(e)}")
+            raise
 
     def mark_stack_as_processed(
         self,
