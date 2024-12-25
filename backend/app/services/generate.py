@@ -87,7 +87,7 @@ class GenerateService:
                         oldest_processing_file = session.query(File).filter(
                             File.status == FileStatus.PROCESSING
                         ).order_by(
-                            File.processing_started_at.asc()
+                            File.uploaded_at.asc()
                         ).first()
                         if not oldest_processing_file:
                             break

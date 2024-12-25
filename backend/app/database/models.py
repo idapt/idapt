@@ -38,8 +38,6 @@ class File(Base):
     # Processing status
     status = Column(Enum(FileStatus), default=FileStatus.PENDING, nullable=False)
     status_message = Column(String, nullable=True)
-    processing_started_at = Column(DateTime, nullable=True)
-    processing_completed_at = Column(DateTime, nullable=True)
     
     # Original metadata
     file_created_at = Column(DateTime, nullable=False)

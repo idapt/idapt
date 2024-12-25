@@ -225,7 +225,6 @@ class DBFileService:
         session: Session,
         file_path: str,
         status: FileStatus,
-        message: str = None
     ) -> File:
         """Update file status and related timestamps"""
         file = self.get_file(session, file_path)
@@ -233,12 +232,6 @@ class DBFileService:
             raise ValueError(f"File not found: {file_path}")
             
         file.status = status
-        file.status_message = message
-        
-        if status == FileStatus.PROCESSING:
-            file.processing_started_at = datetime.now(timezone.utc)
-        elif status in [FileStatus.COMPLETED, FileStatus.ERROR]:
-            file.processing_completed_at = datetime.now(timezone.utc)
             
         session.commit()
         return file
