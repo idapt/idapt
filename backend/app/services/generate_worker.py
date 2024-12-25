@@ -120,6 +120,8 @@ class GenerateServiceWorker:
                 file.path,
                 FileStatus.PROCESSING
             )
+
+            self.logger.info(f"Processing file: {file.path}")
             
             # Properly decode JSON stacks with defaults
             stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else ["default"]

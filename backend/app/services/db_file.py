@@ -243,13 +243,10 @@ class DBFileService:
                 existing_stacks_to_process : List[str] = []
                 if file.stacks_to_process:
                     existing_stacks_to_process = json.loads(file.stacks_to_process)
-                self.logger.error(f"Existing stacks to process: {existing_stacks_to_process}")
                 # Convert stacks_to_process str
                 existing_stacks_to_process.extend(stacks_to_process)
-                self.logger.error(f"Existing stacks to process after extend: {existing_stacks_to_process}")
                 # Convert back to json string
                 file.stacks_to_process = json.dumps(existing_stacks_to_process)
-                self.logger.error(f"Existing stacks to process after convert back to json string: {file.stacks_to_process}")              
             
             session.commit()
             return file

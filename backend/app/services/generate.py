@@ -41,8 +41,6 @@ class GenerateService:
             with self.db_service.get_session() as session:
                 for file in files:
                     stacks_to_process : List[str] = file.get("transformations_stack_name_list", ["default"])
-                    self.logger.error(f"Stacks to process 1: {stacks_to_process}")
-                    self.logger.error(f"Stacks to process type: {type(stacks_to_process)}")
                     self.db_file_service.update_file_status(
                         session,
                         file["path"],

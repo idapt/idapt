@@ -48,10 +48,8 @@ class LlamaIndexService:
                         file.ref_doc_ids = [ref_doc_id for ref_doc_id in file.ref_doc_ids if ref_doc_id != ref_doc_id]
                         # Delete the processing stack identifier from the processed_stacks list after having it converted to json and reconverting it to a string
                         processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
-                        self.logger.error(f"Processed stacks before deletion: {processed_stacks}")
                         processed_stacks = [stack_id for stack_id in processed_stacks if stack_id != processing_stack_identifier]
                         file.processed_stacks = json.dumps(processed_stacks)
-                        self.logger.error(f"Processed stacks after deletion: {file.processed_stacks}")
                         # Commit the changes to the file the database
                         session.commit()
                     
