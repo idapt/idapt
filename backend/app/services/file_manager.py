@@ -14,7 +14,7 @@ from app.services.file_system import FileSystemService
 from app.services.llama_index import LlamaIndexService
 from app.services.file_system import get_full_path_from_path
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
-from app.database.models import File, Folder
+from app.database.models import File, Folder, FileStatus
 from app.services.database import DatabaseService
 
 import logging
@@ -200,29 +200,31 @@ class FileManagerService:
 
     async def delete_file(self, session: Session, full_path: str):
         try:
-            
             file = self.db_file_service.get_file(session, full_path)
-            
             if not file:
                 raise HTTPException(status_code=404, detail="File not found")
+            
+            # Check if file is being processed
+            if file.status in [FileStatus.QUEUED, FileStatus.PROCESSING]:
+                raise HTTPException(
+                    status_code=409,
+                    detail="File is currently being processed and cannot be deleted"
+                )
 
-            # Delete from filesystem
+            # Proceed with deletion
             await self.file_system.delete_file(full_path)
-
-            # Do this before deleting from database as we need to get the ref_doc_ids
-            # Remove from LlamaIndex
             self.llama_index.delete_file(full_path)
-
-            # Delete from database
             result = self.db_file_service.delete_file(session, full_path)
+            
             if not result:
                 self.logger.warning(f"Failed to delete file from database for path: {full_path}")
-
+            
         except Exception as e:
             self.logger.error(f"Error deleting file: {str(e)}")
             raise
 
     async def delete_folder(self, session: Session, full_path: str):
+        
         try:
             self.logger.error(f"Full path to delete: {full_path}")
 

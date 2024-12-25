@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.database.models import File, Folder
+from app.database.models import File, Folder, FileStatus
 from datetime import datetime, timezone
 import mimetypes
 import logging
@@ -219,3 +219,34 @@ class DBFileService:
         """Get the ID of a folder by path"""
         folder = session.query(Folder).filter(Folder.path == full_path).first()
         return folder.id if folder else None
+
+    def update_file_status(
+        self,
+        session: Session,
+        file_path: str,
+        status: FileStatus,
+        message: str = None
+    ) -> File:
+        """Update file status and related timestamps"""
+        file = self.get_file(session, file_path)
+        if not file:
+            raise ValueError(f"File not found: {file_path}")
+            
+        file.status = status
+        file.status_message = message
+        
+        if status == FileStatus.PROCESSING:
+            file.processing_started_at = datetime.now(timezone.utc)
+        elif status in [FileStatus.COMPLETED, FileStatus.ERROR]:
+            file.processing_completed_at = datetime.now(timezone.utc)
+            
+        session.commit()
+        return file
+        
+    def get_files_by_status(
+        self,
+        session: Session,
+        status: FileStatus
+    ) -> List[File]:
+        """Get all files with a specific status"""
+        return session.query(File).filter(File.status == status).all()

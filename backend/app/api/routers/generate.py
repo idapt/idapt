@@ -40,6 +40,7 @@ async def generate(
     Returns immediately with queue status.
     """
     try:
+        logger.error(f"Trigger Generating {len(request.files)} files")
         # Convert to full paths and maintain transformation stack names
         files = [{
             # The given path is not a full path as the frontend is not aware of the DATA_DIR
@@ -48,6 +49,7 @@ async def generate(
         } for file in request.files]
         
         # Add to queue
+        # Use background tasks to avoid blocking the main thread
         background_tasks.add_task(generate_service.add_batch_to_queue, files)
 
         return {

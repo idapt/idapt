@@ -1,5 +1,6 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, func, JSON
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, func, JSON, Enum
 from sqlalchemy.orm import relationship, declarative_base
+import enum
 
 Base = declarative_base()
 
@@ -18,6 +19,13 @@ class Folder(Base):
     children = relationship("Folder", backref='parent', remote_side=[id])
     files = relationship("File", back_populates="folder")
 
+class FileStatus(enum.Enum):
+    PENDING = "pending"
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    ERROR = "error"
+
 class File(Base):
     __tablename__ = 'files'
     
@@ -26,6 +34,12 @@ class File(Base):
     path = Column(String, nullable=False, unique=True)
     mime_type = Column(String, nullable=True)
     size = Column(Integer, nullable=True)
+    
+    # Processing status
+    status = Column(Enum(FileStatus), default=FileStatus.PENDING, nullable=False)
+    status_message = Column(String, nullable=True)
+    processing_started_at = Column(DateTime, nullable=True)
+    processing_completed_at = Column(DateTime, nullable=True)
     
     # Original metadata
     file_created_at = Column(DateTime, nullable=False)
