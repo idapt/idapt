@@ -38,6 +38,10 @@ class File(Base):
     # Processing status
     status = Column(Enum(FileStatus), default=FileStatus.PENDING, nullable=False)
     
+    # Processing stacks tracking
+    processed_stacks = Column(JSON, default=list, nullable=False)  # List of already processed stacks
+    stacks_to_process = Column(JSON, default=list, nullable=False)  # List of stacks queued for processing
+    
     # Original metadata
     file_created_at = Column(DateTime, nullable=False)
     file_modified_at = Column(DateTime, nullable=False)

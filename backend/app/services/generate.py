@@ -1,3 +1,4 @@
+import json
 from typing import List, Optional, Dict
 import logging
 import asyncio
@@ -133,16 +134,31 @@ class GenerateService:
                 FileStatus.PROCESSING
             )
             
-            # Get transformations stack (default if not specified)
-            transformations_stack_name_list = ["default"]
+            # Get stacks to process from the file
+            stacks_to_process = file.stacks_to_process
             datasource_identifier = get_datasource_identifier_from_path(file.path)
             
-            # Process the file
-            await self.ingestion_pipeline_service.process_files(
-                full_file_paths=[file.path],
-                datasource_identifier=datasource_identifier,
-                transformations_stack_name_list=transformations_stack_name_list
-            )
+            # Process each stack that hasn't been processed yet
+            for stack_name in stacks_to_process:
+                if stack_name not in file.processed_stacks:
+                    try:
+                        # Process the file with this stack
+                        await self.ingestion_pipeline_service.process_files(
+                            full_file_paths=[file.path],
+                            datasource_identifier=datasource_identifier,
+                            transformations_stack_name_list=[stack_name]
+                        )
+                        
+                        # Add stack to processed stacks
+                        self.db_file_service.mark_stack_as_processed(
+                            session,
+                            file.path,
+                            stack_name
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to process stack {stack_name} for file {file.path}: {str(e)}")
+                        # Continue with next stack instead of failing completely
+                        continue
             
             # Update status to completed
             self.db_file_service.update_file_status(
@@ -157,8 +173,7 @@ class GenerateService:
                 self.db_file_service.update_file_status(
                     session,
                     file.path,
-                    FileStatus.ERROR,
-                    str(e)
+                    FileStatus.ERROR
                 )
             except Exception as e:
                 logger.error(f"Failed to update file status for {file.path}: {str(e)}")
@@ -168,10 +183,13 @@ class GenerateService:
         try:
             with self.db_service.get_session() as session:
                 for file in files:
+                    # Get the stacks to process from the file and parse it into a json object dict
+                    stacks_to_process = json.loads(file.get("transformations_stack_name_list", ["default"]))
                     self.db_file_service.update_file_status(
                         session,
                         file["path"],
-                        FileStatus.QUEUED
+                        FileStatus.QUEUED,
+                        stacks_to_process
                     )
                 logger.info(f"Added batch of {len(files)} files to queue")
                 

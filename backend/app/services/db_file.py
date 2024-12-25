@@ -1,3 +1,4 @@
+import json
 from sqlalchemy.orm import Session
 from app.database.models import File, Folder, FileStatus
 from datetime import datetime, timezone
@@ -225,17 +226,58 @@ class DBFileService:
         session: Session,
         file_path: str,
         status: FileStatus,
+        # Json object
+        stacks_to_process: dict = None,
     ) -> File:
-        """Update file status and related timestamps"""
+        """Update file status and stacks to process"""
         file = self.get_file(session, file_path)
         if not file:
             raise ValueError(f"File not found: {file_path}")
             
         file.status = status
+        
+        # If the file is already queued just add the stacks to the stacks to process
+        if file.status == FileStatus.QUEUED and status == FileStatus.QUEUED and stacks_to_process:
+            stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
+            stacks_to_process.extend(stacks_to_process)
+            self.logger.error(f"Stacks to process: {stacks_to_process}")
+        else:
+            # Format the stacks to process into a json string and update the file
+            file.stacks_to_process = json.dumps(stacks_to_process)
             
+        
         session.commit()
         return file
+
+    def mark_stack_as_processed(
+        self,
+        session: Session,
+        file_path: str,
+        stack_name: str
+    ) -> File:
+        """Add a stack to the list of processed stacks"""
+        file = self.get_file(session, file_path)
+        if not file:
+            raise ValueError(f"File not found: {file_path}")
         
+        # Get the processed stacks from json
+        processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
+        # If the stack is not already processed, add it
+        if stack_name not in processed_stacks:
+            self.logger.error(f"Marking stack {stack_name} as processed for file {file_path}")
+            processed_stacks.append(stack_name)
+            self.logger.error(f"Processed stacks: {processed_stacks}")
+            file.processed_stacks = json.dumps(processed_stacks)
+
+        # Remove the stack from the stacks to process
+        stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
+        if stack_name in stacks_to_process:
+            stacks_to_process = [stack for stack in stacks_to_process if stack != stack_name]
+            file.stacks_to_process = json.dumps(stacks_to_process)
+        
+        session.commit()
+        return file
+
     def get_files_by_status(
         self,
         session: Session,

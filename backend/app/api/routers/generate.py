@@ -45,8 +45,10 @@ async def generate(
         files = [{
             # The given path is not a full path as the frontend is not aware of the DATA_DIR
             "path": get_full_path_from_path(file["path"]),
-            "transformations_stack_name_list": file.get("transformations_stack_name_list", "default")
+            "transformations_stack_name_list": file.get("transformations_stack_name_list")
         } for file in request.files]
+
+        logger.error(f"Files: {files}")
         
         # Add to queue
         # Use background tasks to avoid blocking the main thread
