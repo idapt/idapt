@@ -1,8 +1,6 @@
 import json
 import logging
 
-from llama_index.core import Document
-
 class LlamaIndexService:
     def __init__(self):
 
@@ -34,10 +32,21 @@ class LlamaIndexService:
                 # Parse the json ref_doc_ids as a list
                 ref_doc_ids = json.loads(file.ref_doc_ids) if file.ref_doc_ids else []
                 for ref_doc_id in ref_doc_ids:
-                    # Delete the ref_doc_id from the vector store
-                    vector_store.delete(ref_doc_id)
-                    # Delete the ref_doc_id from the docstore
-                    doc_store.delete_ref_doc(ref_doc_id)
+                    try:
+                        # Delete the ref_doc_id from the vector store
+                        vector_store.delete(ref_doc_id)
+                        # Delete the ref_doc_id from the docstore
+                        doc_store.delete_ref_doc(ref_doc_id)
+                    except Exception as e:
+                        self.logger.error(f"Failed to delete {ref_doc_id} from vector store and docstore probably because it was already deleted or does not exist in them : {str(e)}")
+                    # In any case delete the ref_doc_id from the file
+                    finally:
+                        self.logger.info(f"Deleting {ref_doc_id} relation from file {file.path}")
+                        # Delete the ref_doc_id from the file
+                        file.ref_doc_ids = [ref_doc_id for ref_doc_id in file.ref_doc_ids if ref_doc_id != ref_doc_id]
+                        # Commit the changes to the file the database
+                        session.commit()
+                    
 
         except Exception as e:
             self.logger.error(f"Error deleting file from LlamaIndex: {str(e)}")
@@ -64,14 +73,12 @@ class LlamaIndexService:
             doc_store.delete_ref_doc(full_old_path)
 
             # And sent it to generate again to pass it through the ingestion pipeline with the default transformations # TODO VERY BAD IMPLEMENTATION
-            
-            # self.generate_service.add_to_queue(full_new_path) # Use the default transformations for now
 
             # Add the file to the generation queue with default transformations
-            service_manager.generate_service.add_to_queue({
+            service_manager.generate_service.add_files_to_queue([{
                 "path": full_new_path,
                 "transformations_stack_name_list": ["default"]
-            })
+            }])
 
             # Get the the old ref doc info document
             #ref_doc_info = doc_store.get_ref_doc_info(full_old_path)

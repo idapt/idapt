@@ -5,9 +5,11 @@ from asyncio import Task, new_event_loop, set_event_loop
 import threading
 from threading import Lock as ThreadLock
 from app.services.ingestion_pipeline import IngestionPipelineService
+from app.services.db_file import DBFileService
+from app.services.database import DatabaseService
+from app.services.llama_index import LlamaIndexService
 from app.services.datasource import get_datasource_identifier_from_path
 from app.database.models import File, FileStatus
-
 logger = logging.getLogger(__name__)
 
 class GenerateService:
@@ -27,10 +29,13 @@ class GenerateService:
                 cls._instance = super().__new__(cls)
             return cls._instance
     
-    def __init__(self, ingestion_pipeline_service: IngestionPipelineService):
+    def __init__(self, ingestion_pipeline_service: IngestionPipelineService, db_service: DatabaseService, db_file_service: DBFileService, llama_index_service: LlamaIndexService):
         """Initialize the service and start the processing thread"""
         if not hasattr(self, 'initialized'):
             self.ingestion_pipeline_service = ingestion_pipeline_service
+            self.db_service = db_service
+            self.db_file_service = db_file_service
+            self.llama_index_service = llama_index_service
             self._thread_lock = ThreadLock()
             self._start_processing_thread()
             self.initialized = True
@@ -75,22 +80,28 @@ class GenerateService:
         """
         while True:
             try:
-                from app.services import ServiceManager
-                service_manager = ServiceManager.get_instance()
-                
-                with service_manager.db_service.get_session() as session:
-                    # First check for any files marked as PROCESSING (interrupted)
-                    processing_files = service_manager.db_file_service.get_files_by_status(
-                        session,
-                        FileStatus.PROCESSING
-                    )
+                with self.db_service.get_session() as session:
                     
-                    if processing_files:
-                        # Process interrupted files first
-                        for file in processing_files:
-                            # TODO: Delete the file from the vector store and docstore and reprocess
-                            logger.info(f"Reprocessing interrupted file: {file.path}")
-                            await self._process_single_file(session, file)
+                    # While there is files with status PROCESSING, process them
+                    while True:
+                        oldest_processing_file = session.query(File).filter(
+                            File.status == FileStatus.PROCESSING
+                        ).order_by(
+                            File.processing_started_at.asc()
+                        ).first()
+                        if not oldest_processing_file:
+                            break
+                        else:
+                            logger.info(f"Reprocessing interrupted file: {oldest_processing_file.path}")
+
+                            # Try to delete the file from the vector store and docstore
+                            try:
+                                self.llama_index_service.delete_file(oldest_processing_file.path)
+                            except Exception as e:
+                                logger.error(f"Failed to delete {oldest_processing_file.path} from vector store and docstore for reprocessing, proceeding with reprocessing : {str(e)}")
+
+                            # Process the file
+                            await self._process_single_file(session, oldest_processing_file)
                             continue
                     
                     # Get the oldest queued file
@@ -115,11 +126,8 @@ class GenerateService:
     async def _process_single_file(self, session, file):
         """Process a single file through the ingestion pipeline"""
         try:
-            from app.services import ServiceManager
-            service_manager = ServiceManager.get_instance()
-            
             # Update status to processing
-            service_manager.db_file_service.update_file_status(
+            self.db_file_service.update_file_status(
                 session,
                 file.path,
                 FileStatus.PROCESSING
@@ -137,7 +145,7 @@ class GenerateService:
             )
             
             # Update status to completed
-            service_manager.db_file_service.update_file_status(
+            self.db_file_service.update_file_status(
                 session,
                 file.path,
                 FileStatus.COMPLETED
@@ -145,39 +153,22 @@ class GenerateService:
             
         except Exception as e:
             logger.error(f"Failed to process file {file.path}: {str(e)}")
-            service_manager.db_file_service.update_file_status(
-                session,
-                file.path,
-                FileStatus.ERROR,
-                str(e)
-            )
-
-    async def add_to_queue(self, file_info: dict):
-        """Add a single file to the processing queue"""
-        try:
-            from app.services import ServiceManager
-            service_manager = ServiceManager.get_instance()
-            
-            with service_manager.db_service.get_session() as session:
-                service_manager.db_file_service.update_file_status(
+            try:
+                self.db_file_service.update_file_status(
                     session,
-                    file_info["path"],
-                    FileStatus.QUEUED
+                    file.path,
+                    FileStatus.ERROR,
+                    str(e)
                 )
-                
-        except Exception as e:
-            logger.error(f"Failed to add file to queue: {str(e)}")
-            raise
+            except Exception as e:
+                logger.error(f"Failed to update file status for {file.path}: {str(e)}")
 
-    async def add_batch_to_queue(self, files: List[dict]):
+    async def add_files_to_queue(self, files: List[dict]):
         """Add multiple files to the processing queue"""
         try:
-            from app.services import ServiceManager
-            service_manager = ServiceManager.get_instance()
-            
-            with service_manager.db_service.get_session() as session:
+            with self.db_service.get_session() as session:
                 for file in files:
-                    service_manager.db_file_service.update_file_status(
+                    self.db_file_service.update_file_status(
                         session,
                         file["path"],
                         FileStatus.QUEUED
@@ -191,15 +182,12 @@ class GenerateService:
     def get_queue_status(self) -> dict:
         """Get the current status of the generation queue"""
         try:
-            from app.services import ServiceManager
-            service_manager = ServiceManager.get_instance()
-            
-            with service_manager.db_service.get_session() as session:
-                queued_files = service_manager.db_file_service.get_files_by_status(
+            with self.db_service.get_session() as session:
+                queued_files = self.db_file_service.get_files_by_status(
                     session, 
                     FileStatus.QUEUED
                 )
-                processing_files = service_manager.db_file_service.get_files_by_status(
+                processing_files = self.db_file_service.get_files_by_status(
                     session,
                     FileStatus.PROCESSING
                 )

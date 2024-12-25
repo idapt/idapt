@@ -65,7 +65,12 @@ class ServiceManager:
             self.datasource_service
         )
 
-        self.generate_service = GenerateService(self.ingestion_pipeline_service)
+        self.generate_service = GenerateService(
+            self.ingestion_pipeline_service,
+            self.db_service,
+            self.db_file_service,
+            self.llama_index_service
+        )
         
         self.logger.info("Services initialized successfully")
     

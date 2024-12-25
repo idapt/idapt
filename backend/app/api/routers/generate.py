@@ -50,7 +50,7 @@ async def generate(
         
         # Add to queue
         # Use background tasks to avoid blocking the main thread
-        background_tasks.add_task(generate_service.add_batch_to_queue, files)
+        background_tasks.add_task(generate_service.add_files_to_queue, files)
 
         return {
             "status": "queued",
