@@ -191,6 +191,7 @@ class IngestionPipelineService:
                         doc.doc_id = "_".join(doc_id_parts)
 
                     # Update the file in the database with the ref_doc_ids
+                    # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess
                     with self.db_service.get_session() as session:
                         file = self.db_file_service.get_file(session, doc.metadata["file_path"])
                         if file:
