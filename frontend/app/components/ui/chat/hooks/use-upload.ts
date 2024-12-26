@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
 import { decompressData } from '../../file-manager/utils/compression';
+import { useUploadStore } from '@/app/stores/upload-store';
 
 interface FileUploadProgress {
   total: number;
@@ -26,10 +27,20 @@ export function useUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [currentConflict, setCurrentConflict] = useState<FileConflict | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const shouldCancelAllRef = useRef(false);
+
+  useEffect(() => {
+    const handleCancelAll = () => {
+      shouldCancelAllRef.current = true;
+      abortControllerRef.current?.abort();
+    };
+
+    window.addEventListener('cancelAllUploads', handleCancelAll);
+    return () => window.removeEventListener('cancelAllUploads', handleCancelAll);
+  }, []);
 
   const resolveConflict = (resolution: ConflictResolution) => {
     setCurrentConflict(null);
-    // Handle conflict resolution logic here
   };
 
   const cancelUpload = () => {
@@ -43,16 +54,28 @@ export function useUpload() {
     try {
       setIsUploading(true);
       abortControllerRef.current = new AbortController();
+      shouldCancelAllRef.current = false;
+
+      // Add items to store
+      useUploadStore.getState().addItems(
+        items.map(item => ({
+          name: item.name,
+          path: item.path
+        }))
+      );
 
       // Upload files one by one
       for (let i = 0; i < items.length; i++) {
+        if (shouldCancelAllRef.current) {
+          break;
+        }
+
         const item = items[i];
-        setCurrentFile(item.name);
-        setProgress({
-          total: items.length,
-          current: i + 1,
-          processed_items: [],
-          status: 'processing'
+        const storeItem = useUploadStore.getState().items[i];
+        
+        useUploadStore.getState().updateItem(storeItem.id, {
+          status: 'uploading',
+          progress: 0
         });
 
         // Decompress current item
@@ -71,28 +94,32 @@ export function useUpload() {
         });
 
         if (!response.ok) {
+          useUploadStore.getState().updateItem(storeItem.id, {
+            status: 'error',
+            progress: 0
+          });
           throw new Error(`Failed to upload ${item.name}`);
         }
+
+        useUploadStore.getState().updateItem(storeItem.id, {
+          status: 'completed',
+          progress: 100
+        });
       }
-
-      setProgress({
-        total: items.length,
-        current: items.length,
-        processed_items: items.map(i => i.path),
-        status: 'completed'
-      });
-
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         console.log('Upload cancelled');
+        useUploadStore.getState().cleanupPendingUploads();
         return;
       }
       console.error('Upload error:', error);
+      useUploadStore.getState().cleanupPendingUploads();
       throw error;
     } finally {
       setIsUploading(false);
       setCurrentFile("");
       abortControllerRef.current = null;
+      shouldCancelAllRef.current = false;
     }
   };
 
