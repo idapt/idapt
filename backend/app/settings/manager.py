@@ -65,7 +65,7 @@ class AppSettingsManager:
 
         # Update llama index settings
         from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
-        update_llama_index_settings_from_app_settings()
+        update_llama_index_settings_from_app_settings(self.settings)
         
         # Pull Ollama models if needed
         if self.settings.llm_model_provider in ["integrated_ollama", "custom_ollama"]:
