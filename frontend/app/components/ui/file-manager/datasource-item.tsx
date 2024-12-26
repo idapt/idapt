@@ -72,28 +72,42 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
 
   const handleDelete = async () => {
     if (confirm(`Are you sure you want to delete datasource "${datasource.name}"?`)) {
-      try {
-        // First encode to base64
-        const base64 = btoa(datasource.identifier);
-        // Then make it URL safe by replacing characters
-        const encodedIdentifier = base64
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_');
-        
-        const response = await fetch(`${backend}/api/datasources/${encodedIdentifier}`, {
-          method: 'DELETE'
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.detail || 'Failed to delete datasource');
+        try {
+            const encodedIdentifier = encodePathSafe(datasource.identifier);
+            const response = await fetch(`${backend}/api/datasources/${encodedIdentifier}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                if (response.status === 409) {
+                    const detail = error.detail;
+                    let message = `Some files could not be deleted:\n\n`;
+                    
+                    if (detail.processing_files.length > 0) {
+                        message += `Files being processed:\n${detail.processing_files.join('\n')}\n\n`;
+                    }
+                    
+                    if (detail.failed_files.length > 0) {
+                        message += `Failed to delete:\n${detail.failed_files.join('\n')}\n\n`;
+                    }
+                    
+                    if (detail.deleted_files.length > 0) {
+                        message += `Successfully deleted:\n${detail.deleted_files.join('\n')}`;
+                    }
+                    
+                    alert(message);
+                    onRefresh?.();
+                    return;
+                }
+                throw new Error(error.detail || 'Failed to delete datasource');
+            }
+            
+            onRefresh?.();
+        } catch (error) {
+            console.error('Delete failed:', error);
+            alert(error instanceof Error ? error.message : 'Failed to delete datasource');
         }
-        
-        onRefresh?.();
-      } catch (error) {
-        console.error('Delete failed:', error);
-        alert(error instanceof Error ? error.message : 'Failed to delete datasource');
-      }
     }
   };
 

@@ -218,42 +218,67 @@ class FileManagerService:
             
             if not result:
                 self.logger.warning(f"Failed to delete file from database for path: {full_path}")
-            
+        
         except Exception as e:
             self.logger.error(f"Error deleting file: {str(e)}")
             raise
 
     async def delete_folder(self, session: Session, full_path: str):
         try:
-            self.logger.error(f"Full path to delete: {full_path}")
+            self.logger.info(f"Deleting folder: {full_path}")
 
             folder = self.db_file_service.get_folder(session, full_path)
             if not folder:
                 raise HTTPException(status_code=404, detail="Folder not found")
 
             # Get all files in folder and subfolders recursively
-            files, _ = self.db_file_service.get_folder_files_recursive(session, full_path)
+            files, subfolders = self.db_file_service.get_folder_files_recursive(session, full_path)
             
+            processing_files = []
+            deleted_files = []
+            failed_files = []
+
             # First delete from filesystem and LlamaIndex
             for file in files:
                 try:
+                    # Skip files that are being processed
+                    if file.status in [FileStatus.PROCESSING]:
+                        processing_files.append(file.path)
+                        continue
+
                     await self.file_system.delete_file(file.path)
                     self.llama_index.delete_file(file.path)
+                    self.db_file_service.delete_file(session, file.path)
+                    deleted_files.append(file.path)
                 except Exception as e:
                     self.logger.warning(f"Error deleting file {file.path}: {str(e)}")
-                    # Continue with other files even if one fails
+                    failed_files.append(file.path)
                     continue
 
-            # Delete folder from filesystem
-            await self.file_system.delete_folder(full_path)
-            
-            # Finally delete everything from database in one transaction
-            if not self.db_file_service.delete_folder(session, full_path):
-                raise HTTPException(status_code=500, detail="Failed to delete folder from database")
+            # Delete folder from filesystem if no files are being processed
+            if not processing_files:
+                await self.file_system.delete_folder(full_path)
+                
+                # Delete everything from database in one transaction
+                if not self.db_file_service.delete_folder(session, full_path):
+                    raise HTTPException(status_code=500, detail="Failed to delete folder from database")
+            else:
+                # Raise an exception with information about processing files
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "message": "Some files are being processed and cannot be deleted",
+                        "processing_files": processing_files,
+                        "deleted_files": deleted_files,
+                        "failed_files": failed_files
+                    }
+                )
 
+        except HTTPException:
+            raise
         except Exception as e:
             self.logger.error(f"Error deleting folder: {str(e)}")
-            raise
+            raise HTTPException(status_code=500, detail=str(e))
 
     async def rename_file(self, session: Session, full_path: str, new_name: str):
         try:
