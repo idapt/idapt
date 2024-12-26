@@ -9,7 +9,7 @@ interface FileUploadOptions {
 }
 
 export function useFileUpload() {
-  const { upload, progress, currentConflict, resolveConflict } = useUpload();
+  const { upload, progress, currentFile, isUploading, cancelUpload, currentConflict, resolveConflict } = useUpload();
   const { generate } = useGenerate();
 
   const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
@@ -50,6 +50,9 @@ export function useFileUpload() {
   return {
     uploadFile,
     progress,
+    currentFile,
+    isUploading,
+    cancelUpload,
     currentConflict,
     resolveConflict
   };

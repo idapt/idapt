@@ -10,6 +10,7 @@ import { useFolderUpload } from "./hooks/use-folder-upload";
 import { useFileManager } from './hooks/use-file-manager';
 import { Datasource } from "@/app/types/files";
 import { CreateDatasourceDialog } from "./create-datasource-dialog";
+import { UploadToast } from './upload-toast';
 
 export function FileManager() {
   const {
@@ -28,8 +29,8 @@ export function FileManager() {
   const [showCreateDatasource, setShowCreateDatasource] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const { uploadFile } = useFileUpload();
-  const { uploadFolder } = useFolderUpload();
+  const { uploadFile, progress: fileProgress, currentFile: currentUploadFile, isUploading, cancelUpload } = useFileUpload();
+  const { uploadFolder, progress: folderProgress, currentFile: currentFolderFile, isUploading: isFolderUploading, cancelUpload: cancelFolderUpload } = useFolderUpload();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,6 +166,15 @@ export function FileManager() {
         onClose={() => setShowCreateDatasource(false)}
         onCreated={refreshContents}
       />
+      {(isUploading || isFolderUploading) && (
+        <UploadToast
+          currentFile={currentUploadFile || currentFolderFile}
+          currentIndex={fileProgress?.current || folderProgress?.current || 0}
+          totalFiles={fileProgress?.total || folderProgress?.total || 0}
+          progress={((fileProgress?.current || folderProgress?.current || 0) / (fileProgress?.total || folderProgress?.total || 1)) * 100}
+          onCancel={isUploading ? cancelUpload : cancelFolderUpload}
+        />
+      )}
     </div>
   );
 }

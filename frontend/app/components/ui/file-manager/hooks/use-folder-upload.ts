@@ -9,7 +9,7 @@ interface FolderUploadOptions {
 }
 
 export function useFolderUpload() {
-  const { upload, progress } = useUpload();
+  const { upload, progress, currentFile, isUploading, cancelUpload } = useUpload();
   const { generate } = useGenerate();
 
   const uploadFolder = async (folderInput: HTMLInputElement, targetPath: string = "", options?: FolderUploadOptions) => {
@@ -70,6 +70,9 @@ export function useFolderUpload() {
 
   return {
     uploadFolder,
-    progress
+    progress,
+    currentFile,
+    isUploading,
+    cancelUpload
   };
 } 
