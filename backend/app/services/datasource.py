@@ -8,8 +8,7 @@ from llama_index.vector_stores.postgres import PGVectorStore
 from llama_index.storage.docstore.postgres import PostgresDocumentStore
 from llama_index.storage.index_store.postgres import PostgresIndexStore
 from llama_index.core.indices import VectorStoreIndex
-from llama_index.core.tools import BaseTool
-from app.engine.tools.filtered_query_engine import FilteredQueryEngineTool
+from llama_index.core.tools import BaseTool, QueryEngineTool
 from llama_index.core.tools import ToolMetadata
 from llama_index.core.retrievers import AutoMergingRetriever, VectorIndexRetriever
 from llama_index.core.response_synthesizers import get_response_synthesizer
@@ -257,13 +256,14 @@ class DatasourceService:
             index = self.get_index(datasource_identifier)
             retriever = VectorIndexRetriever(
                 index=index,
-                similarity_top_k=int(app_settings.top_k)
+                similarity_top_k=int(app_settings.top_k),
             )
-            retriever = AutoMergingRetriever( # Still use this even if we are not using hierarchical node parser.
-                retriever,
-                storage_context=index.storage_context,
-                verbose=True
-            )
+            # Don't use this for now as we are not using hierarchical node parser
+            #retriever = AutoMergingRetriever(
+            #    retriever,
+            #    storage_context=index.storage_context,
+            #    verbose=True
+            #)
             response_synthesizer = get_response_synthesizer(
                 response_mode="compact",
                 llm=Settings.llm
@@ -288,7 +288,7 @@ class DatasourceService:
             # Add this instruction to the tool description for the agent to know how to use the tool # ? Great ?
             tool_description = f"{description}\nUse a detailed plain text question as input to the tool."
             
-            return FilteredQueryEngineTool(
+            return QueryEngineTool(
                 query_engine=query_engine,
                 metadata=ToolMetadata(
                     name=f"{datasource_identifier}_query_engine",

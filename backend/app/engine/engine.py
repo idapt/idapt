@@ -23,6 +23,7 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
 
         datasource_service = ServiceManager.get_instance().datasource_service
         
+        # Get the datasources tools
         if datasource_identifier:
             # Get specific datasource tool
             tool = datasource_service.get_query_tool(datasource_identifier)
@@ -35,6 +36,21 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
                     tool = datasource_service.get_query_tool(ds.identifier)
                     tools.append(tool)
 
+        # For each tool, set the callback manager to be able to display the events in the steps ui
+        for tool in tools:
+            if tool.query_engine:
+                # Set the callback manager for the query engine, this is partly useless as it sets the callback manager of the retriever at creation time
+                tool.query_engine.callback_manager = callback_manager
+        
+        # For each tool, set the filters
+        for tool in tools:
+            if tool.query_engine:
+                if filters and tool.query_engine._retriever:
+                    # Set the filters for the retriever directly as it is already created
+                    tool.query_engine._retriever._filters = filters
+                    # Set the callback manager for the retriever directly as it is already created
+                    tool.query_engine._retriever.callback_manager = callback_manager
+
         # Add all available tools from the tool factory  # Not used for now
         #configured_tools: List[BaseTool] = ToolFactory.from_env()
         #tools.extend(configured_tools)
@@ -42,8 +58,8 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
         # Get the directory where the current module (engine.py) is located
         current_dir = os.path.dirname(os.path.abspath(__file__))
         prompt_file_path = os.path.join(current_dir, "react_agent_system_prompt.md")
-        react_agent_system_prompt = open(prompt_file_path, "r").read()
-        react_agent_system_prompt = app_settings.system_prompt + "\n\n" + react_agent_system_prompt
+        react_agent_and_system_prompt = open(prompt_file_path, "r").read()
+        react_agent_and_system_prompt = app_settings.system_prompt + "\n\n" + react_agent_and_system_prompt
 
         return ReActAgent.from_llm(
             llm=Settings.llm,
@@ -52,7 +68,7 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
             verbose=True,
             max_iterations=app_settings.max_iterations,
             react_chat_formatter=ReActChatFormatter(
-                system_header=react_agent_system_prompt,
+                system_header=react_agent_and_system_prompt,
                 context=""
             )
         )

@@ -5,11 +5,11 @@ def generate_filters(doc_ids):
     """
     Generate public/private document filters based on the doc_ids and the vector store.
     """
-    public_doc_filter = MetadataFilter(
-        key="private",
-        value="true",
-        operator="!=",  # type: ignore
-    )
+    #public_doc_filter = MetadataFilter(
+    #    key="private",
+    #    value="true",
+    #    operator="!=",  # type: ignore
+    #)
     selected_doc_filter = MetadataFilter(
         key="doc_id",
         value=doc_ids,
@@ -19,7 +19,7 @@ def generate_filters(doc_ids):
         # If doc_ids are provided, we will select both public and selected documents
         filters = MetadataFilters(
             filters=[
-                public_doc_filter,
+                #public_doc_filter,
                 selected_doc_filter,
             ],
             condition="or",  # type: ignore
@@ -27,7 +27,7 @@ def generate_filters(doc_ids):
     else:
         filters = MetadataFilters(
             filters=[
-                public_doc_filter,
+                #public_doc_filter,
             ]
         )
 
