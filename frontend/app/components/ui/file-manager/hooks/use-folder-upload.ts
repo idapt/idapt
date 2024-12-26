@@ -1,6 +1,7 @@
 import { useUpload } from "../../chat/hooks/use-upload";
 import { useGenerate, GenerateFile } from "../hooks/use-generate";
 import { compressData, arrayBufferToBase64 } from "../utils/compression";
+import { useUploadContext } from '@/app/contexts/upload-context';
 
 interface FolderUploadOptions {
   onProgress?: (progress: number) => void;
@@ -9,8 +10,9 @@ interface FolderUploadOptions {
 }
 
 export function useFolderUpload() {
-  const { upload, progress, currentFile, isUploading, cancelUpload } = useUpload();
+  const { upload, currentFile, isUploading, cancelUpload } = useUpload();
   const { generate } = useGenerate();
+  const { items } = useUploadContext();
 
   const uploadFolder = async (folderInput: HTMLInputElement, targetPath: string = "", options?: FolderUploadOptions) => {
     if (!folderInput.files || folderInput.files.length === 0) return;
@@ -23,7 +25,6 @@ export function useFolderUpload() {
       const relativePath = file.webkitRelativePath;
       const fullPath = targetPath ? `${targetPath}/${relativePath}` : relativePath;
 
-      // Store file paths for generation
       filePaths.push(fullPath);
 
       const content = await new Promise<string>((resolve) => {
@@ -32,7 +33,6 @@ export function useFolderUpload() {
         reader.readAsDataURL(file);
       });
 
-      // Compress the file content
       const compressed = compressData(content);
       const compressedBase64 = arrayBufferToBase64(compressed);
 
@@ -40,8 +40,6 @@ export function useFolderUpload() {
         path: fullPath,
         content: `data:${file.type};base64,${compressedBase64}`,
         name: file.name,
-        // We cannot get the original created_at from the browser so we use the last modified date as created_at
-        // Use unix timestamp in seconds
         file_created_at: file.lastModified / 1000,
         file_modified_at: file.lastModified / 1000,
       });
@@ -50,12 +48,10 @@ export function useFolderUpload() {
     try {
       await upload(uploadItems, true);
       
-      // Generate index for uploaded files
       if (filePaths.length > 0) {
-        // List of GenerateFile objects
         const generateFiles: GenerateFile[] = filePaths.map(filePath => ({
           path: filePath,
-          transformations_stack_name_list: ["sentence-splitter-1024", "sentence-splitter-512", "sentence-splitter-128"] // Can be extended to support multiple transformations
+          transformations_stack_name_list: ["sentence-splitter-1024", "sentence-splitter-512", "sentence-splitter-128"]
         }));
 
         await generate(generateFiles);
@@ -70,9 +66,9 @@ export function useFolderUpload() {
 
   return {
     uploadFolder,
-    progress,
     currentFile,
     isUploading,
-    cancelUpload
+    cancelUpload,
+    items
   };
 } 

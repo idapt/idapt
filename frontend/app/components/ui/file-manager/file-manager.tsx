@@ -1,7 +1,7 @@
 "use client";
 
 import { Grid2X2, List, Upload, FolderUp, Database, Plus, Loader2 } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import { Button } from "../button";
 import { FileList } from "./file-list";
 import { FilePath } from "./file-path";
@@ -11,7 +11,6 @@ import { useFileManager } from './hooks/use-file-manager';
 import { Datasource } from "@/app/types/files";
 import { CreateDatasourceDialog } from "./create-datasource-dialog";
 import { UploadToast } from './upload-toast';
-import { useUploadStore } from "@/app/stores/upload-store";
 
 export function FileManager() {
   const {
@@ -30,25 +29,8 @@ export function FileManager() {
   const [showCreateDatasource, setShowCreateDatasource] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const { uploadFile, progress: fileProgress, currentFile: currentUploadFile, isUploading, cancelUpload } = useFileUpload();
-  const { uploadFolder, progress: folderProgress, currentFile: currentFolderFile, isUploading: isFolderUploading, cancelUpload: cancelFolderUpload } = useFolderUpload();
-  const { cleanupPendingUploads } = useUploadStore();
-
-  useEffect(() => {
-    // Cleanup on mount in case of previous page unload/refresh
-    cleanupPendingUploads();
-
-    // Cleanup on page unload/refresh
-    const handleBeforeUnload = () => {
-      cleanupPendingUploads();
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      cleanupPendingUploads();
-    };
-  }, []);
+  const { uploadFile, currentFile: currentUploadFile, isUploading, cancelUpload } = useFileUpload();
+  const { uploadFolder, currentFile: currentFolderFile, isUploading: isFolderUploading, cancelUpload: cancelFolderUpload } = useFolderUpload();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

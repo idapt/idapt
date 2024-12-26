@@ -1,6 +1,7 @@
 import { useUpload } from '../../chat/hooks/use-upload';
 import { useGenerate } from '../hooks/use-generate';
 import { compressData, arrayBufferToBase64 } from '../utils/compression';
+import { useUploadContext } from '@/app/contexts/upload-context';
 
 interface FileUploadOptions {
   onProgress?: (progress: number) => void;
@@ -9,8 +10,9 @@ interface FileUploadOptions {
 }
 
 export function useFileUpload() {
-  const { upload, progress, currentFile, isUploading, cancelUpload, currentConflict, resolveConflict } = useUpload();
+  const { upload, currentFile, isUploading, cancelUpload, currentConflict, resolveConflict } = useUpload();
   const { generate } = useGenerate();
+  const { items } = useUploadContext();
 
   const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
     const content = await new Promise<string>((resolve) => {
@@ -22,7 +24,6 @@ export function useFileUpload() {
     try {
       const filePath = folderId ? `${folderId}/${file.name}` : file.name;
       
-      // Compress the file content
       const compressed = compressData(content);
       const compressedBase64 = arrayBufferToBase64(compressed);
       
@@ -30,15 +31,13 @@ export function useFileUpload() {
         path: filePath,
         content: `data:${file.type};base64,${compressedBase64}`,
         name: file.name,
-        // We cannot get the original created_at from the browser so we use the last modified date as created_at
-        // Use unix timestamp in seconds
         file_created_at: file.lastModified / 1000,
         file_modified_at: file.lastModified / 1000,
       }], true);
 
       await generate([{
         path: filePath,
-        transformations_stack_name_list: ["sentence-splitter-1024", "sentence-splitter-512", "sentence-splitter-128"] // Can be extended to support multiple transformations
+        transformations_stack_name_list: ["sentence-splitter-1024", "sentence-splitter-512", "sentence-splitter-128"]
       }]);
       
       options?.onComplete?.();
@@ -49,11 +48,11 @@ export function useFileUpload() {
 
   return {
     uploadFile,
-    progress,
     currentFile,
     isUploading,
     cancelUpload,
     currentConflict,
-    resolveConflict
+    resolveConflict,
+    items
   };
 } 

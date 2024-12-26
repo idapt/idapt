@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
 import { decompressData } from '../../file-manager/utils/compression';
-import { useUploadStore } from '@/app/stores/upload-store';
+import { useUploadContext } from '@/app/contexts/upload-context';
 
 interface FileUploadProgress {
   total: number;
@@ -22,6 +22,7 @@ interface FileUploadItem {
 
 export function useUpload() {
   const { backend } = useClientConfig();
+  const { addItems, updateItem, items, cancelAll } = useUploadContext();
   const [progress, setProgress] = useState<FileUploadProgress | null>(null);
   const [currentFile, setCurrentFile] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
@@ -50,70 +51,121 @@ export function useUpload() {
     setCurrentFile("");
   };
 
-  const upload = async (items: FileUploadItem[], skipConflictCheck: boolean = false) => {
+  const uploadWithProgress = (
+    url: string, 
+    data: any, 
+    signal: AbortSignal,
+    onProgress: (progress: number) => void
+  ): Promise<Response> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.responseType = 'json';
+
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(new Response(JSON.stringify(xhr.response), {
+            status: xhr.status,
+            headers: { 'Content-Type': 'application/json' }
+          }));
+        } else {
+          reject(new Error(`HTTP ${xhr.status} - ${xhr.statusText}`));
+        }
+      });
+
+      xhr.addEventListener('error', () => reject(new Error('Network error')));
+      xhr.addEventListener('abort', () => reject(new DOMException('The user aborted a request.', 'AbortError')));
+
+      signal.addEventListener('abort', () => xhr.abort());
+
+      xhr.send(JSON.stringify(data));
+    });
+  };
+
+  const upload = async (uploadItems: FileUploadItem[], skipConflictCheck: boolean = false) => {
     try {
       setIsUploading(true);
       abortControllerRef.current = new AbortController();
       shouldCancelAllRef.current = false;
 
-      // Add items to store
-      useUploadStore.getState().addItems(
-        items.map(item => ({
-          name: item.name,
-          path: item.path
-        }))
-      );
+      // Create context items with IDs before adding them
+      const contextItems = uploadItems.map(item => ({
+        id: crypto.randomUUID(),
+        name: item.name,
+        path: item.path,
+        status: 'pending' as const,
+        progress: 0
+      }));
 
-      // Upload files one by one
-      for (let i = 0; i < items.length; i++) {
+      // Add items to context with their IDs
+      addItems(contextItems);
+
+      for (let i = 0; i < uploadItems.length; i++) {
         if (shouldCancelAllRef.current) {
           break;
         }
 
-        const item = items[i];
-        const storeItem = useUploadStore.getState().items[i];
+        const uploadItem = uploadItems[i];
+        const contextItem = contextItems[i];
+        setCurrentFile(uploadItem.name);
         
-        useUploadStore.getState().updateItem(storeItem.id, {
+        updateItem(contextItem.id, {
           status: 'uploading',
           progress: 0
         });
 
-        // Decompress current item
-        const [header, base64Data] = item.content.split(',');
-        const decompressedBase64 = decompressData(base64Data);
-        const decompressedItem = {
-          ...item,
-          content: `${header},${decompressedBase64}`
-        };
+        try {
+          // Decompress current item
+          const [header, base64Data] = uploadItem.content.split(',');
+          const decompressedBase64 = decompressData(base64Data);
+          const decompressedItem = {
+            ...uploadItem,
+            content: `${header},${decompressedBase64}`
+          };
 
-        const response = await fetch(`${backend}/api/file-manager/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: [decompressedItem] }),
-          signal: abortControllerRef.current.signal
-        });
+          const response = await uploadWithProgress(
+            `${backend}/api/file-manager/upload`,
+            { items: [decompressedItem] },
+            abortControllerRef.current.signal,
+            (progress) => {
+              updateItem(contextItem.id, { 
+                status: 'uploading',
+                progress 
+              });
+            }
+          );
 
-        if (!response.ok) {
-          useUploadStore.getState().updateItem(storeItem.id, {
+          if (!response.ok) {
+            throw new Error(`Failed to upload ${uploadItem.name}`);
+          }
+
+          updateItem(contextItem.id, {
+            status: 'completed',
+            progress: 100
+          });
+
+        } catch (error) {
+          updateItem(contextItem.id, {
             status: 'error',
             progress: 0
           });
-          throw new Error(`Failed to upload ${item.name}`);
+          
+          if (error instanceof DOMException && error.name === 'AbortError') {
+            return;
+          }
+          throw error;
         }
-
-        useUploadStore.getState().updateItem(storeItem.id, {
-          status: 'completed',
-          progress: 100
-        });
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Upload cancelled');
-        useUploadStore.getState().cleanupPendingUploads();
-        return;
-      }
       console.error('Upload error:', error);
-      useUploadStore.getState().cleanupPendingUploads();
       throw error;
     } finally {
       setIsUploading(false);

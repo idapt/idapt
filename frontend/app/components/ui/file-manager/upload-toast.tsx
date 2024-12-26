@@ -1,18 +1,28 @@
 import { X, XCircle, Loader2, CheckCircle2, AlertCircle, Minimize2, Maximize2 } from "lucide-react";
 import { Button } from "../button";
 import { Progress } from "../progress";
-import { useUploadStore } from "@/app/stores/upload-store";
-import type { UploadItem } from "@/app/stores/upload-store";
-import { useState } from "react";
+import { useUploadContext } from "@/app/contexts/upload-context";
+import type { UploadItem } from "@/app/contexts/upload-context";
+import { useState, useRef, useEffect } from "react";
 
 export function UploadToast() {
-  const { items, totalItems, removeItem, cancelAll } = useUploadStore();
+  const { items, totalItems, removeItem, cancelAll } = useUploadContext();
   const [isMinimized, setIsMinimized] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   
   const activeUploads = items.filter(item => item.status !== 'completed' && item.status !== 'error');
   const completedUploads = items.filter(item => item.status === 'completed');
   
-  if (items.length === 0) return null;
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [items.length]);
+
+  // Hide toast if no active uploads and all items are completed
+  if (items.length === 0 || (activeUploads.length === 0 && completedUploads.length === totalItems)) {
+    return null;
+  }
 
   // Calculate global progress
   const globalProgress = Math.round(
@@ -44,7 +54,7 @@ export function UploadToast() {
       </div>
 
       {!isMinimized && (
-        <div className="max-h-[240px] overflow-y-auto">
+        <div ref={scrollRef} className="max-h-[240px] overflow-y-auto">
           {activeUploads.map((item) => (
             <UploadItem
               key={item.id}
