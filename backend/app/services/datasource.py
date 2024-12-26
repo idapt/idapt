@@ -19,7 +19,7 @@ from app.settings.manager import AppSettingsManager
 import logging
 from typing import List, Optional, Dict, Tuple
 import re
-from sqlalchemy import make_url
+from sqlalchemy import make_url, text
 
 
 app_settings = AppSettingsManager.get_instance().settings
@@ -157,16 +157,27 @@ class DatasourceService:
     def _delete_llama_index_components(self, datasource_identifier: str):
         """Delete all llama-index components for a datasource"""
         try:
+            # Drop the tables if they exist
+            with self.database_service.get_session() as session:
+                # Drop vector store table
+                session.execute(text(f"DROP TABLE IF EXISTS {datasource_identifier}_embeddings"))
+                
+                # Drop doc store table
+                session.execute(text(f"DROP TABLE IF EXISTS {datasource_identifier}_docstore"))
+                
+                # Drop index store table
+                session.execute(text(f"DROP TABLE IF EXISTS {datasource_identifier}_index"))
+                
+                session.commit()
+            
+            # Clean up the in-memory references
             if datasource_identifier in self._vector_stores:
-                self._vector_stores[datasource_identifier].delete_index()
                 del self._vector_stores[datasource_identifier]
                 
             if datasource_identifier in self._doc_stores:
-                self._doc_stores[datasource_identifier].delete_index()
                 del self._doc_stores[datasource_identifier]
                 
             if datasource_identifier in self._index_stores:
-                self._index_stores[datasource_identifier].delete_index()
                 del self._index_stores[datasource_identifier]
                 
             if datasource_identifier in self._indices:
@@ -174,6 +185,7 @@ class DatasourceService:
                 
             if datasource_identifier in self._tools:
                 del self._tools[datasource_identifier]
+                
         except Exception as e:
             self.logger.error(f"Error deleting llama-index components: {str(e)}")
             raise

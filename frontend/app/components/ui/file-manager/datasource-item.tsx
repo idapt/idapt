@@ -70,6 +70,33 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
     }
   };
 
+  const handleDelete = async () => {
+    if (confirm(`Are you sure you want to delete datasource "${datasource.name}"?`)) {
+      try {
+        // First encode to base64
+        const base64 = btoa(datasource.identifier);
+        // Then make it URL safe by replacing characters
+        const encodedIdentifier = base64
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_');
+        
+        const response = await fetch(`${backend}/api/datasources/${encodedIdentifier}`, {
+          method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to delete datasource');
+        }
+        
+        onRefresh?.();
+      } catch (error) {
+        console.error('Delete failed:', error);
+        alert(error instanceof Error ? error.message : 'Failed to delete datasource');
+      }
+    }
+  };
+
   return (
     <>
       <div 
@@ -102,25 +129,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
             </DropdownMenuItem>
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md text-red-600 flex items-center"
-              onSelect={async () => {
-                if (confirm(`Are you sure you want to delete datasource "${datasource.name}"?`)) {
-                  try {
-                    const encodedName = encodePathSafe(datasource.name);
-                    const response = await fetch(`${backend}/api/datasources/${encodedName}`, {
-                      method: 'DELETE'
-                    });
-                    
-                    if (!response.ok) {
-                      throw new Error('Failed to delete datasource');
-                    }
-                    
-                    onRefresh?.();
-                  } catch (error) {
-                    console.error('Delete failed:', error);
-                    alert('Failed to delete datasource');
-                  }
-                }
-              }}
+              onSelect={handleDelete}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               <span>Delete</span>
