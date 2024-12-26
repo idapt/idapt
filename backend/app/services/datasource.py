@@ -253,7 +253,7 @@ class DatasourceService:
                 index=index,
                 similarity_top_k=int(app_settings.top_k)
             )
-            retriever = AutoMergingRetriever(
+            retriever = AutoMergingRetriever( # Still use this even if we are not using hierarchical node parser.
                 retriever,
                 storage_context=index.storage_context,
                 verbose=True

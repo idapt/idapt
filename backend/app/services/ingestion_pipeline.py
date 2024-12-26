@@ -19,6 +19,7 @@ from llama_index.core.extractors import (
 from app.services.database import DatabaseService
 from app.services.db_file import DBFileService
 from app.services.datasource import DatasourceService
+from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
 
 
 import nest_asyncio
@@ -44,57 +45,87 @@ class IngestionPipelineService:
         self.datasource_service = datasource_service
         self.pipelines = {}
 
-    # See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
-    # List of avaliable transformations stacks with their name and transformations
-    TRANSFORMATIONS_STACKS = {
-        "default": [
-            SentenceSplitter(
-                chunk_size=512,
-                chunk_overlap=128,
-            ),
-            Settings.embed_model,
-        ],
-        "hierarchical": [
-            HierarchicalNodeParser.from_defaults(
-                include_metadata=True,
-                chunk_sizes=[512, 256, 64], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum size, we also chunk it into The smallest sentences possible to capture as much atomic meaning of the sentence as possible.
-                chunk_overlap=0
-            ),
-            # Embedding is present at ingestion pipeline level
-        ],
-        "titles": [
-            TitleExtractor(
-                nodes=5,
-            ),
-            Settings.embed_model,
-        ],
-        "questions": [
-            QuestionsAnsweredExtractor(
-                questions=3,
-            ),
-            Settings.embed_model,
-        ],
-        "summary": [
-            SummaryExtractor(
-                summaries=["prev", "self"],
-            ),
-            Settings.embed_model,
-        ],
-        "keywords": [
-            KeywordExtractor(
-                keywords=10,
-            ),
-            Settings.embed_model,
-        ],
-        #"entities": [
-        #    EntityExtractor(prediction_threshold=0.5),
-        #],
-        #"zettlekasten": [
-        #    ZettlekastenExtractor(
-        #        similar_notes_top_k=5
-        #    ),
-        #],
-    }
+        self.TRANSFORMATIONS_STACKS = {
+        # See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
+        # List of avaliable transformations stacks with their name and transformations
+            "default": [
+                SentenceSplitter(
+                    chunk_size=512,
+                    chunk_overlap=64,
+                ),
+            ],
+            #"hierarchical": [ # TODO Fix the bug where a relation with a non existing doc id is created and creates issues when querying the index
+            #    HierarchicalNodeParser.from_defaults(
+            #        include_metadata=True,
+            #        chunk_sizes=[1024, 512, 256, 128], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum #size, we also chunk it into The smallest sentences possible to capture as much atomic meaning of the sentence as possible.
+            #        # When text chunks are too small like under 128 tokens, the embedding model may return null embeddings and we want to avoid that because it break the search as they can come out on top of the search results
+            #        chunk_overlap=0
+            #    ),
+            #    # Embedding is present at ingestion pipeline level
+            #],
+            "titles": [
+                TitleExtractor(
+                    nodes=5,
+                ),
+            ],
+            "questions": [
+                QuestionsAnsweredExtractor(
+                    questions=3,
+                ),
+            ],
+            "summary": [
+                SummaryExtractor(
+                    summaries=["prev", "self"],
+                ),
+            ],
+            "keywords": [
+                KeywordExtractor(
+                    keywords=10,
+                ),
+            ],
+            # NOTE: Current sentence splitter stacks are not linking each node like the hierarchical node parser does, so if multiple are used they are likely to generate duplicates nodes at retreival time. Only use one at a time to avoid this. # TODO Fix hierarchical node parser
+            "sentence-splitter-2048": [
+                SentenceSplitter(
+                    chunk_size=2048,
+                    chunk_overlap=256,
+                ),
+            ],
+            "sentence-splitter-1024": [
+                SentenceSplitter(
+                    chunk_size=1024,
+                    chunk_overlap=128,
+                ),
+            ],
+            "sentence-splitter-512": [
+                SentenceSplitter(
+                    chunk_size=512,
+                    chunk_overlap=64,
+                ),
+            ],
+            "sentence-splitter-256": [
+                SentenceSplitter(
+                    chunk_size=256,
+                    chunk_overlap=0,
+                ),
+            ],
+            "sentence-splitter-128": [
+                SentenceSplitter(
+                    chunk_size=128,
+                    chunk_overlap=0,
+                ),
+            ],
+            #"entities": [
+            #    EntityExtractor(prediction_threshold=0.5),
+            #],
+            #"zettlekasten": [
+            #    ZettlekastenExtractor(
+            #        similar_notes_top_k=5
+            #    ),
+            #],
+        }
+
+        #self.cached_embed_model_provider = None
+        self.cached_embed_model = None
 
     # At this point the files are grouped by ingestion stack
     async def process_files(self, full_file_paths: List[str], datasource_identifier: str, transformations_stack_name_list: List[str] = ["default"]):
@@ -151,7 +182,8 @@ class IngestionPipelineService:
                 name=f"ingestion_pipeline_{datasource_identifier}",
                 docstore=doc_store,
                 vector_store=vector_store,
-                docstore_strategy=DocstoreStrategy.DUPLICATES_ONLY, # Otherwise it dont work with the hierarchical node parser because it always upserts all previous nodes for this document
+                docstore_strategy=DocstoreStrategy.UPSERTS,
+                #docstore_strategy=DocstoreStrategy.DUPLICATES_ONLY, # Otherwise it dont work with the hierarchical node parser because it always upserts all previous nodes for this document
                 # TODO Make a hierarchical node parser that works with the ingestion pipeline
                 # Could be set to UPSERTS to allow the ingestion pipeline to resume from where it left off if it crashes
                 # But this mess up the stack if there is more than one ingestion transformation stack
@@ -172,6 +204,19 @@ class IngestionPipelineService:
                 
                 # Get the transformations stack
                 transformations = self.TRANSFORMATIONS_STACKS[transformations_stack_name]
+
+                # If the current embed model match the cached embed model, use the cached embed model
+                # TODO Add model name check also but also TODO support embedding change for datasources
+                #if self.cached_embed_model_provider != app_settings.embedding_model_provider:
+                # Update the llama index settings to use the new embed model so that the Settings.embed_model is updated
+                # TODO Add a way to only update on each when app settings are changed, complicated as this is run in a child thread and appsettings updates are not done here.
+                # If the cached embed model is not set, set it
+                if not self.cached_embed_model:
+                    from app.settings.manager import AppSettingsManager
+                    app_settings = AppSettingsManager.get_instance().settings
+                    update_llama_index_settings_from_app_settings(app_settings)
+                    self.cached_embed_model = Settings.embed_model
+            
 
                 # Set the transformations stack name for the datasource_documents
                 for doc in documents:
@@ -204,37 +249,38 @@ class IngestionPipelineService:
                             session.commit()
 
                 # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
-                if transformations_stack_name == "hierarchical":
-                    # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
-                    hierarchical_nodes = transformations[0].get_nodes_from_documents(
-                        documents, 
-                        show_progress=True
-                    )
-                    
-                    # Set the transformations for the ingestion pipeline
-                    ingestion_pipeline.transformations = [Settings.embed_model] # Only keep the embedding as the nodes are parsed with the HierarchicalNodeParser
-                    
-                    # Run the ingestion pipeline on the resulting nodes to add the nodes to the docstore and vector store
-                    nodes = await ingestion_pipeline.arun(
-                        nodes=hierarchical_nodes,
-                        show_progress=True,
-                        #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
-                    )
-                    # No need to insert nodes into index as we use a vector store
+                #if transformations_stack_name == "hierarchical":
+                #    # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
+                #    hierarchical_nodes = transformations[0].get_nodes_from_documents(
+                #        documents, 
+                #        show_progress=True
+                #    )
+                #    
+                #    # Set the transformations for the ingestion pipeline
+                #    ingestion_pipeline.transformations = [self.cached_embed_model] # Only keep the embedding as the nodes are parsed with the HierarchicalNodeParser
+                #    
+                #    # Run the ingestion pipeline on the resulting nodes to add the nodes to the docstore and vector store
+                #    nodes = await ingestion_pipeline.arun(
+                #        nodes=hierarchical_nodes,
+                #        show_progress=True,
+                #        #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
+                #    )
+                #    # No need to insert nodes into index as we use a vector store
 
 
-                else:
-                    self.logger.info(f"Running ingestion pipeline with transformations stack {transformations_stack_name}")
-                    # This will add the documents to the vector store and docstore in the expected llama index way
-
-                    # Set the transformations for the ingestion pipeline
-                    ingestion_pipeline.transformations = transformations
-                    nodes = await ingestion_pipeline.arun(
-                        documents=documents,
-                        show_progress=True,
-                        #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
-                    )
-                    # No need to insert nodes into index as we use a vector store
+                #else:
+                self.logger.info(f"Running ingestion pipeline with transformations stack {transformations_stack_name}")
+                # This will add the documents to the vector store and docstore in the expected llama index way
+                # Add the embed model to the transformations stack as we always want to embed the results of the processing stacks for search
+                transformations.append(self.cached_embed_model)
+                # Set the transformations for the ingestion pipeline
+                ingestion_pipeline.transformations = transformations
+                nodes = await ingestion_pipeline.arun(
+                    documents=documents,
+                    show_progress=True,
+                    #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
+                )
+                # No need to insert nodes into index as we use a vector store
 
             # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
             #ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")

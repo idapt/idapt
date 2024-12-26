@@ -38,7 +38,7 @@ export function useFileUpload() {
 
       await generate([{
         path: filePath,
-        transformations_stack_name_list: ["hierarchical"] // Can be extended to support multiple transformations
+        transformations_stack_name_list: ["sentence-splitter-1024", "sentence-splitter-512", "sentence-splitter-128"] // Can be extended to support multiple transformations
       }]);
       
       options?.onComplete?.();
