@@ -193,7 +193,7 @@ class DBFileService:
 
     def get_folder_files_recursive(self, session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
         """Get all files in a folder and its subfolders recursively"""
-
+        
         self.logger.error(f"Full path recursive: {full_path}")
 
         # Get folder id from path
@@ -207,7 +207,9 @@ class DBFileService:
         
         # Recursively get files from subfolders
         for subfolder in subfolders:
-            files.extend(self.get_folder_files_recursive(session, subfolder.path))
+            subfolder_files, subfolder_folders = self.get_folder_files_recursive(session, subfolder.path)
+            files.extend(subfolder_files)
+            subfolders.extend(subfolder_folders)
         
         return files, subfolders
 
