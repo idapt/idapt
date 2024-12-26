@@ -224,7 +224,6 @@ class FileManagerService:
             raise
 
     async def delete_folder(self, session: Session, full_path: str):
-        
         try:
             self.logger.error(f"Full path to delete: {full_path}")
 
@@ -235,16 +234,22 @@ class FileManagerService:
             # Get all files in folder and subfolders recursively
             files, _ = self.db_file_service.get_folder_files_recursive(session, full_path)
             
-            # Delete all files in the folder and subfolders
+            # First delete from filesystem and LlamaIndex
             for file in files:
-                # Use our delete_file method to delete from filesystem and LlamaIndex
-                await self.delete_file(session, file.path)
+                try:
+                    await self.file_system.delete_file(file.path)
+                    self.llama_index.delete_file(file.path)
+                except Exception as e:
+                    self.logger.warning(f"Error deleting file {file.path}: {str(e)}")
+                    # Continue with other files even if one fails
+                    continue
 
-            # Delete folder and all subfolders from filesystem
-            await self.file_system.delete_folder(folder.path)
-
-            # Delete folder from database (will cascade delete files and subfolders)
-            self.db_file_service.delete_folder(session, full_path)
+            # Delete folder from filesystem
+            await self.file_system.delete_folder(full_path)
+            
+            # Finally delete everything from database in one transaction
+            if not self.db_file_service.delete_folder(session, full_path):
+                raise HTTPException(status_code=500, detail="Failed to delete folder from database")
 
         except Exception as e:
             self.logger.error(f"Error deleting folder: {str(e)}")

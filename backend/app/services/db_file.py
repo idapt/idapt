@@ -147,7 +147,8 @@ class DBFileService:
             try:
                 # Delete all files in this folder and subfolders recursively
                 files, _ = self.get_folder_files_recursive(session, full_path)
-                # Delete all files in this folder
+                
+                # Delete all files in a single transaction
                 for file in files:
                     session.delete(file)
                 
@@ -156,6 +157,8 @@ class DBFileService:
                 
                 # Delete the main folder
                 session.delete(folder)
+                
+                # Commit everything at once
                 session.commit()
                 return True
             except Exception as e:
