@@ -19,7 +19,8 @@ export function useFileUpload() {
         name: file.name,
         path: folderId ? `${folderId}/${file.name}` : file.name,
         status: 'pending' as const,
-        progress: 0
+        progress: 0,
+        _type: 'upload'
       };
 
       // Read file content

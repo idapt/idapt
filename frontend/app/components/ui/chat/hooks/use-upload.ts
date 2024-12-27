@@ -93,7 +93,8 @@ export function useUpload() {
         name: item.name,
         path: item.path,
         status: 'pending' as const,
-        progress: 0
+        progress: 0,
+        _type: 'upload' as const
       }));
 
       // Add all items to context immediately to show pending state

@@ -4,78 +4,48 @@ import { Progress } from "../progress";
 import { useUploadContext } from "@/app/contexts/upload-context";
 import type { UploadItem } from "@/app/contexts/upload-context";
 import { useState, useRef, useEffect } from "react";
+import { BaseToast } from "./base-toast";
 
 export function UploadToast() {
-  const { items, totalItems, removeItem, cancelAll, resetAll } = useUploadContext();
+  const { items, totalItems, removeItem, cancelAll } = useUploadContext();
   const [isMinimized, setIsMinimized] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
   
-  const activeUploads = items.filter(item => item.status !== 'completed' && item.status !== 'error');
-  const completedUploads = items.filter(item => item.status === 'completed');
-  
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
-    }
-  }, [items.length]);
+  const activeUploads = items.filter(item => 
+    (item.status === 'uploading' || item.status === 'pending') && 
+    item._type === 'upload'
+  );
+  const completedUploads = items.filter(item => 
+    item.status === 'completed' && item._type === 'upload'
+  );
 
-  // Hide toast if no active uploads and all items are completed
-  if (items.length === 0 || (activeUploads.length === 0 && completedUploads.length === totalItems)) {
-    // Reset the total items when all uploads are complete
-    if (completedUploads.length === totalItems && totalItems > 0) {
-      setTimeout(resetAll, 1000); // Give a small delay to show completion
-    }
+  if (activeUploads.length === 0 && completedUploads.length === 0) {
     return null;
   }
 
-  // Calculate global progress
-  const globalProgress = Math.round(
+  const progress = Math.round(
     (completedUploads.length / totalItems) * 100
   );
 
   return (
-    <div className="fixed bottom-4 right-4 w-96 bg-white rounded-lg shadow-lg">
-      <div className="p-3 border-b flex justify-between items-center">
-        <span className="text-sm font-medium">File Uploads</span>
-        <div className="flex gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6" 
-            onClick={() => setIsMinimized(!isMinimized)}
-          >
-            {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-6 w-6" 
-            onClick={cancelAll}
-          >
-            <XCircle className="h-4 w-4" />
-          </Button>
-        </div>
+    <BaseToast
+      title="File Uploads"
+      progress={progress}
+      total={totalItems}
+      completed={completedUploads.length}
+      isMinimized={isMinimized}
+      onMinimize={() => setIsMinimized(!isMinimized)}
+      onCancel={cancelAll}
+    >
+      <div className="max-h-[240px] overflow-y-auto">
+        {activeUploads.map((item) => (
+          <UploadItem
+            key={item.id}
+            item={item}
+            onCancel={() => removeItem(item.id)}
+          />
+        ))}
       </div>
-
-      {!isMinimized && (
-        <div ref={scrollRef} className="max-h-[240px] overflow-y-auto">
-          {activeUploads.map((item) => (
-            <UploadItem
-              key={item.id}
-              item={item}
-              onCancel={() => removeItem(item.id)}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="p-3 border-t bg-gray-50">
-        <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
-          <span>{globalProgress}% ({completedUploads.length}/{totalItems})</span>
-        </div>
-        <Progress value={globalProgress} className="h-1" />
-      </div>
-    </div>
+    </BaseToast>
   );
 }
 
@@ -87,6 +57,7 @@ function UploadItem({ item, onCancel }: { item: UploadItem; onCancel: () => void
           {item.status === 'uploading' && <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />}
           {item.status === 'completed' && <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />}
           {item.status === 'error' && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
+          {item.status === 'deleting' && <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />}
           <span className="text-xs truncate">{item.name}</span>
         </div>
         {item.status === 'uploading' && (

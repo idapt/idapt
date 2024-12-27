@@ -11,8 +11,8 @@ import {
 import { useState } from "react";
 import { useClientConfig } from "../chat/hooks/use-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
-import { Input } from "../input";
 import { encodePathSafe } from "@/app/components/ui/file-manager/utils/path-encoding";
+import { useDeletionToast } from "@/app/components/ui/file-manager/hooks/use-deletion-toast";
 
 interface FileItemProps {
   id: number;
@@ -45,6 +45,7 @@ export function FileItem({
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(name);
   const [showDetails, setShowDetails] = useState(false);
+  const { startDeletion, completeDeletion, failDeletion } = useDeletionToast();
 
   const handleClick = (e: React.MouseEvent) => {
     // Check if the click came from the dropdown menu or its children
@@ -85,26 +86,29 @@ export function FileItem({
     if (!path) return;
     
     if (confirm(`Are you sure you want to delete ${name}?`)) {
-        try {
-            const encodedPath = encodePathSafe(path);
-            const response = await fetch(`${backend}/api/file-manager/${type}/${encodedPath}`, {
-                method: 'DELETE'
-            });
+      try {
+        const deletionId = startDeletion(name, path);
+        const encodedPath = encodePathSafe(path);
+        const response = await fetch(`${backend}/api/file-manager/${type}/${encodedPath}`, {
+          method: 'DELETE'
+        });
 
-            if (!response.ok) {
-                const error = await response.json();
-                if (response.status === 409) {
-                    alert('This file is currently being processed and cannot be deleted. Please try again once processing is complete.');
-                    return;
-                }
-                throw new Error(error.detail || 'Delete failed');
-            }
-
-            onRefresh?.();
-        } catch (error) {
-            console.error('Delete failed:', error);
-            alert(error instanceof Error ? error.message : 'Failed to delete item');
+        if (!response.ok) {
+          const error = await response.json();
+          if (response.status === 409) {
+            alert('This file is currently being processed and cannot be deleted. Please try again once processing is complete.');
+            failDeletion(deletionId);
+            return;
+          }
+          throw new Error(error.detail || 'Delete failed');
         }
+
+        completeDeletion(deletionId);
+        onRefresh?.();
+      } catch (error) {
+        console.error('Delete failed:', error);
+        alert(error instanceof Error ? error.message : 'Failed to delete item');
+      }
     }
   };
 

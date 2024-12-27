@@ -6,8 +6,9 @@ export interface UploadItem {
   id: string;
   name: string;
   path: string;
-  status: 'pending' | 'uploading' | 'completed' | 'error';
+  status: 'pending' | 'uploading' | 'completed' | 'error' | 'deleting';
   progress: number;
+  _type: 'upload' | 'deletion';
 }
 
 interface UploadContextType {

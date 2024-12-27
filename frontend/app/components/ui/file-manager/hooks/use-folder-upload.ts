@@ -23,7 +23,8 @@ export function useFolderUpload() {
         name: file.name,
         path: targetPath ? `${targetPath}/${file.webkitRelativePath}` : file.webkitRelativePath,
         status: 'pending' as const,
-        progress: 0
+        progress: 0,
+        _type: 'upload'
       }));
 
       // Prepare upload items
