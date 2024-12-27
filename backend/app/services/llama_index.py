@@ -40,7 +40,7 @@ class LlamaIndexService:
                         # Delete the ref_doc_id from the docstore
                         doc_store.delete_ref_doc(ref_doc_id)
                     except Exception as e:
-                        self.logger.error(f"Failed to delete {ref_doc_id} from vector store and docstore probably because it was already deleted or does not exist in them : {str(e)}")
+                        self.logger.warning(f"Failed to delete {ref_doc_id} from vector store and docstore probably because it was already deleted or does not exist in them : {str(e)}")
                     # In any case delete the ref_doc_id from the file
                     finally:
                         self.logger.info(f"Deleting {ref_doc_id} relation from file {file.path}")

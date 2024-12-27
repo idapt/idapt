@@ -84,6 +84,15 @@ class GenerateServiceWorker:
                         ).order_by(
                             File.uploaded_at.asc()
                         ).first()
+
+                        # Move the processed stacks to the stacks_to_process column as we will delete all already processed stacks from llama index
+                        if oldest_processing_file:
+                            processed_stacks = json.loads(oldest_processing_file.processed_stacks)
+                            stacks_to_process = json.loads(oldest_processing_file.stacks_to_process)
+                            stacks_to_process.extend(processed_stacks)
+                            oldest_processing_file.stacks_to_process = json.dumps(stacks_to_process)
+                            oldest_processing_file.processed_stacks = json.dumps([])
+                            session.commit()
                         
                         if not oldest_processing_file:
                             break
