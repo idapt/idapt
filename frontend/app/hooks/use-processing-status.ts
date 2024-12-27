@@ -42,7 +42,6 @@ export function useProcessingStatus() {
       }
     };
 
-    checkStatus();
     const interval = setInterval(checkStatus, 1000);
 
     return () => {
