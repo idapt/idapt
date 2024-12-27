@@ -50,16 +50,6 @@ export function useFolderUpload() {
       // Upload files
       await upload(uploadItems);
       
-      // Trigger file processing
-      if (uploadItems.length > 0) {
-        const generateFiles = uploadItems.map(item => ({
-          path: item.path,
-          transformations_stack_name_list: ["sentence-splitter-1024", "sentence-splitter-512", "sentence-splitter-128"]
-        }));
-
-        await generate(generateFiles);
-      }
-      
       options?.onComplete?.();
     } catch (error) {
       options?.onError?.(error instanceof Error ? error.message : 'Upload failed');

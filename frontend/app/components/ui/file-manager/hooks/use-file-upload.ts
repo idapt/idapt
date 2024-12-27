@@ -10,7 +10,6 @@ interface FileUploadOptions {
 
 export function useFileUpload() {
   const { upload, currentFile, isUploading, cancelUpload } = useUpload();
-  const { generate } = useGenerate();
   const { addItems } = useUploadContext();
 
   const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
@@ -40,12 +39,6 @@ export function useFileUpload() {
         name: file.name,
         file_created_at: file.lastModified / 1000,
         file_modified_at: file.lastModified / 1000,
-      }]);
-
-      // Trigger file processing
-      await generate([{
-        path: contextItem.path,
-        transformations_stack_name_list: ["sentence-splitter-1024", "sentence-splitter-512", "sentence-splitter-128"]
       }]);
       
       options?.onComplete?.();
