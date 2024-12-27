@@ -181,14 +181,20 @@ class DatasourceService:
             # Drop the tables if they exist
             with self.database_service.get_session() as session:
                 # Drop vector store table
-                session.execute(text(f"DROP TABLE IF EXISTS {datasource_identifier}_embeddings"))
-                
+                query = text('DROP TABLE IF EXISTS public.data_{}_{}'.format(
+                    datasource_identifier, "embeddings"))
+                session.execute(query)
+
                 # Drop doc store table
-                session.execute(text(f"DROP TABLE IF EXISTS {datasource_identifier}_docstore"))
-                
+                query = text('DROP TABLE IF EXISTS public.data_{}_{}'.format(
+                    datasource_identifier, "docstore"))
+                session.execute(query)
+
                 # Drop index store table
-                session.execute(text(f"DROP TABLE IF EXISTS {datasource_identifier}_index"))
-                
+                query = text('DROP TABLE IF EXISTS public.data_{}_{}'.format(
+                    datasource_identifier, "index"))
+                session.execute(query)
+                                
                 session.commit()
             
             # Clean up the in-memory references
