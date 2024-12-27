@@ -34,10 +34,10 @@ export function useFileUpload() {
           file_modified_at: file.lastModified / 1000,
         }], 
         [toastId],
-        (id, progress) => updateUpload(id, progress)
+        (id, progress) => updateUpload(id, progress),
+        (id) => completeUpload(id)
       );
       
-      completeUpload(toastId);
       options?.onComplete?.();
     } catch (error) {
       if (toastId) {

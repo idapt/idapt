@@ -16,4 +16,10 @@ export interface DeletionToastItem extends BaseToastItem {
   type: 'deletion';
 }
 
-export type ToastItem = UploadToastItem | DeletionToastItem; 
+export interface ProcessingToastItem extends BaseToastItem {
+  type: 'processing';
+  total: number;
+  processed: number;
+}
+
+export type ToastItem = UploadToastItem | DeletionToastItem | ProcessingToastItem; 

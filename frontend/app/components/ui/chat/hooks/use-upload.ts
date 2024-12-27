@@ -12,65 +12,16 @@ interface FileUploadItem {
 
 export function useUpload() {
   const { backend } = useClientConfig();
-  const [currentFile, setCurrentFile] = useState<string>("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [currentConflict, setCurrentConflict] = useState<FileConflict | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const abortControllerRef = useRef<AbortController>();
   const shouldCancelAllRef = useRef(false);
-
-  useEffect(() => {
-    const handleCancelAll = () => {
-      shouldCancelAllRef.current = true;
-      abortControllerRef.current?.abort();
-    };
-
-    window.addEventListener('cancelAllOperations', handleCancelAll);
-    return () => window.removeEventListener('cancelAllOperations', handleCancelAll);
-  }, []);
-
-  const uploadWithProgress = (
-    url: string, 
-    data: any, 
-    signal: AbortSignal,
-    onProgress: (progress: number) => void
-  ): Promise<Response> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', url);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.responseType = 'json';
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          onProgress(progress);
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(new Response(JSON.stringify(xhr.response), {
-            status: xhr.status,
-            headers: { 'Content-Type': 'application/json' }
-          }));
-        } else {
-          reject(new Error(`HTTP ${xhr.status} - ${xhr.statusText}`));
-        }
-      });
-
-      xhr.addEventListener('error', () => reject(new Error('Network error')));
-      xhr.addEventListener('abort', () => reject(new DOMException('The user aborted a request.', 'AbortError')));
-
-      signal.addEventListener('abort', () => xhr.abort());
-
-      xhr.send(JSON.stringify(data));
-    });
-  };
+  const [currentFile, setCurrentFile] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   const upload = async (
     uploadItems: FileUploadItem[], 
     toastIds: string[], 
-    onProgress: (id: string, progress: number) => void
+    onProgress: (id: string, progress: number) => void,
+    onComplete: (id: string) => void
   ) => {
     try {
       setIsUploading(true);
@@ -97,6 +48,9 @@ export function useUpload() {
           if (!response.ok) {
             throw new Error(`Failed to upload ${uploadItem.name}`);
           }
+          
+          // Mark file as completed after successful upload
+          onComplete(toastId);
         } catch (error) {
           if (error instanceof DOMException && error.name === 'AbortError') {
             return;
@@ -116,8 +70,47 @@ export function useUpload() {
     isUploading,
     cancelUpload: () => {
       abortControllerRef.current?.abort();
+      shouldCancelAllRef.current = true;
       setIsUploading(false);
       setCurrentFile("");
     }
   };
 }
+
+const uploadWithProgress = (
+  url: string, 
+  data: any, 
+  signal: AbortSignal,
+  onProgress: (progress: number) => void
+): Promise<Response> => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable) {
+        const progress = Math.round((event.loaded / event.total) * 100);
+        onProgress(progress);
+      }
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(new Response(xhr.response, {
+          status: xhr.status,
+          headers: { 'Content-Type': 'application/json' }
+        }));
+      } else {
+        reject(new Error(`HTTP ${xhr.status}`));
+      }
+    });
+
+    xhr.addEventListener('error', () => reject(new Error('Network error')));
+    xhr.addEventListener('abort', () => reject(new DOMException('The user aborted a request.', 'AbortError')));
+
+    signal.addEventListener('abort', () => xhr.abort());
+
+    xhr.send(JSON.stringify(data));
+  });
+};

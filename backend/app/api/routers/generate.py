@@ -62,7 +62,7 @@ async def generate(
         logger.error(f"Error in generate endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@r.get("/generate/status")
+@r.get("/status")
 async def get_generation_status(
     generate_service: GenerateService = Depends(get_generate_service)
 ):

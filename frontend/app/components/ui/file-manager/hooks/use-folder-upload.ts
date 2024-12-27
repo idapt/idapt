@@ -44,7 +44,11 @@ export function useFolderUpload() {
       }));
 
       // Upload files
-      await upload(uploadItems, toastIds, updateUpload);
+        await upload(uploadItems,
+        toastIds,
+        (id, progress) => updateUpload(id, progress),
+        (id) => completeUpload(id)
+      );
       
       // Mark all uploads as complete
       toastIds.forEach(id => completeUpload(id));

@@ -24,27 +24,28 @@ export function UploadToast() {
 
   // Auto-hide and reset when all uploads are complete
   useEffect(() => {
-    if (activeUploads.length === 0 && completedUploads.length > 0) {
+    if (uploadItems.length > 0 && activeUploads.length === 0) {
       const timer = setTimeout(() => {
         resetAll();
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [activeUploads.length, completedUploads.length, resetAll]);
+  }, [uploadItems.length, activeUploads.length, resetAll]);
 
-  if (activeUploads.length === 0 && completedUploads.length === 0) {
+  if (uploadItems.length === 0) {
     return null;
   }
 
-  const progress = Math.round(
-    (completedUploads.length / totalItems) * 100
-  );
+  // Calculate total progress based on all items including completed ones
+  const totalProgress = uploadItems.reduce((acc, item) => acc + item.progress, 0);
+  const progress = Math.round(totalProgress / uploadItems.length);
+  const total = uploadItems.length;
 
   return (
     <BaseToast
       title="File Uploads"
       progress={progress}
-      total={totalItems}
+      total={total}
       completed={completedUploads.length}
       isMinimized={isMinimized}
       onMinimize={() => setIsMinimized(!isMinimized)}
