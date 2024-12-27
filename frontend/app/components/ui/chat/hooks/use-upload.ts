@@ -1,16 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
-import { decompressData } from '../../file-manager/utils/compression';
 import { useUploadContext } from '@/app/contexts/upload-context';
-
-interface FileUploadProgress {
-  total: number;
-  current: number;
-  processed_items: string[];
-  status: 'processing' | 'completed' | 'error';
-  error?: string;
-}
 
 interface FileUploadItem {
   path: string;
@@ -22,8 +13,7 @@ interface FileUploadItem {
 
 export function useUpload() {
   const { backend } = useClientConfig();
-  const { addItems, updateItem, items, cancelAll } = useUploadContext();
-  const [progress, setProgress] = useState<FileUploadProgress | null>(null);
+  const { addItems, updateItem } = useUploadContext();
   const [currentFile, setCurrentFile] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [currentConflict, setCurrentConflict] = useState<FileConflict | null>(null);
@@ -47,7 +37,6 @@ export function useUpload() {
   const cancelUpload = () => {
     abortControllerRef.current?.abort();
     setIsUploading(false);
-    setProgress(null);
     setCurrentFile("");
   };
 
@@ -90,13 +79,15 @@ export function useUpload() {
     });
   };
 
+  // Upload a list of files, server side function
   const upload = async (uploadItems: FileUploadItem[], skipConflictCheck: boolean = false) => {
     try {
+
       setIsUploading(true);
       abortControllerRef.current = new AbortController();
       shouldCancelAllRef.current = false;
 
-      // Create context items with IDs before adding them
+      // Create context items with IDs before starting upload
       const contextItems = uploadItems.map(item => ({
         id: crypto.randomUUID(),
         name: item.name,
@@ -105,35 +96,33 @@ export function useUpload() {
         progress: 0
       }));
 
-      // Add items to context with their IDs
+      // Add all items to context immediately to show pending state
       addItems(contextItems);
 
+      // Upload files one by one
       for (let i = 0; i < uploadItems.length; i++) {
+        // Check if the upload has been cancelled
         if (shouldCancelAllRef.current) {
           break;
         }
 
+        // Get the file to upload and its corresponding context item
         const uploadItem = uploadItems[i];
         const contextItem = contextItems[i];
+        // Set the current file name
         setCurrentFile(uploadItem.name);
-        
+        // Update the context item to indicate that it is uploading
         updateItem(contextItem.id, {
           status: 'uploading',
           progress: 0
         });
 
+        // Try to upload the file
         try {
-          // Decompress current item
-          const [header, base64Data] = uploadItem.content.split(',');
-          const decompressedBase64 = decompressData(base64Data);
-          const decompressedItem = {
-            ...uploadItem,
-            content: `${header},${decompressedBase64}`
-          };
-
+          // Send file to backend API
           const response = await uploadWithProgress(
             `${backend}/api/file-manager/upload`,
-            { items: [decompressedItem] },
+            { items: [uploadItem] },
             abortControllerRef.current.signal,
             (progress) => {
               updateItem(contextItem.id, { 
@@ -143,24 +132,29 @@ export function useUpload() {
             }
           );
 
+          // Check if the upload was successful
           if (!response.ok) {
             throw new Error(`Failed to upload ${uploadItem.name}`);
           }
 
+          // Update the context item to indicate that it is completed
           updateItem(contextItem.id, {
             status: 'completed',
             progress: 100
           });
 
         } catch (error) {
+          // Update the context item to indicate that there was an error
           updateItem(contextItem.id, {
             status: 'error',
             progress: 0
           });
           
+          // If the error is an abort error, return
           if (error instanceof DOMException && error.name === 'AbortError') {
             return;
           }
+          // Otherwise, throw the error
           throw error;
         }
       }
@@ -168,16 +162,19 @@ export function useUpload() {
       console.error('Upload error:', error);
       throw error;
     } finally {
+      // Reset the upload status
       setIsUploading(false);
+      // Reset the current file name
       setCurrentFile("");
+      // Reset the abort controller
       abortControllerRef.current = null;
+      // Reset the cancel all flag
       shouldCancelAllRef.current = false;
     }
   };
 
   return {
     upload,
-    progress,
     currentFile,
     isUploading,
     cancelUpload,
