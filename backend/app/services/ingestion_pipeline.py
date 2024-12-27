@@ -130,10 +130,7 @@ class IngestionPipelineService:
     # At this point the files are grouped by ingestion stack
     async def process_files(self, full_file_paths: List[str], datasource_identifier: str, transformations_stack_name_list: List[str] = ["default"]):
         """Process a list of files through the ingestion pipeline"""
-        try:
-
-            self.logger.info(f"Starting batch ingestion pipeline for {len(full_file_paths)} files")
-            
+        try:            
             # Use SimpleDirectoryReader from llama index as it try to use existing apropriate readers based on the file type to get the most metadata from it
             reader = SimpleDirectoryReader(
                 input_files=full_file_paths,
@@ -269,7 +266,7 @@ class IngestionPipelineService:
 
 
                 #else:
-                self.logger.info(f"Running ingestion pipeline with transformations stack {transformations_stack_name}")
+                self.logger.info(f"Running processing stack {transformations_stack_name} on {full_file_paths}")
                 # This will add the documents to the vector store and docstore in the expected llama index way
                 # Add the embed model to the transformations stack as we always want to embed the results of the processing stacks for search
                 transformations.append(self.cached_embed_model)
@@ -285,7 +282,7 @@ class IngestionPipelineService:
             # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
             #ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
 
-            self.logger.info(f"Ingested {len(documents)} documents")
+            self.logger.info(f"Processed {full_file_paths}")
 
         except Exception as e:
             self.logger.error(f"Error in ingestion pipeline: {str(e)}")

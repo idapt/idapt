@@ -197,8 +197,6 @@ class DBFileService:
     def get_folder_files_recursive(self, session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
         """Get all files in a folder and its subfolders recursively"""
         
-        self.logger.error(f"Full path recursive: {full_path}")
-
         # Get folder id from path
         folder_id = self.get_folder_id(session, full_path)
 
@@ -275,9 +273,7 @@ class DBFileService:
         processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
         # If the stack is not already processed, add it
         if stack_name not in processed_stacks:
-            self.logger.error(f"Marking stack {stack_name} as processed for file {file_path}")
             processed_stacks.append(stack_name)
-            self.logger.error(f"Processed stacks: {processed_stacks}")
             file.processed_stacks = json.dumps(processed_stacks)
 
         # Remove the stack from the stacks to process
