@@ -139,16 +139,23 @@ class DatasourceService:
         """Delete a datasource and all its components"""
         try:
             datasource = self.get_datasource(session, identifier)
-            if datasource:
-                # Delete filesystem and database entries
-                self.file_manager_service.delete_folder(session, datasource.root_folder.path)
-                session.delete(datasource)
-                session.commit()
+            if not datasource:
+                return False
 
-                # Delete llama-index components
-                self._delete_llama_index_components(identifier)
-                return True
-            return False
+            # First try to delete all files and folders
+            try:
+                self.file_manager_service.delete_folder(session, datasource.root_folder.path)
+            except Exception as e:
+                self.logger.error(f"Failed to delete datasource files and folders: {str(e)}")
+                raise Exception("Failed to delete datasource files. Please try again later.")
+
+            # If file deletion succeeded, delete database entry
+            session.delete(datasource)
+            session.commit()
+
+            # Delete llama-index components
+            self._delete_llama_index_components(identifier)
+            return True
         except Exception as e:
             session.rollback()
             self.logger.error(f"Error deleting datasource: {str(e)}")
