@@ -1,13 +1,13 @@
 'use client';
 
-import { UploadProvider } from '@/app/contexts/upload-context';
+import { ToastProvider } from '@/app/contexts/toast-context';
 import { ToastContainer } from '../ui/toasts/toast-container';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <UploadProvider>
+    <ToastProvider>
       {children}
       <ToastContainer />
-    </UploadProvider>
+    </ToastProvider>
   );
 } 

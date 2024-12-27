@@ -10,7 +10,6 @@ import { useFolderUpload } from "./hooks/use-folder-upload";
 import { useFileManager } from './hooks/use-file-manager';
 import { Datasource } from "@/app/types/files";
 import { CreateDatasourceDialog } from "./create-datasource-dialog";
-import { UploadToast } from './upload-toast';
 
 export function FileManager() {
   const {

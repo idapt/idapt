@@ -1,6 +1,5 @@
 import { useUpload } from '../../chat/hooks/use-upload';
-import { useGenerate } from '../hooks/use-generate';
-import { useUploadContext } from '@/app/contexts/upload-context';
+import { useUploadToast } from '@/app/hooks/use-upload-toast';
 
 interface FileUploadOptions {
   onProgress?: (progress: number) => void;
@@ -10,18 +9,13 @@ interface FileUploadOptions {
 
 export function useFileUpload() {
   const { upload, currentFile, isUploading, cancelUpload } = useUpload();
+  const { startUpload, updateUpload, completeUpload, failUpload } = useUploadToast();
 
   const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
+    let toastId: string | undefined;
     try {
-      // Create a context item before starting upload
-      const contextItem = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        path: folderId ? `${folderId}/${file.name}` : file.name,
-        status: 'pending' as const,
-        progress: 0,
-        _type: 'upload'
-      };
+      // Start upload toast
+      toastId = startUpload(file.name, folderId ? `${folderId}/${file.name}` : file.name);
 
       // Read file content
       const content = await new Promise<string>((resolve) => {
@@ -31,16 +25,24 @@ export function useFileUpload() {
       });
 
       // Upload file
-      await upload([{
-        path: contextItem.path,
-        content,
-        name: file.name,
-        file_created_at: file.lastModified / 1000,
-        file_modified_at: file.lastModified / 1000,
-      }]);
+      await upload(
+        [{
+          path: folderId ? `${folderId}/${file.name}` : file.name,
+          content,
+          name: file.name,
+          file_created_at: file.lastModified / 1000,
+          file_modified_at: file.lastModified / 1000,
+        }], 
+        [toastId],
+        (id, progress) => updateUpload(id, progress)
+      );
       
+      completeUpload(toastId);
       options?.onComplete?.();
     } catch (error) {
+      if (toastId) {
+        failUpload(toastId);
+      }
       options?.onError?.(error instanceof Error ? error.message : 'Upload failed');
     }
   };

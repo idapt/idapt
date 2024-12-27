@@ -1,5 +1,5 @@
-import { UploadToast } from "../file-manager/upload-toast";
-import { DeletionToast } from "../file-manager/deletion-toast";
+import { UploadToast } from "./upload-toast";
+import { DeletionToast } from "./deletion-toast";
 
 export function ToastContainer() {
   return (

@@ -10,24 +10,24 @@ export function useDeletionToast() {
       id,
       name,
       path,
-      status: 'processing' as const,
+      status: 'pending',
       progress: 0,
-      type: 'deletion' as const
+      type: 'deletion'
     }]);
     return id;
   };
 
   const completeDeletion = (id: string) => {
     updateItem(id, {
-      status: 'completed' as const,
-      progress: 100,
+      status: 'completed',
+      progress: 100
     });
   };
 
   const failDeletion = (id: string) => {
     updateItem(id, {
-      status: 'error' as const,
-      progress: 0,
+      status: 'error',
+      progress: 0
     });
   };
 

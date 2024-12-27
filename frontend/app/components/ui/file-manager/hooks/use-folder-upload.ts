@@ -1,6 +1,5 @@
 import { useUpload } from "../../chat/hooks/use-upload";
-import { useGenerate } from "../hooks/use-generate";
-import { useUploadContext } from '@/app/contexts/upload-context';
+import { useUploadToast } from '@/app/hooks/use-upload-toast';
 
 interface FolderUploadOptions {
   onProgress?: (progress: number) => void;
@@ -10,22 +9,22 @@ interface FolderUploadOptions {
 
 export function useFolderUpload() {
   const { upload, currentFile, isUploading, cancelUpload } = useUpload();
+  const { startUpload, updateUpload, completeUpload, failUpload } = useUploadToast();
 
   const uploadFolder = async (folderInput: HTMLInputElement, targetPath: string = "", options?: FolderUploadOptions) => {
     if (!folderInput.files?.length) return;
-
+    
+    let toastIds: string[] = [];
     try {
       const files = Array.from(folderInput.files);
       
-      // Create context items for all files before starting upload
-      const contextItems = files.map(file => ({
-        id: crypto.randomUUID(),
-        name: file.name,
-        path: targetPath ? `${targetPath}/${file.webkitRelativePath}` : file.webkitRelativePath,
-        status: 'pending' as const,
-        progress: 0,
-        _type: 'upload'
-      }));
+      // Create toast items for all files
+      toastIds = files.map(file => 
+        startUpload(
+          file.name, 
+          targetPath ? `${targetPath}/${file.webkitRelativePath}` : file.webkitRelativePath
+        )
+      );
 
       // Prepare upload items
       const uploadItems = await Promise.all(files.map(async (file, index) => {
@@ -36,7 +35,7 @@ export function useFolderUpload() {
         });
 
         return {
-          path: contextItems[index].path,
+          path: targetPath ? `${targetPath}/${file.webkitRelativePath}` : file.webkitRelativePath,
           content,
           name: file.name,
           file_created_at: file.lastModified / 1000,
@@ -45,10 +44,14 @@ export function useFolderUpload() {
       }));
 
       // Upload files
-      await upload(uploadItems);
+      await upload(uploadItems, toastIds, updateUpload);
       
+      // Mark all uploads as complete
+      toastIds.forEach(id => completeUpload(id));
       options?.onComplete?.();
     } catch (error) {
+      // Mark all uploads as failed
+      toastIds.forEach((id: string) => failUpload(id));
       options?.onError?.(error instanceof Error ? error.message : 'Upload failed');
     }
   };
