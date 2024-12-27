@@ -4,21 +4,27 @@
   <img alt="Idapt Logo" src="./assets/idapt_logo_dark_transparent.png" width="200">
 </picture>
 
-**[Idapt](https://idapt.ai) is an app that allows you to own and augment your personal data using AI.**
+**[idapt](https://idapt.ai) allows you to create your own personal AI by regrouping your data from multiple sources (Files, Emails, Google Drive, etc.) and allow your AI assistant to use it in your chats to provide a fully personalized experience.**
+
+Your data is completely encrypted so that even we cannot access it and the project is open source for complete transparency.
+
+You can choose to host it yourself or use our hosted version at [idapt.ai](https://idapt.ai) that uses confidential computing and encryption to ensure that only you can access your data.
 
 Go to the [website](https://idapt.ai) for more information.
 
-This project is open source and you are welcome to contribute to it.
-
+**THE APP IS STILL AT A VERY EARLY STAGE AND BUGS ARE TO BE EXPECTED, ALWAYS BACKUP YOUR DATA ELSEWHERE TO PREVENT DATA LOSS UNTIL THE APP IS MORE STABLE.**
 
 # Getting Started
 
 ## Production Installation
 
-Clone the repository with `git clone https://github.com/idapt/idapt.git`.
-Run `docker compose up --build` to start the production server.
-This will build the production images and start the containers in production mode.
-You can then access the frontend at [http://localhost:3030](http://localhost:3030).
+- Clone the repository with `git clone https://github.com/idapt/idapt.git`.
+- Fill in the `.env` file with the correct values.
+- Run `docker compose up --build` in the idapt root folder to start the production server.
+*This will build the production images and start the containers in production mode with the settings you set in the `.env` file.*
+- Access the app at [https://localhost](https://localhost). *(or to https://your-custom-host if you changed it for remote access)*
+- Create your account using a secure password and setup your TOTP (Time-based One-Time Password) for extra security.
+- Add your data sources, setup your settings (model provider, temperature, etc.) and start chatting with your private, personal AI assistant !
 
 ## Development Installation
 
@@ -27,26 +33,26 @@ The containers ports are also exposed to facilitate development.
 
 ### Start the containers
 
-Clone the repository with `git clone https://github.com/idapt/idapt.git`.
-Run `docker compose -f dev.docker-compose.yml up --build` to start the development server.
-This will start all the containers in development mode and sync the code changes between the host and the frontend and backend containers.
+- Clone the repository with `git clone https://github.com/idapt/idapt.git`.
+- Create your '.env.local' file by copying the '.env' file and filling in the correct values.
+- Run `docker compose -f dev.docker-compose.yml --env-file .env.local up --build` in the idapt root folder to start the development server.
+*This will start all the containers in development mode and sync the code changes between the host and the frontend and backend containers.*
+- Access the app at [https://localhost](https://localhost). *(or to https://your-custom-host if you changed it for remote access)*
+- Build or fix !
 
-### Start the backend
-
-Run `docker exec -it idapt-backend /bin/sh` to get a shell into the backend container
-Run `python main.py` to start the backend. 
-You can access the backend if needed at [http://localhost:3030/api](http://localhost:3030/api).
-*The poetry dependencies are already installed in the container following the `pyproject.toml` file.*
-
-### Start the frontend
-
-Run `docker exec -it idapt-frontend /bin/sh` to get a shell into the frontend container 
-Run `npm run dev` to start the frontend. 
-You can then access the frontend at http://localhost:3030.
+Development notes :
+*The poetry dependencies are already installed in the container following the `pyproject.toml` file at build time.*
 *The node_modules are synced with the host.*
+*The developement stack and the production use different docker storage volumes as the compose name is different.*
 
-*Note that the developement stack and the production use different docker storage volumes.*
+## Architecture
 
-## Acknowledgements
-
-This app uses the open source project LlamaIndex, here is their github if you want to contribute there : [LlamaIndex](https://github.com/run-llama/llama_index).
+See the compose file for more details on the architecture.
+- FastAPI Python backend
+- NextJS React frontend
+- PostgreSQL database
+- Keycloak for authentication
+- Nginx for reverse proxy routing
+- Certbot (in nginx container) for SSL certificates using Let's Encrypt for custom domains
+- OAuth2 Proxy for authentication at nginx level (for keycloak)
+- Ollama for simple local integrated LLM model and Embeddings provider
