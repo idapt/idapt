@@ -166,7 +166,6 @@ export function FileManager() {
         onClose={() => setShowCreateDatasource(false)}
         onCreated={refreshContents}
       />
-      <UploadToast />
     </div>
   );
 }

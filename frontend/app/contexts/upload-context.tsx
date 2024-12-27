@@ -17,6 +17,7 @@ interface UploadContextType {
   updateItem: (id: string, updates: Partial<UploadItem>) => void;
   removeItem: (id: string) => void;
   cancelAll: () => void;
+  resetAll: () => void; 
 }
 
 const UploadContext = createContext<UploadContextType | null>(null);
@@ -38,13 +39,18 @@ export function UploadProvider({ children }: { children: ReactNode }) {
 
   const removeItem = (id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));
+    setTotalItems(prev => Math.max(0, prev - 1));
   };
 
   const cancelAll = () => {
     window.dispatchEvent(new CustomEvent('cancelAllUploads'));
-    const completedItems = items.filter(item => item.status === 'completed');
-    setItems(completedItems);
-    setTotalItems(completedItems.length);
+    setItems([]);
+    setTotalItems(0);
+  };
+
+  const resetAll = () => {
+    setItems([]);
+    setTotalItems(0);
   };
 
   return (
@@ -55,6 +61,7 @@ export function UploadProvider({ children }: { children: ReactNode }) {
       updateItem,
       removeItem,
       cancelAll,
+      resetAll,
     }}>
       {children}
     </UploadContext.Provider>

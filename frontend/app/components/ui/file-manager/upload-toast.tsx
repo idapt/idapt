@@ -6,7 +6,7 @@ import type { UploadItem } from "@/app/contexts/upload-context";
 import { useState, useRef, useEffect } from "react";
 
 export function UploadToast() {
-  const { items, totalItems, removeItem, cancelAll } = useUploadContext();
+  const { items, totalItems, removeItem, cancelAll, resetAll } = useUploadContext();
   const [isMinimized, setIsMinimized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
@@ -21,6 +21,10 @@ export function UploadToast() {
 
   // Hide toast if no active uploads and all items are completed
   if (items.length === 0 || (activeUploads.length === 0 && completedUploads.length === totalItems)) {
+    // Reset the total items when all uploads are complete
+    if (completedUploads.length === totalItems && totalItems > 0) {
+      setTimeout(resetAll, 1000); // Give a small delay to show completion
+    }
     return null;
   }
 
@@ -67,7 +71,6 @@ export function UploadToast() {
 
       <div className="p-3 border-t bg-gray-50">
         <div className="flex justify-between items-center text-xs text-gray-500 mb-1">
-          <span>Overall Progress</span>
           <span>{globalProgress}% ({completedUploads.length}/{totalItems})</span>
         </div>
         <Progress value={globalProgress} className="h-1" />
