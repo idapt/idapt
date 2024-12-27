@@ -7,6 +7,7 @@ from app.database.models import FileStatus
 from app.services.database import DatabaseService
 from app.services.db_file import DBFileService
 from app.services.generate_worker import GenerateServiceWorker
+from requests import Session
 
 class GenerateService:
     """Service for managing the generation queue and processing of files"""
@@ -35,19 +36,18 @@ class GenerateService:
             self._worker_thread.start()
             self.initialized = True
             
-    async def add_files_to_queue(self, files: List[dict]):
+    async def add_files_to_queue(self, files: List[dict], session: Session):
         """Add multiple files to the processing queue"""
         try:
-            with self.db_service.get_session() as session:
-                for file in files:
-                    stacks_to_process : List[str] = file.get("transformations_stack_name_list", ["default"])
-                    self.db_file_service.update_file_status(
-                        session,
-                        file["path"],
-                        FileStatus.QUEUED,
-                        stacks_to_process
-                    )
-                self.logger.info(f"Added batch of {len(files)} files to queue")
+            for file in files:
+                stacks_to_process : List[str] = file.get("transformations_stack_name_list", ["default"])
+                self.db_file_service.update_file_status(
+                    session,
+                    file["path"],
+                    FileStatus.QUEUED,
+                    stacks_to_process
+                )
+            self.logger.info(f"Added batch of {len(files)} files to queue")
                 
         except Exception as e:
             self.logger.error(f"Failed to add batch to queue: {str(e)}")

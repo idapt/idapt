@@ -12,7 +12,8 @@ def get_datasource_service():
     return ServiceManager.get_instance().datasource_service
 
 def get_db_session():
-    return ServiceManager.get_instance().db_service.get_session()
+    with ServiceManager.get_instance().db_service.get_session() as session:
+        yield session
 
 class DatasourceCreate(BaseModel):
     name: str

@@ -20,7 +20,8 @@ def get_generate_service():
     return get_service_manager().generate_service
 
 def get_db_session():
-    return get_service_manager().db_service.get_session()
+    with ServiceManager.get_instance().db_service.get_session() as session:
+        yield session
 
 class GenerateRequest(BaseModel):
     files: List[dict] = Field(..., example=[{
@@ -50,7 +51,7 @@ async def generate(
         
         # Add to queue
         # Use background tasks to avoid blocking the main thread
-        background_tasks.add_task(generate_service.add_files_to_queue, files)
+        background_tasks.add_task(generate_service.add_files_to_queue, files, session)
 
         return {
             "status": "queued",

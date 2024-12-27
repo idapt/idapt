@@ -25,7 +25,7 @@ class DatabaseService:
     def get_session(self) -> Session:
         """Get a database session directly"""
         return self.session_factory()
-    
+
     @contextmanager
     def session_scope(self) -> Generator[Session, None, None]:
         """Context manager for database sessions with automatic commit/rollback"""

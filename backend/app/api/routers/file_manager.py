@@ -19,7 +19,8 @@ def get_file_manager_service():
     return ServiceManager.get_instance().file_manager_service
 
 def get_db_session():
-    return ServiceManager.get_instance().db_service.get_session()
+    with ServiceManager.get_instance().db_service.get_session() as session:
+        yield session
 
 def decode_path_safe(encoded_path: str) -> str:
     try:
