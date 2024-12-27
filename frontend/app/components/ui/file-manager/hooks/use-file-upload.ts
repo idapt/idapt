@@ -10,7 +10,6 @@ interface FileUploadOptions {
 
 export function useFileUpload() {
   const { upload, currentFile, isUploading, cancelUpload } = useUpload();
-  const { addItems } = useUploadContext();
 
   const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
     try {
@@ -22,8 +21,6 @@ export function useFileUpload() {
         status: 'pending' as const,
         progress: 0
       };
-      
-      addItems([contextItem]);
 
       // Read file content
       const content = await new Promise<string>((resolve) => {

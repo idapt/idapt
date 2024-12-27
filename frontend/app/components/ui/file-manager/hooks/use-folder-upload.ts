@@ -10,8 +10,6 @@ interface FolderUploadOptions {
 
 export function useFolderUpload() {
   const { upload, currentFile, isUploading, cancelUpload } = useUpload();
-  const { generate } = useGenerate();
-  const { addItems } = useUploadContext();
 
   const uploadFolder = async (folderInput: HTMLInputElement, targetPath: string = "", options?: FolderUploadOptions) => {
     if (!folderInput.files?.length) return;
@@ -27,8 +25,6 @@ export function useFolderUpload() {
         status: 'pending' as const,
         progress: 0
       }));
-      
-      addItems(contextItems);
 
       // Prepare upload items
       const uploadItems = await Promise.all(files.map(async (file, index) => {
