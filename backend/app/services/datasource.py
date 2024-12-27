@@ -135,18 +135,32 @@ class DatasourceService:
             self.logger.error(f"Error creating datasource: {str(e)}")
             raise
 
-    def delete_datasource(self, session: Session, identifier: str) -> bool:
+    async def delete_datasource(self, session: Session, identifier: str) -> bool:
         """Delete a datasource and all its components"""
         try:
             datasource = self.get_datasource(session, identifier)
             if not datasource:
                 return False
 
-            # First try to delete all files and folders
+            # Store root folder reference before nullifying it
+            root_folder = datasource.root_folder
+            if not root_folder:
+                raise Exception("Datasource has no root folder")
+            
+            root_folder_path = root_folder.path
+            
+            # First remove the root_folder reference from datasource
+            datasource.root_folder_id = None
+            session.flush()
+            
+            # Then try to delete all files and folders using the stored path
             try:
-                self.file_manager_service.delete_folder(session, datasource.root_folder.path)
+                await self.file_manager_service.delete_folder(session, root_folder_path)
             except Exception as e:
                 self.logger.error(f"Failed to delete datasource files and folders: {str(e)}")
+                # Restore the root_folder_id reference since deletion failed
+                datasource.root_folder_id = root_folder.id
+                session.flush()
                 raise Exception("Failed to delete datasource files. Please try again later.")
 
             # If file deletion succeeded, delete database entry

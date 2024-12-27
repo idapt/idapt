@@ -105,7 +105,7 @@ async def delete_datasource(
 ):
     try:
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
-        success = service.delete_datasource(session, identifier)
+        success = await service.delete_datasource(session, identifier)
         if not success:
             raise HTTPException(status_code=404, detail="Datasource not found")
         return {"message": "Datasource deleted successfully"}
