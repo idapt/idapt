@@ -160,7 +160,7 @@ services:
       - '443:443/udp'
     volumes:
       - './nginx/config:/nginx-config-source:ro' # Original nginx config.
-      - './certs:/nginx-certs-source:ro' # Original ssl certificates passed from host if we need to skip certbot.
+      - './nginx/certs:/nginx-certs-source:ro' # Original ssl certificates passed from host if we need to skip certbot.
       - './nginx/letsencrypt:/etc/letsencrypt' # Persist the certificates to bind mount for dev to avoid harrasing letsencrypt.
       - './nginx/certbot_www:/var/www/certbot' # Persist the ACME challenge files.
     # Nginx has access to every container exposed via their own network for routing.
