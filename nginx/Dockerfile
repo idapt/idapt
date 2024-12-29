@@ -16,7 +16,8 @@ RUN chmod 775 /nginx-config-source/*
 RUN mkdir -p /nginx-certs-source
 # Copy all of the certs folder from the host
 COPY ./certs/ /nginx-certs-source/
-RUN chmod 775 /nginx-certs-source/*
+# Only chmod files if they exist
+RUN find /nginx-certs-source -type f -exec chmod 775 {} + || true
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
