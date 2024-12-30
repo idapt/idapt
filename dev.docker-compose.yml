@@ -168,7 +168,7 @@ services:
       CERTBOT_AUTHENTICATOR: webroot
       CERTBOT_DNS_PROPAGATION_SECONDS: ""
       DEBUG: 0
-      USE_LOCAL_CA: 0
+      USE_LOCAL_CA: 1 # For dev we use a local CA to avoid harrasing letsencrypt.
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
@@ -185,7 +185,7 @@ services:
         aliases:
           - "${HOST_DOMAIN}" # Needed for oauth2 proxy to use the domain host and make requests to keycloak that match host domain.
     volumes:
-      - './nginx/letsencrypt:/etc/letsencrypt' # Persist the certificates to bind mount for dev to avoid harrasing letsencrypt.
+      - nginx_letsencrypt:/etc/letsencrypt
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
