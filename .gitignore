@@ -26,8 +26,11 @@ yarn-error.log*
 next-env.d.ts
 
 # Nginx
-# Ignore all files in certs folder but keep the folder for docker build process
-nginx/certs/*
+# Ignore all files in certs folder that end with .crt, .key, .pem
+nginx/certs/*.crt
+nginx/certs/*.key
+nginx/certs/*.pem
+
 # For dev
 nginx/letsencrypt/
 
