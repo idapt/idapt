@@ -1,28 +1,25 @@
-FROM nginx:alpine
+FROM jonasal/nginx-certbot:5.4.0-alpine
 
-# Install required packages
-RUN apk add --no-cache gettext certbot certbot-nginx cronie openssl
-
-# Create required directories
-RUN mkdir -p /var/www/certbot
+# Install required packages for envsubst and proper SSL handling
+RUN apk add --no-cache gettext
 
 # Copy nginx config
 RUN mkdir -p /nginx-config-source
-# Copy all of the nginx config from the host
+# Copy all of the nginx config from the host build directory
 COPY ./config/ /nginx-config-source/
 RUN chmod 775 /nginx-config-source/*
 
-# TODO
-# Copy nginx ssl certificates
+# The user provided ssl certificates only work when the user builds the nginx container himself.
+# Copy user provided nginx ssl certificates
 RUN mkdir -p /nginx-certs-source
 # Copy all of the certs folder from the host
-#COPY ./certs/ /nginx-certs-source/
+COPY ./certs/ /nginx-certs-source/
 # Only chmod files if they exist
-#RUN find /nginx-certs-source -type f -exec chmod 775 {} + || true
+RUN find /nginx-certs-source -type f -exec chmod 775 {} + || true
 
 # Copy entrypoint script and make it executable
 COPY entrypoint.sh /entrypoint.sh
-COPY renew-cert.sh /renew-cert.sh
-RUN chmod +x /entrypoint.sh /renew-cert.sh
+RUN chmod +x /entrypoint.sh
 
+# Use the custom entrypoint script of the image
 ENTRYPOINT ["/entrypoint.sh"]

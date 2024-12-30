@@ -1,104 +1,61 @@
 #!/bin/sh
+# Set the script to exit on error
 set -e
 
-# Create required directories
-mkdir -p /config/nginx/certs
-mkdir -p /var/www/certbot
-mkdir -p /var/log
-mkdir -p /root/.cache # Cron directory
+# Create temporary directory for processing
+mkdir -p /tmp/nginx-config
 
-# Copy configuration files from source to not override them
-cp -r /nginx-config-source/* /config/nginx/
+# Process nginx.conf with environment variables
+envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /tmp/nginx-config/nginx.conf
+cp /tmp/nginx-config/nginx.conf /etc/nginx/nginx.conf
 
-# Replace environment variables in all of the configuration files
-envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /etc/nginx/nginx.conf
-envsubst '$HOST_DOMAIN' < /nginx-config-source/kc-proxy-set-headers.conf > /etc/nginx/kc-proxy-set-headers.conf
+# Process server.conf with environment variables
+envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /tmp/nginx-config/server.conf
+cp /tmp/nginx-config/server.conf /etc/nginx/conf.d/server.conf
 
+# If there is user provided ssl certificates in the source folder and the source folder exists, copy them to the intended location in the letsencrypt folder where nginx will look for them
+if [ -d /nginx-certs-source ] && [ -n "$(ls -A /nginx-certs-source)" ]; then
 
-# Function to check if domain is local
-is_local_domain() {
-    domain=$1
-    case $domain in
-        localhost|0.0.0.0|127.0.0.1) return 0 ;;
-        192.168.*.*) return 0 ;;
-        *) return 1 ;;
-    esac
-}
+    # If the certs are not already setup for this host_domain, generate them
+    if [ ! -d /etc/letsencrypt/live/$HOST_DOMAIN ]; then
+        
+        echo "Copying user provided ssl certificates to the letsencrypt folder"
+        # Create the letsencrypt folder if it doesn't exist
+        mkdir -p /etc/letsencrypt/live/$HOST_DOMAIN
+        
+        # Convert certificates if they exist in .crt/.key format
+        if [ -f /nginx-certs-source/*.crt ]; then
+            echo "Converting .crt certificate to .pem format"
+            openssl x509 -in /nginx-certs-source/*.crt -out /etc/letsencrypt/live/$HOST_DOMAIN/fullchain.pem
+        fi
+        if [ -f /nginx-certs-source/*.key ]; then
+            echo "Converting .key certificate to .pem format"
+            # Try to determine key type and handle accordingly
+            if openssl rsa -in /nginx-certs-source/*.key -check -noout 2>/dev/null; then
+                # It's an RSA key
+                openssl rsa -in /nginx-certs-source/*.key -out /etc/letsencrypt/live/$HOST_DOMAIN/privkey.pem
+            else
+                # For other key types (EC, etc.), just copy directly
+                cp /nginx-certs-source/*.key /etc/letsencrypt/live/$HOST_DOMAIN/privkey.pem
+            fi
+        fi
+        
+        # Or copy existing .pem files if they exist
+        if [ -f /nginx-certs-source/fullchain.pem ]; then
+            echo "Copying fullchain.pem to the letsencrypt folder"
+            cp /nginx-certs-source/fullchain.pem /etc/letsencrypt/live/$HOST_DOMAIN/
+        fi
+        if [ -f /nginx-certs-source/privkey.pem ]; then
+            echo "Copying privkey.pem to the letsencrypt folder"
+            cp /nginx-certs-source/privkey.pem /etc/letsencrypt/live/$HOST_DOMAIN/
+        fi
+    fi
 
-# Certificate setup - only if not already done
-if [ -f "/etc/letsencrypt/live/${HOST_DOMAIN}/fullchain.pem" ] && [ -f "/etc/letsencrypt/live/${HOST_DOMAIN}/privkey.pem" ]; then
-    echo "Using existing certificates..."
+    # Just start nginx now that the custom certificates are in place and dont use certbot
+    echo "Starting nginx without certbot support"
+    nginx -g 'daemon off;'
 else
-    # If there are certificates in the source directory, use them.
-    if [ -f "/nginx-certs-source/${HOST_DOMAIN}.crt" ] && [ -f "/nginx-certs-source/${HOST_DOMAIN}.key" ]; then
-        echo "Using existing certificates from source..."
-        mkdir -p /etc/letsencrypt/live/${HOST_DOMAIN}
-        
-        cp "/nginx-certs-source/${HOST_DOMAIN}.crt" "/etc/letsencrypt/live/${HOST_DOMAIN}/fullchain.pem"
-        cp "/nginx-certs-source/${HOST_DOMAIN}.key" "/etc/letsencrypt/live/${HOST_DOMAIN}/privkey.pem"
-        cp "/nginx-certs-source/${HOST_DOMAIN}.crt" "/etc/letsencrypt/live/${HOST_DOMAIN}/chain.pem"
-    
-    # If the domain is local, generate a self-signed certificate using openssl.
-    elif is_local_domain "${HOST_DOMAIN}"; then
-        echo "Generating self-signed certificate for local domain..."
-        mkdir -p /etc/letsencrypt/live/${HOST_DOMAIN}
-        
-        # Generate self-signed certificate for local domain
-        openssl req -x509 \
-            -out "/etc/letsencrypt/live/${HOST_DOMAIN}/fullchain.pem" \
-            -keyout "/etc/letsencrypt/live/${HOST_DOMAIN}/privkey.pem" \
-            -newkey rsa:2048 -nodes -sha256 \
-            -subj "/CN=${HOST_DOMAIN}" -extensions EXT -config <( \
-            printf "[dn]\nCN=${HOST_DOMAIN}\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:${HOST_DOMAIN}\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
-        
-        # Copy the certificate to chain.pem as well
-        cp "/etc/letsencrypt/live/${HOST_DOMAIN}/fullchain.pem" "/etc/letsencrypt/live/${HOST_DOMAIN}/chain.pem"
-        
-        echo "Self-signed certificates generated successfully"
-
-    # If the domain is not local, request a certificate from Let's Encrypt.
-    else
-        echo "Requesting certificate from Let's Encrypt..."
-        
-        if [ -z "${CERTBOT_EMAIL}" ]; then
-            echo "Error: CERTBOT_EMAIL environment variable is required for initial certificate request"
-            exit 1
-        fi
-
-        # Request initial certificate
-        certbot certonly --webroot \
-            --webroot-path=/var/www/certbot \
-            --email ${CERTBOT_EMAIL} \
-            --agree-tos \
-            --no-eff-email \
-            -d ${HOST_DOMAIN}
-            
-        if [ $? -ne 0 ]; then
-            echo "Failed to obtain initial certificate"
-            exit 1
-        fi
-    fi
-    
-    echo "Certificate initialization completed"
+    # Use the original entrypoint script of the image nginx-certbot
+    echo "Starting nginx with certbot support that will generate the certificates for domain $HOST_DOMAIN"
+    exec /scripts/start_nginx_certbot.sh
 fi
-
-# Only set up cron for non-local domains if not already setup
-if ! is_local_domain "${HOST_DOMAIN}"; then
-    if ! crontab -l | grep -q "/renew-cert.sh"; then
-        crond
-        
-        # Generate random hour (0-23) and minute (0-59)
-        RANDOM_HOUR=$(( RANDOM % 24 ))
-        RANDOM_MINUTE=$(( RANDOM % 60 ))
-        
-        # Setup renewal cron job
-        echo "${RANDOM_MINUTE} ${RANDOM_HOUR} */30 * * /renew-cert.sh >> /var/log/cert-renewal.log 2>&1" | crontab -
-        
-        echo "Cron setup completed"
-    else
-        echo "Cron job already set up, skipping"
-    fi
-fi
-
-# Start nginx in foreground
-exec nginx -g 'daemon off;'

@@ -139,21 +139,35 @@ services:
 
 
 
-# Nginx to manage every communication between containers and also outside world.
+# Nginx to manage every communication between containers and outside world.
   idapt-nginx:
     container_name: idapt-nginx
     build:
       context: ./nginx
       dockerfile: ./Dockerfile
+    environment:
+      # Entrypoint script variables
+      HOST_DOMAIN: ${HOST_DOMAIN}
+      # Container variables
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL}
+      # Optional (Defaults)
+      DHPARAM_SIZE: 2048
+      ELLIPTIC_CURVE: secp256r1
+      RENEWAL_INTERVAL: 8d
+      RSA_KEY_SIZE: 2048
+      STAGING: 0
+      USE_ECDSA: 1
+      # Advanced (Defaults)
+      CERTBOT_AUTHENTICATOR: webroot
+      CERTBOT_DNS_PROPAGATION_SECONDS: ""
+      DEBUG: 0
+      USE_LOCAL_CA: 0
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
       - '80:80/tcp'
       - '443:443/tcp'
       - '443:443/udp'
-    volumes:
-      - letsencrypt:/etc/letsencrypt # Store the certificates.
-      - certbot_www:/var/www/certbot # Store the ACME challenge files.
     # Nginx has access to every container exposed via their own network for routing.
     networks:
       idapt-nginx-external-network: {}
@@ -163,9 +177,8 @@ services:
       idapt-oauth2-proxy-network:
         aliases:
           - "${HOST_DOMAIN}" # Needed for oauth2 proxy to use the domain host and make requests to keycloak that match host domain.
-    environment:
-      HOST_DOMAIN: ${HOST_DOMAIN}
-      CERTBOT_EMAIL: ${CERTBOT_EMAIL}
+    volumes:
+      - nginx_letsencrypt:/etc/letsencrypt # Persist the certificates.
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
@@ -179,6 +192,7 @@ services:
     #  - ALL
     #cap_add:
     #  - NET_BIND_SERVICE  # Only for nginx
+
 
 
 
@@ -253,8 +267,7 @@ volumes:
   postgres_admin_secrets:
   postgres_backend_secrets:
   postgres_keycloak_secrets:
-  letsencrypt:
-  certbot_www:
+  nginx_letsencrypt:
   keycloak_oauth2_client_secret:
   keycloak_backend_client_secret:
   keycloak_initialized:

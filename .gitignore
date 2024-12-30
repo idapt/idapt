@@ -30,7 +30,6 @@ next-env.d.ts
 nginx/certs/*
 # For dev
 nginx/letsencrypt/
-nginx/certbot_www/
 
 # General
 
