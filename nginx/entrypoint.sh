@@ -2,6 +2,7 @@
 # Set the script to exit on error
 set -e
 
+
 # Create temporary directory for processing
 mkdir -p /tmp/nginx-config
 
@@ -9,9 +10,6 @@ mkdir -p /tmp/nginx-config
 envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /tmp/nginx-config/nginx.conf
 cp /tmp/nginx-config/nginx.conf /etc/nginx/nginx.conf
 
-# Process server.conf with environment variables
-envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /tmp/nginx-config/server.conf
-cp /tmp/nginx-config/server.conf /etc/nginx/conf.d/server.conf
 
 # If there is user provided ssl certificates in the source folder and the source folder exists, copy them to the intended location in the letsencrypt folder where nginx will look for them
 if [ -d /nginx-certs-source ] && [ -n "$(ls -A /nginx-certs-source)" ]; then
@@ -51,10 +49,31 @@ if [ -d /nginx-certs-source ] && [ -n "$(ls -A /nginx-certs-source)" ]; then
         fi
     fi
 
+    # Process server.conf with environment variables
+    envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /tmp/nginx-config/server.conf
+    cp /tmp/nginx-config/server.conf /etc/nginx/conf.d/server.conf
+
     # Just start nginx now that the custom certificates are in place and dont use certbot
     echo "Starting nginx without certbot support"
     nginx -g 'daemon off;'
+
+# Else if the app is running in local mode
+elif $HOST_DOMAIN == "localhost"; then
+
+    # Copy the local-server.conf to the nginx conf.d folder
+    cp /nginx-config-source/local-server.conf /etc/nginx/conf.d/local-server.conf
+
+    # Use the original entrypoint script of the image nginx-certbot that will use Local CA and manage renewals as USE_LOCAL_CA=1
+    echo "Starting nginx with local cert"
+    exec /scripts/start_nginx_certbot.sh
+
 else
+
+    # Process local-server.conf with environment variables
+    envsubst '$HOST_DOMAIN' < /nginx-config-source/local-server.conf > /tmp/nginx-config/local-server.conf
+    cp /tmp/nginx-config/local-server.conf /etc/nginx/conf.d/local-server.conf
+
+
     # Use the original entrypoint script of the image nginx-certbot
     echo "Starting nginx with certbot support that will generate the certificates for domain $HOST_DOMAIN"
     exec /scripts/start_nginx_certbot.sh
