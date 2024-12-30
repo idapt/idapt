@@ -18,9 +18,17 @@ Go to the [website](https://idapt.ai) for more information.
 
 ## Production Installation
 
-- Clone the repository with `git clone https://github.com/idapt/idapt.git`.
+- Install [Docker](https://docs.docker.com/get-started/get-docker/) and add GPU support with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) if you want faster inference and embeddings generation.
+- Clone the repository with 
+```bash
+git clone https://github.com/idapt/idapt.git && cd idapt
+```
 - Fill in the `.env` file with the correct values.
-- Run `docker compose up --build` in the idapt root folder to start the production server.
+- Run 
+```bash
+docker compose up
+```
+in the idapt root folder to start the production server.
 *This will build the production images and start the containers in production mode with the settings you set in the `.env` file.*
 - Access the app at [https://localhost](https://localhost). *(or to https://your-custom-host if you changed it for remote access)*
 - Create your account using a secure password and setup your TOTP (Time-based One-Time Password) for extra security.
@@ -33,9 +41,16 @@ The containers ports are also exposed to facilitate development.
 
 ### Start the containers
 
-- Clone the repository with `git clone https://github.com/idapt/idapt.git`.
+- Clone the repository with 
+```bash
+git clone https://github.com/idapt/idapt.git && cd idapt
+```
 - Create your '.env.local' file by copying the '.env' file and filling in the correct values.
-- Run `docker compose -f dev.docker-compose.yml --env-file .env.local up --build` in the idapt root folder to start the development server.
+- Run 
+```bash
+docker compose -f dev.docker-compose.yml --env-file .env.local up --build
+```
+in the idapt root folder to start the development server.
 *This will start all the containers in development mode and sync the code changes between the host and the frontend and backend containers.*
 - Access the app at [https://localhost](https://localhost). *(or to https://your-custom-host if you changed it for remote access)*
 - Build or fix !
