@@ -320,7 +320,7 @@ networks:
     name: idapt-ollama-network
     driver: bridge
   idapt-postgres-network:
-    #internal: true
+    #internal: true # Not internal for dev to be able to access the database from the host.
     attachable: false
     name: idapt-postgres-network
     driver: bridge

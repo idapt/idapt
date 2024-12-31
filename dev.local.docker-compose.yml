@@ -40,8 +40,8 @@ services:
     build:
       context: ./postgres
       dockerfile: ./Dockerfile
-    #ports:
-    #  - "5432:5432" # Expose database port locally for dev access
+    ports:
+      - "5432:5432" # Expose database port locally for dev access # ! Using 127.0.0.1 throws an error.
     expose:
       - "5432"
     networks:
@@ -236,7 +236,7 @@ networks:
     name: idapt-ollama-network
     driver: bridge
   idapt-postgres-network:
-    internal: true
+    #internal: true # Not internal for dev to be able to access the database from the host.
     attachable: false
     name: idapt-postgres-network
     driver: bridge
