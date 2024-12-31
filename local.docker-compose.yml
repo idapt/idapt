@@ -124,7 +124,7 @@ services:
         condition: service_healthy
     environment:
       ENVIRONMENT: prod
-      HOST_DOMAIN: localhost
+      NEXT_PUBLIC_HOST_DOMAIN: localhost
     env_file:
       - ./frontend/.env
     restart: always
