@@ -38,7 +38,7 @@ export function useGenerateStatusSocket() {
   };
 
   const connect = () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (!backend || wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
 
