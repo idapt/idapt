@@ -2,10 +2,10 @@
 
 import { ToastProvider } from '@/app/contexts/toast-context';
 import { ToastContainer } from '../ui/toasts/toast-container';
-import { useProcessingStatus } from '@/app/hooks/use-processing-status';
+import { useGenerateStatusSocket } from '@/app/hooks/use-generate-status-socket';
 
 function ProcessingStatusHandler() {
-  useProcessingStatus();
+  useGenerateStatusSocket();
   return null;
 }
 

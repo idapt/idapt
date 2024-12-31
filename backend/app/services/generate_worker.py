@@ -10,15 +10,15 @@ from app.services.file_manager import FileManagerService
 from app.services.file_system import FileSystemService
 from app.database.models import File, FileStatus
 import json
+from multiprocessing import Queue
 
 class GenerateServiceWorker:
     """Worker class that runs in a separate thread to process files"""
     
-    def __init__(
-        self
-    ):
+    def __init__(self, status_queue: Queue):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
+        self.status_queue = status_queue
         
         # Add console handler if not already present
         if not self.logger.handlers:
@@ -121,14 +121,28 @@ class GenerateServiceWorker:
                 self.logger.error(f"Queue processing error: {str(e)}")
                 await asyncio.sleep(1)
                 
+    async def _notify_status_change(self, session):
+        """Send status update through IPC queue"""
+        try:
+            status = {
+                "queued_count": len(self.db_file_service.get_files_by_status(session, FileStatus.QUEUED)),
+                "processing_count": len(self.db_file_service.get_files_by_status(session, FileStatus.PROCESSING)),
+                "processed_files": [f.path for f in self.db_file_service.get_files_by_status(session, FileStatus.COMPLETED)]
+            }
+            self.status_queue.put(status)
+        except Exception as e:
+            self.logger.error(f"Failed to notify status change: {e}")
+
     async def _process_single_file(self, session, file):
         """Process a single file through the ingestion pipeline"""
         try:
+            # Update status to processing
             self.db_file_service.update_file_status(
                 session,
                 file.path,
                 FileStatus.PROCESSING
             )
+            await self._notify_status_change(session)
 
             self.logger.info(f"Processing file: {file.path}")
             
@@ -156,11 +170,13 @@ class GenerateServiceWorker:
                         self.logger.error(f"Failed to process stack {stack_name}: {str(e)}")
                         continue
                         
+            # Update status to completed
             self.db_file_service.update_file_status(
                 session,
                 file.path,
                 FileStatus.COMPLETED
             )
+            await self._notify_status_change(session)
             
         except Exception as e:
             self.logger.error(f"Failed to process file {file.path}: {str(e)}")
@@ -168,4 +184,5 @@ class GenerateServiceWorker:
                 session,
                 file.path,
                 FileStatus.ERROR
-            ) 
+            )
+            await self._notify_status_change(session) 

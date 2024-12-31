@@ -24,11 +24,13 @@ export function ProcessingToast() {
   useEffect(() => {
     if (activeProcessing.length === 0 && completedProcessing.length > 0) {
       const timer = setTimeout(() => {
-        resetAll();
-      }, 1000);
+        if (processingItems.every(item => item.total === item.processed)) {
+          resetAll();
+        }
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [activeProcessing.length, completedProcessing.length, resetAll]);
+  }, [activeProcessing.length, completedProcessing.length, processingItems, resetAll]);
 
   if (activeProcessing.length === 0 && completedProcessing.length === 0) {
     return null;

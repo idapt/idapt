@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, WebSocket, HTTPException, Depends, BackgroundTasks
 import logging
 from typing import List
 from pydantic import BaseModel, Field
@@ -72,3 +72,20 @@ async def get_generation_status(
         return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@r.websocket("/status/ws")
+async def generate_status_websocket(
+    websocket: WebSocket,
+    generate_service: GenerateService = Depends(get_generate_service)
+):
+    """WebSocket endpoint for generation status updates"""
+    try:
+        await generate_service.connect(websocket)
+        while True:
+            try:
+                # Keep connection alive and wait for client messages
+                await websocket.receive_text()
+            except Exception:
+                break
+    finally:
+        await generate_service.disconnect(websocket) 
