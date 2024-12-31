@@ -1,0 +1,242 @@
+name: idapt_dev
+services:
+
+  # Integrated Ollama instance
+  idapt-ollama:
+    container_name: idapt-ollama
+    image: ollama/ollama:latest
+    expose:
+      - "11434"
+    networks:
+      idapt-ollama-external-network: {}
+      idapt-ollama-network: {}
+    runtime: nvidia # Remove this if you don't want to use GPU for ollama.
+    deploy: # Remove this if you don't want to use GPU for ollama.
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: ["gpu"]
+              count: all
+    # Removed for dev to not clutter the logs.
+    #healthcheck: # Causes issues when pulling large models or when api is busy for a long time.
+    #  test: ["CMD", "ollama", "--version"]  # Check if Ollama is responding
+    #  interval: 1s                    # Run the health check every 2 seconds
+    #  timeout: 5s                     # Timeout for the health check is 30 seconds
+    #  retries: 30                       # Retry 5 times before marking it as unhealthy
+    volumes:
+      - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
+    restart: always
+    # Container security hardening
+    security_opt:
+      - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+
+
+
+  idapt-postgres:
+    container_name: idapt-postgres
+    build:
+      context: ./postgres
+      dockerfile: ./Dockerfile
+    #ports:
+    #  - "5432:5432" # Expose database port locally for dev access
+    expose:
+      - "5432"
+    networks:
+      idapt-postgres-network: {}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Store the database data in a volume
+      - postgres_admin_secrets:/postgres_admin_secrets # Store the generated password, not shared to any other container.
+      - postgres_backend_secrets:/postgres_backend_secrets # Store the generated password, shared to the backend container.
+      - postgres_keycloak_secrets:/postgres_keycloak_secrets # Store the generated password, shared to the keycloak container.
+    environment:
+      POSTGRES_USER: 'postgres'
+      # The password is randomly generated and set by the entrypoint script.
+      DEV_DB_PASSWORD: ${DEV_DB_PASSWORD}
+      POSTGRES_DB: 'postgres'
+      POSTGRES_HOST_AUTH_METHOD: 'password' # Allow all connections using password.
+      PGDATA: '/var/lib/postgresql/data'
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost", "-U", "postgres"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    restart: always
+    # Container security hardening
+    security_opt:
+      - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+
+
+
+  # The backend is the main service of the application.
+  idapt-backend:
+    build:
+      context: ./backend
+      dockerfile: dev.Dockerfile 
+    container_name: idapt-backend
+    expose:
+      - "8000"
+    networks:
+      idapt-backend-external-network: {}
+      idapt-backend-network: {}
+      idapt-ollama-network: {}
+      idapt-postgres-network: {}
+    depends_on:
+      idapt-postgres:
+        condition: service_healthy
+      idapt-ollama:
+        condition: service_started # Removed for dev to not clutter the logs.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    environment:
+      ENVIRONMENT: dev
+      HOST_DOMAIN: localhost
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
+      - backend_data:/backend_data # The volume where the app data is stored.
+      - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - postgres_backend_secrets:/postgres_backend_secrets:ro # Give access to the postgres password.
+    restart: always
+    # Container security hardening
+    security_opt:
+      - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+
+
+
+  idapt-frontend:
+    build:
+      context: ./frontend
+      dockerfile: dev.Dockerfile
+    container_name: idapt-frontend
+    expose:
+      - "3000"
+    networks:
+      idapt-frontend-external-network: {}
+      idapt-frontend-network: {}
+    #depends_on:     # Disable for dev to have a faster startup time, backend will simply not respond at frontend start.
+      #idapt-backend:
+      #  condition: service_healthy
+    environment:
+      ENVIRONMENT: dev
+      NEXT_PUBLIC_HOST_DOMAIN: localhost
+    env_file:
+      - ./frontend/.env
+    volumes:
+      - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
+    restart: always
+    # Container security hardening
+    user: node
+    security_opt:
+      - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+
+
+
+
+# Nginx to manage every communication between containers and outside world.
+  idapt-nginx:
+    container_name: idapt-nginx
+    build:
+      context: ./nginx
+      dockerfile: ./Dockerfile
+    environment:
+      # Entrypoint script variables
+      HOST_DOMAIN: localhost
+      # Container variables
+      CERTBOT_EMAIL: dummy-email@example.com
+      # Optional (Defaults)
+      DHPARAM_SIZE: 2048
+      ELLIPTIC_CURVE: secp256r1
+      RENEWAL_INTERVAL: 8d
+      RSA_KEY_SIZE: 2048
+      STAGING: 0
+      USE_ECDSA: 1
+      # Advanced (Defaults)
+      CERTBOT_AUTHENTICATOR: webroot
+      CERTBOT_DNS_PROPAGATION_SECONDS: ""
+      DEBUG: 0
+      USE_LOCAL_CA: 1 # For dev we use a local CA to avoid harrasing letsencrypt.
+    ports:
+      # Expose the nginx listening ports through the host firewall.
+      # Add 127.0.0.1 to only open ports locally and not through the host firewall.
+      - '127.0.0.1:80:80/tcp'
+      - '127.0.0.1:443:443/tcp'
+      - '127.0.0.1:443:443/udp'
+    # Nginx has access to every container exposed via their own network for routing.
+    networks:
+      idapt-nginx-external-network: {}
+      idapt-frontend-network: {}
+      idapt-backend-network: {}
+    volumes:
+      - nginx_letsencrypt:/etc/letsencrypt
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  backend_data:
+  idapt_data:
+  ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
+  postgres_data:
+  postgres_admin_secrets:
+  postgres_backend_secrets:
+  postgres_keycloak_secrets:
+  nginx_letsencrypt:
+
+# One network for each service to keep them isolated.
+networks:
+  # Dedicated external networks for services that need internet access
+  idapt-nginx-external-network:
+    attachable: false
+    name: idapt-nginx-external-network
+    driver: bridge
+  idapt-frontend-external-network:
+    attachable: false
+    name: idapt-frontend-external-network
+    driver: bridge
+  idapt-backend-external-network:
+    attachable: false
+    name: idapt-backend-external-network
+    driver: bridge
+  idapt-ollama-external-network:
+    attachable: false
+    name: idapt-ollama-external-network
+    driver: bridge
+  # Internal networks for inter container communication.
+  idapt-backend-network:
+    internal: true
+    attachable: false
+    name: idapt-backend-network
+    driver: bridge
+  idapt-frontend-network:
+    internal: true
+    attachable: false
+    name: idapt-frontend-network
+    driver: bridge
+  idapt-ollama-network:
+    internal: true
+    attachable: false
+    name: idapt-ollama-network
+    driver: bridge
+  idapt-postgres-network:
+    internal: true
+    attachable: false
+    name: idapt-postgres-network
+    driver: bridge
