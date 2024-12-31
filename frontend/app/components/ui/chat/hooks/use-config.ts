@@ -4,13 +4,11 @@ export interface ChatConfig {
   backend?: string;
 }
 
-function getBackendOrigin(): string {
-  // This code is executed on the client side / machine.
-  // Use the current frontend origin as the backend is hosted at the same address, only with /api after as specified in the nginx.conf file.
-  if ( typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-  return "http://localhost:3030"; // TODO : Find a better way as this will not work.
+function getBackendOrigin(): string {  
+  // In production, construct URL from HOST_DOMAIN
+  const hostDomain = process.env.HOST_DOMAIN;
+  const protocol = hostDomain === 'localhost' ? 'http' : 'https';
+  return `${protocol}://${hostDomain}`;
 }
 
 export function useClientConfig(): ChatConfig {
