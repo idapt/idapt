@@ -32,7 +32,7 @@ nginx/certs/*.key
 nginx/certs/*.pem
 
 # For dev
-nginx/letsencrypt/
+ollama_data/
 
 # General
 

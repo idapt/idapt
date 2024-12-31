@@ -25,7 +25,7 @@ services:
     #  timeout: 5s                     # Timeout for the health check is 30 seconds
     #  retries: 30                       # Retry 5 times before marking it as unhealthy
     volumes:
-      - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
+      - ./ollama_data:/root/.ollama # Store the models in dev folder so that we don't download them again at each rebuild
     restart: always
     # Container security hardening
     security_opt:
@@ -193,7 +193,7 @@ services:
 volumes:
   backend_data:
   idapt_data:
-  ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
+  #ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
   postgres_data:
   postgres_admin_secrets:
   postgres_backend_secrets:
