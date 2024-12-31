@@ -11,8 +11,10 @@ envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /tmp/nginx-config/ng
 cp /tmp/nginx-config/nginx.conf /etc/nginx/nginx.conf
 
 
-# If there is user provided ssl certificates in the source folder and the source folder exists, copy them to the intended location in the letsencrypt folder where nginx will look for them
-if [ -d /nginx-certs-source ] && [ -n "$(ls -A /nginx-certs-source)" ]; then
+# If there is user provided ssl certificates in the source folder, copy them to the intended location in the letsencrypt folder where nginx will look for them
+# Note: there is a .gitinclude file in the certs folder so that the certs folder is created by git clone and does not throw an error during build, only do this option is there is actually .crt, .key or .pem files in the folder
+if [ -n "$(find /nginx-certs-source -type f \( -name '*.crt' -o -name '*.key' -o -name '*.pem' \))" ]; then
+    echo "User provided SSL certificates found."
 
     # If the certs are not already setup for this host_domain, generate them
     if [ ! -d /etc/letsencrypt/live/$HOST_DOMAIN ]; then
@@ -49,7 +51,7 @@ if [ -d /nginx-certs-source ] && [ -n "$(ls -A /nginx-certs-source)" ]; then
         fi
     fi
 
-    # Process server.conf with environment variables
+    # Process normal server.conf with environment variables
     envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /tmp/nginx-config/server.conf
     cp /tmp/nginx-config/server.conf /etc/nginx/conf.d/server.conf
 
@@ -58,20 +60,21 @@ if [ -d /nginx-certs-source ] && [ -n "$(ls -A /nginx-certs-source)" ]; then
     nginx -g 'daemon off;'
 
 # Else if the app is running in local mode
-elif $HOST_DOMAIN == "localhost"; then
+elif [ "$HOST_DOMAIN" = "localhost" ]; then
 
-    # Copy the local-server.conf to the nginx conf.d folder
-    cp /nginx-config-source/local-server.conf /etc/nginx/conf.d/local-server.conf
+    # Copy the server-local.conf to the nginx conf.d folder
+    cp /nginx-config-source/server-local.conf /etc/nginx/conf.d/server-local.conf
 
     # Use the original entrypoint script of the image nginx-certbot that will use Local CA and manage renewals as USE_LOCAL_CA=1
     echo "Starting nginx with local cert"
     exec /scripts/start_nginx_certbot.sh
 
+# Else the app is remote and have no provided ssl certificates
 else
 
-    # Process local-server.conf with environment variables
-    envsubst '$HOST_DOMAIN' < /nginx-config-source/local-server.conf > /tmp/nginx-config/local-server.conf
-    cp /tmp/nginx-config/local-server.conf /etc/nginx/conf.d/local-server.conf
+    # Process normal server.conf with environment variables
+    envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /tmp/nginx-config/server.conf
+    cp /tmp/nginx-config/server.conf /etc/nginx/conf.d/server.conf
 
 
     # Use the original entrypoint script of the image nginx-certbot
