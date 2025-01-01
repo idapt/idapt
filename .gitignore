@@ -25,6 +25,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Backend
+backend/.venv/
+
 # Nginx
 # Ignore all files in certs folder that end with .crt, .key, .pem
 nginx/certs/*.crt
