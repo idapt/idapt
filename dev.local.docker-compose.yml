@@ -35,42 +35,6 @@ services:
 
 
 
-  idapt-postgres:
-    container_name: idapt-postgres
-    build:
-      context: ./postgres
-      dockerfile: ./Dockerfile
-    ports:
-      - "5432:5432" # Expose database port locally for dev access # ! Using 127.0.0.1 throws an error.
-    expose:
-      - "5432"
-    networks:
-      idapt-postgres-network: {}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data # Store the database data in a volume
-      - postgres_admin_secrets:/postgres_admin_secrets # Store the generated password, not shared to any other container.
-      - postgres_backend_secrets:/postgres_backend_secrets # Store the generated password, shared to the backend container.
-      - postgres_keycloak_secrets:/postgres_keycloak_secrets # Store the generated password, shared to the keycloak container.
-    environment:
-      POSTGRES_USER: 'postgres'
-      # The password is randomly generated and set by the entrypoint script.
-      DEV_DB_PASSWORD: ${DEV_DB_PASSWORD}
-      POSTGRES_DB: 'postgres'
-      POSTGRES_HOST_AUTH_METHOD: 'password' # Allow all connections using password.
-      PGDATA: '/var/lib/postgresql/data'
-    healthcheck:
-      test: ["CMD", "pg_isready", "-h", "localhost", "-U", "postgres"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
-    restart: always
-    # Container security hardening
-    security_opt:
-      - no-new-privileges:true
-    #cap_drop: # TODO
-    #  - ALL
-
-
 
   # The backend is the main service of the application.
   idapt-backend:
@@ -84,10 +48,7 @@ services:
       idapt-backend-external-network: {}
       idapt-backend-network: {}
       idapt-ollama-network: {}
-      idapt-postgres-network: {}
     depends_on:
-      idapt-postgres:
-        condition: service_healthy
       idapt-ollama:
         condition: service_started # Removed for dev to not clutter the logs.
     healthcheck:
@@ -104,7 +65,6 @@ services:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - backend_data:/backend_data # The volume where the app data is stored.
       - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
-      - postgres_backend_secrets:/postgres_backend_secrets:ro # Give access to the postgres password.
     restart: always
     # Container security hardening
     security_opt:
@@ -194,10 +154,6 @@ volumes:
   backend_data:
   idapt_data:
   #ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
-  postgres_data:
-  postgres_admin_secrets:
-  postgres_backend_secrets:
-  postgres_keycloak_secrets:
   nginx_letsencrypt:
 
 # One network for each service to keep them isolated.
@@ -234,9 +190,4 @@ networks:
     internal: true
     attachable: false
     name: idapt-ollama-network
-    driver: bridge
-  idapt-postgres-network:
-    #internal: true # Not internal for dev to be able to access the database from the host.
-    attachable: false
-    name: idapt-postgres-network
     driver: bridge

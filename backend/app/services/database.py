@@ -4,23 +4,17 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.database.connection import get_connection_string
 from sqlalchemy import create_engine, Engine
-from sqlalchemy.pool import QueuePool
 from sqlalchemy.orm import sessionmaker
 
 
 class DatabaseService:
     def __init__(self):
-        connection_string : str = get_connection_string().replace("+asyncpg", "+psycopg2")
-        self.engine : Engine = create_engine(
+        connection_string = get_connection_string()
+        self.engine: Engine = create_engine(
             connection_string,
-            poolclass=QueuePool,
-            pool_size=20,
-            max_overflow=30,
-            pool_timeout=60,
-            pool_pre_ping=True,  # Add connection health check
-            pool_recycle=3600    # Recycle connections after 1 hour
+            connect_args={"check_same_thread": False}  # Required for SQLite
         )
-        self.session_factory : sessionmaker = sessionmaker(bind=self.engine)
+        self.session_factory = sessionmaker(bind=self.engine)
     
     def get_session(self) -> Session:
         """Get a database session directly"""
