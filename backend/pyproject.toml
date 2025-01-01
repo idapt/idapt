@@ -1,9 +1,9 @@
 [tool]
 [tool.poetry]
-name = "app"
-version = "0.1.0"
+name = "idapt"
+version = "0.0.1"
 description = ""
-authors = [ "Marcus Schiesser <mail@marcusschiesser.de>" ]
+authors = [ "idapt <info-backend@idapt.ai>" ]
 readme = "README.md"
 
 [tool.poetry.scripts]
