@@ -10,8 +10,8 @@ def init_llm(settings: AppSettings):
         #    return init_groq_llm(settings.llm.groq_model, settings.system_prompt)
         case "custom_ollama":
             return init_ollama_llm(settings.custom_ollama, settings.temperature, settings.system_prompt)
-        case "text-generation-inference":
-            return init_tgi_llm(settings.tgi, settings.temperature, settings.system_prompt)
+        #case "text-generation-inference":
+        #    return init_tgi_llm(settings.tgi, settings.temperature, settings.system_prompt)
         #case "anthropic":
         #    return init_anthropic_llm(settings.llm.anthropic_model, settings.system_prompt)
         #case "gemini":
@@ -38,7 +38,7 @@ def init_embedding_model(settings: AppSettings):
         #    return init_mistral_embedding(settings.embedding.mistral_embedding_model)
         #case "fastembed":
         #    return init_fastembed_embedding(settings.embedding.fastembed_embedding_model)
-        case "text-embeddings-inference":
-            return init_tei_embedding(settings.tei, settings.embedding_dim)
+        #case "text-embeddings-inference":
+        #    return init_tei_embedding(settings.tei, settings.embedding_dim)
         case _:
             return init_ollama_embedding(settings.integrated_ollama)
