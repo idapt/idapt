@@ -4,23 +4,25 @@ from app.services.database import DatabaseService
 from app.services.db_file import DBFileService
 from app.services.file_manager import FileManagerService
 from app.services.file_system import get_full_path_from_path
-from llama_index.vector_stores.postgres import PGVectorStore
-from llama_index.storage.docstore.postgres import PostgresDocumentStore
-from llama_index.storage.index_store.postgres import PostgresIndexStore
+from app.settings.manager import AppSettingsManager
+
 from llama_index.core.indices import VectorStoreIndex
 from llama_index.core.tools import BaseTool, QueryEngineTool
 from llama_index.core.tools import ToolMetadata
-from llama_index.core.retrievers import AutoMergingRetriever, VectorIndexRetriever
+from llama_index.core.retrievers import VectorIndexRetriever#, AutoMergingRetriever
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.settings import Settings
-from app.database.connection import get_connection_string
-from app.settings.manager import AppSettingsManager
+from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.core.storage.docstore import SimpleDocumentStore
+from llama_index.core.storage.index_store import SimpleIndexStore
+import chromadb
+
 import logging
 from typing import List, Optional, Dict, Tuple
 import re
-from sqlalchemy import make_url, text
-
+from sqlalchemy import text
+from pathlib import Path
 
 app_settings = AppSettingsManager.get_instance().settings
 
@@ -32,9 +34,9 @@ class DatasourceService:
         self.file_manager_service = file_manager_service
         
         # Storage components
-        self._vector_stores: Dict[str, PGVectorStore] = {}
-        self._doc_stores: Dict[str, PostgresDocumentStore] = {}
-        self._index_stores: Dict[str, PostgresIndexStore] = {}
+        self._vector_stores: Dict[str, ChromaVectorStore] = {}
+        self._doc_stores: Dict[str, SimpleDocumentStore] = {}
+        self._index_stores: Dict[str, SimpleIndexStore] = {}
         self._indices: Dict[str, VectorStoreIndex] = {}
         self._tools: Dict[str, BaseTool] = {}
         
@@ -56,7 +58,7 @@ class DatasourceService:
             self.logger.error(f"Error initializing default datasources: {str(e)}")
             raise
 
-    def get_storage_components(self, datasource_identifier: str) -> Tuple[PGVectorStore, PostgresDocumentStore, PostgresIndexStore]:
+    def get_storage_components(self, datasource_identifier: str) -> Tuple[ChromaVectorStore, SimpleDocumentStore, SimpleIndexStore]:
         """Get or create all storage components for a datasource"""
         try:
             vector_store = self.get_vector_store(datasource_identifier)
@@ -67,17 +69,17 @@ class DatasourceService:
             self.logger.error(f"Error getting storage components: {str(e)}")
             raise
 
-    def get_vector_store(self, datasource_identifier: str) -> PGVectorStore:
+    def get_vector_store(self, datasource_identifier: str) -> ChromaVectorStore:
         if datasource_identifier not in self._vector_stores:
             self._vector_stores[datasource_identifier] = self._create_vector_store(datasource_identifier)
         return self._vector_stores[datasource_identifier]
 
-    def get_doc_store(self, datasource_identifier: str) -> PostgresDocumentStore:
+    def get_doc_store(self, datasource_identifier: str) -> SimpleDocumentStore:
         if datasource_identifier not in self._doc_stores:
             self._doc_stores[datasource_identifier] = self._create_doc_store(datasource_identifier)
         return self._doc_stores[datasource_identifier]
 
-    def get_index_store(self, datasource_identifier: str) -> PostgresIndexStore:
+    def get_index_store(self, datasource_identifier: str) -> SimpleIndexStore:
         if datasource_identifier not in self._index_stores:
             self._index_stores[datasource_identifier] = self._create_index_store(datasource_identifier)
         return self._index_stores[datasource_identifier]
@@ -218,51 +220,65 @@ class DatasourceService:
             raise
 
     # Private methods for creating components
-    def _create_vector_store(self, datasource_identifier: str) -> PGVectorStore:
+    def _create_vector_store(self, datasource_identifier: str) -> ChromaVectorStore:
         try:
-            connection_string = get_connection_string()
-            url = make_url(connection_string)
-            vector_store = PGVectorStore.from_params(
-                database=url.database,
-                host=url.host,
-                password=url.password,
-                port=url.port,
-                user=url.username,
-                schema_name="public",
-                table_name=f"{datasource_identifier}_embeddings",
-                embed_dim=int(app_settings.embedding_dim),
-                perform_setup=True,
-                #hnsw_kwargs={
-                #    "hnsw_m": 16,
-                #    "hnsw_ef_construction": 64,
-                #    "hnsw_ef_search": 40,
-                #    "hnsw_dist_method": "vector_cosine_ops",
-                #},
+            # Create the embeddings directory if it doesn't exist
+            embeddings_dir = Path("/data/.idapt")
+            embeddings_dir.mkdir(parents=True, exist_ok=True)
+            embeddings_file = embeddings_dir / f"{datasource_identifier}"
+            
+            # Create a Chroma persistent client
+            client = chromadb.PersistentClient(path=str(embeddings_file))
+            # Create a Chroma collection
+            chroma_collection = client.get_or_create_collection(name=datasource_identifier)
+            # Create a Chroma vector store
+            vector_store = ChromaVectorStore.from_collection(
+                chroma_collection
             )
             return vector_store
         except Exception as e:
             self.logger.error(f"Error creating vector store: {str(e)}")
             raise
 
-    def _create_doc_store(self, datasource_identifier: str) -> PostgresDocumentStore:
+    def _create_doc_store(self, datasource_identifier: str) -> SimpleDocumentStore:
         try:
-            return PostgresDocumentStore.from_uri(
-                uri=get_connection_string(),
-                schema_name="public",
-                table_name=f"{datasource_identifier}_docstore"
-            )
+            # Create the docstore directory if it doesn't exist
+            docstores_dir = Path("/data/.idapt/docstores")
+            docstores_dir.mkdir(parents=True, exist_ok=True)
+            docstores_file = docstores_dir / f"{datasource_identifier}.json"
+
+            docstore = None
+            # If the file doesn't exist, create a new docstore and persist it
+            if not docstores_file.exists():
+                docstore = SimpleDocumentStore()
+                docstore.persist(persist_path=str(docstores_file))
+            else:
+                docstore = SimpleDocumentStore.from_persist_path(
+                    str(docstores_file)
+                )
+
+            return docstore
         except Exception as e:
             self.logger.error(f"Error creating doc store: {str(e)}")
             raise
 
-
-    def _create_index_store(self, datasource_identifier: str) -> PostgresIndexStore:
+    def _create_index_store(self, datasource_identifier: str) -> SimpleIndexStore:
         try:
-            return PostgresIndexStore.from_uri(
-                uri=get_connection_string(),
-                schema_name="public",
-                table_name=f"{datasource_identifier}_index"
-            )
+            # Create the index store directory if it doesn't exist
+            indexstores_dir = Path("/data/.idapt/indexstores") / datasource_identifier
+            indexstores_dir.mkdir(parents=True, exist_ok=True)
+            indexstores_file = indexstores_dir / f"{datasource_identifier}.json"
+            
+            index_store = None
+            # If the file doesn't exist, create a new index store and persist it
+            if not indexstores_file.exists():
+                index_store = SimpleIndexStore()
+                index_store.persist(persist_path=str(indexstores_file))
+            else:
+                index_store = SimpleIndexStore.from_persist_path(
+                    str(indexstores_file)
+                )
+            return index_store
         except Exception as e:
             self.logger.error(f"Error creating index store: {str(e)}")
             raise
