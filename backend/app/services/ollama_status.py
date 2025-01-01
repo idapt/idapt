@@ -40,7 +40,6 @@ class OllamaStatusService:
         """Check if required models are installed and download if needed"""
         try:
 
-            self.logger.error("Checking models")
             app_settings : AppSettings = AppSettingsManager.get_instance().settings
             
             # Check LLM models
@@ -80,14 +79,24 @@ class OllamaStatusService:
             response = requests.get(f"{base_url}/api/tags")
             if response.status_code == 200:
                 models_data = response.json()
-                # Extract model names from the response
-                installed_models = [model['name'] for model in models_data['models']] if 'models' in models_data else []
+
+                # Build the list of installed models names
+                installed_models = []
+                for model in models_data['models']:
+                    installed_models.append(model['name'])
+                                
+                # Normalize model name (add :latest if no tag specified)
+                if ':' not in model_name:
+                    model_name_to_check = f"{model_name}:latest"
+                # Otherwise use the original model name given with the tag
+                else:
+                    model_name_to_check = model_name
                 
-                if model_name not in installed_models:
+                if model_name_to_check not in installed_models:
                     self.logger.info(f"Model {model_name} not found, starting download...")
                     self.set_status(True)
                     
-                    # Pull the model
+                    # Use original model_name for pulling
                     pull_response = requests.post(
                         f"{base_url}/api/pull",
                         json={"name": model_name},
@@ -150,8 +159,16 @@ class OllamaStatusService:
 
     def can_process(self) -> bool:
         """Check if Ollama models are ready for processing"""
+        if not self._initialized:
+            self.logger.warning("OllamaStatusService not initialized, returning False")
+            return False
+        
         try:
             app_settings = AppSettingsManager.get_instance().settings
+            
+            # Don't check if we're currently downloading
+            if self.is_downloading:
+                return False
             
             # Check LLM models
             if app_settings.llm_model_provider in ["integrated_ollama", "custom_ollama"]:
@@ -162,13 +179,8 @@ class OllamaStatusService:
                         if app_settings.llm_model_provider == "custom_ollama" 
                         else app_settings.integrated_ollama.llm_model)
                 
-                response = requests.get(f"{base_url}/api/tags")
-                if response.status_code == 200:
-                    models_data = response.json()
-                    installed_models = [model['name'] for model in models_data['models']] if 'models' in models_data else []
-                    if model not in installed_models:
-                        return False
-                    
+                self._check_model(base_url, model)
+
             # Check embedding models
             if app_settings.embedding_model_provider in ["integrated_ollama", "custom_ollama"]:
                 base_url = (app_settings.custom_ollama.embedding_host 
@@ -178,12 +190,7 @@ class OllamaStatusService:
                         if app_settings.embedding_model_provider == "custom_ollama" 
                         else app_settings.integrated_ollama.embedding_model)
                 
-                response = requests.get(f"{base_url}/api/tags")
-                if response.status_code == 200:
-                    models_data = response.json()
-                    installed_models = [model['name'] for model in models_data['models']] if 'models' in models_data else []
-                    if model not in installed_models:
-                        return False
+                self._check_model(base_url, model)
                     
             return True
         except Exception as e:
