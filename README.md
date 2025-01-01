@@ -18,6 +18,24 @@ Go to the [website](https://idapt.ai) for more information.
 
 ## Production Installation
 
+### Local Production Installation
+
+- Install [Docker](https://docs.docker.com/get-started/get-docker/) and add GPU support with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) if you want faster inference and embeddings generation.
+- Clone the repository with 
+```bash
+git clone https://github.com/idapt/idapt.git && cd idapt
+```
+- Run 
+```bash
+docker compose -f local.docker-compose.yml up --build
+```
+in the idapt root folder to start the production local server.
+- Access the app at [https://localhost](https://localhost).
+- Add your data sources, setup your settings (model provider, system prompt, etc.) and start chatting with your private, personal AI assistant !
+**NOTE : The local server version of the app do not have any authentication system and is only meant to be used locally with localhost behind a safe firewall.**
+
+### Remote Production Installation
+
 - Install [Docker](https://docs.docker.com/get-started/get-docker/) and add GPU support with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) if you want faster inference and embeddings generation.
 - Clone the repository with 
 ```bash
@@ -30,16 +48,31 @@ docker compose up
 ```
 in the idapt root folder to start the production server.
 *This will build the production images and start the containers in production mode with the settings you set in the `.env` file.*
-- Access the app at [https://localhost](https://localhost). *(or to https://your-custom-host if you changed it for remote access)*
+- Access the app at [https://your-custom-host](https://your-custom-host). *(if you don't have a domain and want to access it locally, use the local version)*
 - Create your account using a secure password and setup your TOTP (Time-based One-Time Password) for extra security.
-- Add your data sources, setup your settings (model provider, temperature, etc.) and start chatting with your private, personal AI assistant !
+- Add your data sources, setup your settings (model provider, system prompt, etc.) and start chatting with your private, personal AI assistant !
 
 ## Development Installation
 
 In development mode, the frontend and backend folders are synced with the host folders so any changes you make to the code will be reflected directly in the containers.
 The containers ports are also exposed to facilitate development.
 
-### Start the containers
+### Local Development Installation
+
+- Clone the repository with 
+```bash
+git clone https://github.com/idapt/idapt.git && cd idapt
+```
+- Run 
+```bash
+docker compose -f dev.local.docker-compose.yml up --build
+```
+in the idapt root folder to start the development server.
+*This will start all the containers in development mode and sync the code changes between the host and the frontend and backend containers.*
+- Access the app at [https://localhost](https://localhost).
+- Build or fix !
+
+### Remote Development Installation
 
 - Clone the repository with 
 ```bash
@@ -71,3 +104,5 @@ See the compose file for more details on the architecture.
 - Certbot (in nginx container) for SSL certificates using Let's Encrypt for custom domains
 - OAuth2 Proxy for authentication at nginx level (for keycloak)
 - Ollama for simple local integrated LLM model and Embeddings provider
+
+The local version do not have any authentication system.
