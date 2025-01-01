@@ -62,12 +62,6 @@ class AppSettingsManager:
         self._update_dependent_services()
     
     def _update_dependent_services(self) -> None:
-
         # Update llama index settings
         from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
         update_llama_index_settings_from_app_settings(self.settings)
-        
-        # Pull Ollama models if needed
-        if self.settings.llm_model_provider in ["integrated_ollama", "custom_ollama"]:
-            from app.pull_ollama_models import start_ollama_pull_thread
-            start_ollama_pull_thread() 

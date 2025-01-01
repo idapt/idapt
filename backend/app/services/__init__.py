@@ -10,6 +10,7 @@ from app.services.file import FileService
 from app.services.llama_index import LlamaIndexService
 from app.services.file_system import FileSystemService
 from app.services.ingestion_pipeline import IngestionPipelineService
+from app.services.ollama_status import OllamaStatusService
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +38,18 @@ class ServiceManager:
         self.logger = logging.getLogger(__name__)
         self.logger.info("Initializing services...")
         
-        # Core services with their own thread safety
+        # Initialize stateless services first
+        self.ollama_status_service = OllamaStatusService()
+        self.ollama_status_service.initialize()
+
+        # Then database-dependent services
         self.db_service = DatabaseService()
         self.db_file_service = DBFileService()
         self.file_system_service = FileSystemService()
         self.file_service = FileService()
         
         self.llama_index_service = LlamaIndexService()
+        
 
         # Dependent services
         self.file_manager_service = FileManagerService(

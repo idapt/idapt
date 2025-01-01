@@ -22,4 +22,8 @@ export interface ProcessingToastItem extends BaseToastItem {
   processed: number;
 }
 
-export type ToastItem = UploadToastItem | DeletionToastItem | ProcessingToastItem; 
+export interface OllamaToastItem extends BaseToastItem {
+  type: 'ollama';
+}
+
+export type ToastItem = UploadToastItem | DeletionToastItem | ProcessingToastItem | OllamaToastItem; 
