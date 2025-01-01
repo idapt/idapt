@@ -147,3 +147,45 @@ class OllamaStatusService:
             self._stop_event.set()
         if self._check_thread and self._check_thread.is_alive():
             self._check_thread.join(timeout=1) 
+
+    def can_process(self) -> bool:
+        """Check if Ollama models are ready for processing"""
+        try:
+            app_settings = AppSettingsManager.get_instance().settings
+            
+            # Check LLM models
+            if app_settings.llm_model_provider in ["integrated_ollama", "custom_ollama"]:
+                base_url = (app_settings.custom_ollama.llm_host 
+                           if app_settings.llm_model_provider == "custom_ollama" 
+                           else app_settings.integrated_ollama.llm_host)
+                model = (app_settings.custom_ollama.llm_model 
+                        if app_settings.llm_model_provider == "custom_ollama" 
+                        else app_settings.integrated_ollama.llm_model)
+                
+                response = requests.get(f"{base_url}/api/tags")
+                if response.status_code == 200:
+                    models_data = response.json()
+                    installed_models = [model['name'] for model in models_data['models']] if 'models' in models_data else []
+                    if model not in installed_models:
+                        return False
+                    
+            # Check embedding models
+            if app_settings.embedding_model_provider in ["integrated_ollama", "custom_ollama"]:
+                base_url = (app_settings.custom_ollama.embedding_host 
+                           if app_settings.embedding_model_provider == "custom_ollama" 
+                           else app_settings.integrated_ollama.embedding_host)
+                model = (app_settings.custom_ollama.embedding_model 
+                        if app_settings.embedding_model_provider == "custom_ollama" 
+                        else app_settings.integrated_ollama.embedding_model)
+                
+                response = requests.get(f"{base_url}/api/tags")
+                if response.status_code == 200:
+                    models_data = response.json()
+                    installed_models = [model['name'] for model in models_data['models']] if 'models' in models_data else []
+                    if model not in installed_models:
+                        return False
+                    
+            return True
+        except Exception as e:
+            self.logger.error(f"Error checking if can process: {str(e)}")
+            return False 

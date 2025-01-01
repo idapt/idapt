@@ -11,7 +11,7 @@ from app.services.file_system import FileSystemService
 from app.database.models import File, FileStatus
 import json
 from multiprocessing import Queue
-
+from app.services.ollama_status import OllamaStatusService
 class GenerateServiceWorker:
     """Worker class that runs in a separate thread to process files"""
     
@@ -29,6 +29,10 @@ class GenerateServiceWorker:
             self.logger.addHandler(console_handler)
 
         self.logger.info("Initializing generate worker services...")
+
+        # Ollama status service
+        self.ollama_status_service = OllamaStatusService()
+        self.ollama_status_service.initialize()
         
         # Core services with their own thread safety
         self.db_service = DatabaseService()
@@ -76,6 +80,12 @@ class GenerateServiceWorker:
         """Main processing loop"""
         while True:
             try:
+                # Check if we need to wait for Ollama models
+                if not self.ollama_status_service.can_process():
+                    self.logger.info("Waiting for Ollama models to be ready before processing files...")
+                    await asyncio.sleep(1)
+                    continue
+                
                 with self.db_service.get_session() as session:
                     # Process interrupted files first
                     while True:
