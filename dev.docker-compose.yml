@@ -109,7 +109,7 @@ services:
     container_name: idapt-nginx
     build:
       context: ./nginx
-      dockerfile: ./Dockerfile
+      dockerfile: ./dev.Dockerfile
     environment:
       # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}

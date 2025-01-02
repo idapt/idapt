@@ -72,42 +72,16 @@ services:
 
 
 
-  idapt-frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: idapt-frontend
-    expose:
-      - "3000"
-    networks:
-      idapt-frontend-external-network: {}
-      idapt-frontend-network: {}
-    depends_on:
-      idapt-backend:
-        condition: service_healthy
-    environment:
-      ENVIRONMENT: prod
-      NEXT_PUBLIC_HOST_DOMAIN: ${HOST_DOMAIN}
-    env_file:
-      - ./frontend/.env
-    restart: always
-    # Container security hardening
-    user: node
-    security_opt:
-      - no-new-privileges:true
-    #cap_drop: # TODO
-    #  - ALL
-
-
-
-
 # Nginx to manage every communication between containers and outside world.
   idapt-nginx:
     container_name: idapt-nginx
     build:
-      context: ./nginx
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./nginx/Dockerfile
     environment:
+      # Frontend variables
+      ENVIRONMENT: prod
+      NEXT_PUBLIC_HOST_DOMAIN: ${HOST_DOMAIN}
       # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}
       # Container variables
@@ -124,6 +98,8 @@ services:
       CERTBOT_DNS_PROPAGATION_SECONDS: ""
       DEBUG: 0
       USE_LOCAL_CA: 0
+    env_file:
+      - ./frontend/.env
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
@@ -133,7 +109,6 @@ services:
     # Nginx has access to every container exposed via their own network for routing.
     networks:
       idapt-nginx-external-network: {}
-      idapt-frontend-network: {}
       idapt-backend-network: {}
     volumes:
       - nginx_letsencrypt:/etc/letsencrypt # Persist the certificates.
@@ -167,10 +142,6 @@ networks:
     attachable: false
     name: idapt-nginx-external-network
     driver: bridge
-  idapt-frontend-external-network:
-    attachable: false
-    name: idapt-frontend-external-network
-    driver: bridge
   idapt-backend-external-network:
     attachable: false
     name: idapt-backend-external-network
@@ -184,11 +155,6 @@ networks:
     internal: true
     attachable: false
     name: idapt-backend-network
-    driver: bridge
-  idapt-frontend-network:
-    internal: true
-    attachable: false
-    name: idapt-frontend-network
     driver: bridge
   idapt-ollama-network:
     internal: true
