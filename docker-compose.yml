@@ -86,19 +86,9 @@ services:
       HOST_DOMAIN: ${HOST_DOMAIN}
       # Container variables
       CERTBOT_EMAIL: ${CERTBOT_EMAIL}
-      # Optional (Defaults)
-      DHPARAM_SIZE: 2048
-      ELLIPTIC_CURVE: secp256r1
-      RENEWAL_INTERVAL: 8d
-      RSA_KEY_SIZE: 2048
-      STAGING: 0
-      USE_ECDSA: 1
-      # Advanced (Defaults)
-      CERTBOT_AUTHENTICATOR: webroot
-      CERTBOT_DNS_PROPAGATION_SECONDS: ""
-      DEBUG: 0
       USE_LOCAL_CA: 0
     env_file:
+      - ./nginx/.env
       - ./frontend/.env
     ports:
       # Expose the nginx listening ports through the host firewall.
