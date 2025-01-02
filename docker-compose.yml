@@ -34,39 +34,6 @@ services:
 
 
 
-  idapt-postgres:
-    container_name: idapt-postgres
-    build:
-      context: ./postgres
-      dockerfile: ./Dockerfile
-    expose:
-      - "5432"
-    networks:
-      idapt-postgres-network: {}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data # Store the database data in a volume
-      - postgres_admin_secrets:/postgres_admin_secrets # Store the generated password, not shared to any other container.
-      - postgres_backend_secrets:/postgres_backend_secrets # Store the generated password, shared to the backend container.
-      - postgres_keycloak_secrets:/postgres_keycloak_secrets # Store the generated password, shared to the keycloak container.
-    environment:
-      POSTGRES_USER: 'postgres'
-      # The password is randomly generated and set by the entrypoint script.
-      POSTGRES_DB: 'postgres'
-      POSTGRES_HOST_AUTH_METHOD: 'password' # Allow all connections using password.
-      PGDATA: '/var/lib/postgresql/data'
-    healthcheck:
-      test: ["CMD", "pg_isready", "-h", "localhost", "-U", "postgres"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
-    restart: always
-    # Container security hardening
-    security_opt:
-      - no-new-privileges:true
-    #cap_drop: # TODO
-    #  - ALL
-
-
 
   # The backend is the main service of the application.
   idapt-backend:
@@ -80,10 +47,7 @@ services:
       idapt-backend-external-network: {}
       idapt-backend-network: {}
       idapt-ollama-network: {}
-      idapt-postgres-network: {}
     depends_on:
-      idapt-postgres:
-        condition: service_healthy
       idapt-ollama:
         condition: service_healthy
     healthcheck:
@@ -99,8 +63,6 @@ services:
     volumes:
       - backend_data:/backend_data # The volume where the app data is stored.
       - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
-      - postgres_backend_secrets:/postgres_backend_secrets:ro # Give access to the postgres password.
-      - keycloak_backend_client_secret:/keycloak_backend_client_secret:ro # Give access to the keycloak backend client secret.
     restart: always
     # Container security hardening
     security_opt:
@@ -171,12 +133,8 @@ services:
     # Nginx has access to every container exposed via their own network for routing.
     networks:
       idapt-nginx-external-network: {}
-      idapt-keycloak-network: {}
       idapt-frontend-network: {}
       idapt-backend-network: {}
-      idapt-oauth2-proxy-network:
-        aliases:
-          - "${HOST_DOMAIN}" # Needed for oauth2 proxy to use the domain host and make requests to keycloak that match host domain.
     volumes:
       - nginx_letsencrypt:/etc/letsencrypt # Persist the certificates.
     healthcheck:
@@ -196,83 +154,11 @@ services:
 
 
 
-
-  idapt-keycloak:
-    container_name: 'idapt-keycloak'
-    build:
-      context: ./keycloak
-      dockerfile: ./Dockerfile
-    depends_on:
-      idapt-postgres:
-        condition: service_healthy
-    environment:
-      - HOST_DOMAIN=${HOST_DOMAIN}
-      - KEYCLOAK_USER_EMAIL=${KEYCLOAK_USER_EMAIL}
-      - SMTP_ADDRESS=${SMTP_ADDRESS}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_SSL=${SMTP_SSL}
-      - SMTP_STARTTLS=${SMTP_STARTTLS}
-      - SMTP_USERNAME=${SMTP_USERNAME}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      # Required for building, healthcheck
-      - KC_HEALTH_ENABLED=true
-    volumes:
-      - postgres_keycloak_secrets:/postgres_keycloak_secrets # To get the keycloak database password.
-      - keycloak_oauth2_client_secret:/keycloak_oauth2_client_secret # To set the oauth2 client secret.
-      - keycloak_backend_client_secret:/keycloak_backend_client_secret # To set the backend client secret.
-      - keycloak_initialized:/keycloak_initialized # To check if keycloak is already initialized.
-    networks:
-      idapt-keycloak-external-network: {}
-      idapt-keycloak-network: {}
-      idapt-postgres-network: {}
-    healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /auth/health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q 'UP'"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
-    restart: always
-    # Container security hardening
-    security_opt:
-      - no-new-privileges:true
-    #cap_drop: # TODO
-    #  - ALL
-
-
-  idapt-oauth2-proxy:
-    container_name: idapt-oauth2-proxy
-    build:
-      context: ./oauth2
-      dockerfile: ./Dockerfile
-    environment:
-      - HOST_DOMAIN=${HOST_DOMAIN}
-    expose:
-      - "4180"
-    volumes:
-      - keycloak_oauth2_client_secret:/keycloak_oauth2_client_secret:ro # To get the oauth2 client secret.
-      - oauth2_cookie_secret:/oauth2_cookie_secret # To persist the oauth2 cookie secret.
-    networks:
-      idapt-oauth2-proxy-network: {}
-    depends_on:
-      idapt-keycloak:
-        condition: service_healthy
-    restart: always
-
-
-
 volumes:
   backend_data:
   idapt_data:
   ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
-  postgres_data:
-  postgres_admin_secrets:
-  postgres_backend_secrets:
-  postgres_keycloak_secrets:
   nginx_letsencrypt:
-  keycloak_oauth2_client_secret:
-  keycloak_backend_client_secret:
-  keycloak_initialized:
-  oauth2_cookie_secret:
-
 
 # One network for each service to keep them isolated.
 networks:
@@ -288,10 +174,6 @@ networks:
   idapt-backend-external-network:
     attachable: false
     name: idapt-backend-external-network
-    driver: bridge
-  idapt-keycloak-external-network:
-    attachable: false
-    name: idapt-keycloak-external-network
     driver: bridge
   idapt-ollama-external-network:
     attachable: false
@@ -312,19 +194,4 @@ networks:
     internal: true
     attachable: false
     name: idapt-ollama-network
-    driver: bridge
-  idapt-postgres-network:
-    internal: true
-    attachable: false
-    name: idapt-postgres-network
-    driver: bridge
-  idapt-keycloak-network:
-    internal: true
-    attachable: false
-    name: idapt-keycloak-network
-    driver: bridge
-  idapt-oauth2-proxy-network:
-    internal: true
-    attachable: false
-    name: idapt-oauth2-proxy-network
     driver: bridge
