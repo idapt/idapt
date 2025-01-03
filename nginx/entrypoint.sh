@@ -7,12 +7,12 @@ set -e
 mkdir -p /tmp/nginx-config
 
 # Process nginx.conf with environment variables
-envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /tmp/nginx-config/nginx.conf
-cp /tmp/nginx-config/nginx.conf /etc/nginx/nginx.conf
+envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /etc/nginx/nginx.conf
+#yes | cp -rf /tmp/nginx-config/nginx.conf /etc/nginx/nginx.conf
 
 # Process server.conf with environment variables
-envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /tmp/nginx-config/server.conf
-cp /tmp/nginx-config/server.conf /etc/nginx/conf.d/server.conf
+envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /etc/nginx/conf.d/server.conf
+#yes | cp -rf /tmp/nginx-config/server.conf /etc/nginx/conf.d/server.conf
 
 
 # If there is user provided ssl certificates in the source folder, copy them to the intended location in the letsencrypt folder where nginx will look for them
@@ -54,20 +54,18 @@ if [ -n "$(find /nginx-certs-source -type f \( -name '*.crt' -o -name '*.key' -o
             cp /nginx-certs-source/privkey.pem /etc/letsencrypt/live/$HOST_DOMAIN/
         fi
     fi
+fi
 
-    # Just start nginx now that the custom certificates are in place and dont use certbot
+# If there is user provided ssl certificates in the source folder
+if [ -n "$(find /nginx-certs-source -type f \( -name '*.crt' -o -name '*.key' -o -name '*.pem' \))" ]; then
     echo "Starting nginx without certbot support"
     nginx -g 'daemon off;'
-
-# Else if the app is running in local mode
-elif [ "$HOST_DOMAIN" = "localhost" ]; then
-    # Use the original entrypoint script of the image nginx-certbot that will use Local CA and manage renewals as USE_LOCAL_CA=1
-    echo "Starting nginx with local cert"
-    exec /scripts/start_nginx_certbot.sh
-
-# Else the app is remote and have no provided ssl certificates
 else
-    # Use the original entrypoint script of the image nginx-certbot
-    echo "Starting nginx with certbot support that will generate the certificates for domain $HOST_DOMAIN"
-    exec /scripts/start_nginx_certbot.sh
+    # Else if the app is running in local mode
+    if [ "$HOST_DOMAIN" = "localhost" ]; then
+        echo "Setting USE_LOCAL_CA=1 to use local CA for localhost"
+        export USE_LOCAL_CA=1
+    fi
+    echo "Starting nginx with certbot support"
+    /scripts/start_nginx_certbot.sh
 fi

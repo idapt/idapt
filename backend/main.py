@@ -115,7 +115,7 @@ def configure_cors(app: FastAPI):
     else:
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=["http://idapt-nginx:3030"],
+            allow_origins=[f"http://127.0.0.1:3000"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],

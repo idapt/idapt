@@ -13,7 +13,14 @@ function getBackendOrigin(): string {
     }
     // If this code is executed on the server side, go through the internal docker network to access the backend.
     else {
-      return `http://idapt-backend:3030`;
+      // For dev we need to go through the docker network
+      if (process.env.ENVIRONMENT === 'dev') {
+        return `http://idapt-nginx`;
+      }
+      // For prod we can just use the loopback address as everything is running on the same machine.
+      else {
+        return `http://127.0.0.1:8000`;
+      }
     }
 }
 

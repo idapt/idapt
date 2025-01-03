@@ -35,49 +35,12 @@ services:
 
 
 
-  # The backend is the main service of the application.
-  idapt-backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile 
-    container_name: idapt-backend
-    expose:
-      - "8000"
-    networks:
-      idapt-backend-external-network: {}
-      idapt-backend-network: {}
-      idapt-ollama-network: {}
-    depends_on:
-      idapt-ollama:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
-    environment:
-      ENVIRONMENT: prod
-      HOST_DOMAIN: ${HOST_DOMAIN}
-    env_file:
-      - ./backend/.env
-    volumes:
-      - backend_data:/backend_data # The volume where the app data is stored.
-      - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
-    restart: always
-    # Container security hardening
-    security_opt:
-      - no-new-privileges:true
-    #cap_drop: # TODO
-    #  - ALL
-
-
-
 # Nginx to manage every communication between containers and outside world.
-  idapt-nginx:
-    container_name: idapt-nginx
+  idapt:
+    container_name: idapt
     build:
       context: .
-      dockerfile: ./nginx/Dockerfile
+      dockerfile: ./Dockerfile
     environment:
       # Frontend variables
       ENVIRONMENT: prod
@@ -90,23 +53,30 @@ services:
     env_file:
       - ./nginx/.env
       - ./frontend/.env
+      - ./backend/.env
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
       - '80:80/tcp'
       - '443:443/tcp'
       - '443:443/udp'
+    depends_on:
+      idapt-ollama:
+        condition: service_healthy
     # Nginx has access to every container exposed via their own network for routing.
     networks:
-      idapt-nginx-external-network: {}
-      idapt-backend-network: {}
+      idapt-external-network: {}
+      idapt-ollama-network: {}
     volumes:
       - nginx_letsencrypt:/etc/letsencrypt # Persist the certificates.
+      - backend_data:/backend_data # The volume where the app data is stored.
+      - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
     healthcheck:
-      test: ["CMD", "nginx", "-t"]
-      interval: 1s
-      timeout: 5s
-      retries: 30
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1/api/health && nginx -t || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     restart: always
     # Container security hardening
     security_opt:
@@ -128,24 +98,15 @@ volumes:
 # One network for each service to keep them isolated.
 networks:
   # Dedicated external networks for services that need internet access
-  idapt-nginx-external-network:
+  idapt-external-network:
     attachable: false
-    name: idapt-nginx-external-network
-    driver: bridge
-  idapt-backend-external-network:
-    attachable: false
-    name: idapt-backend-external-network
+    name: idapt-external-network
     driver: bridge
   idapt-ollama-external-network:
     attachable: false
     name: idapt-ollama-external-network
     driver: bridge
   # Internal networks for inter container communication.
-  idapt-backend-network:
-    internal: true
-    attachable: false
-    name: idapt-backend-network
-    driver: bridge
   idapt-ollama-network:
     internal: true
     attachable: false

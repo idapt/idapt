@@ -1,33 +1,54 @@
-# Build the backend image
-FROM python:3.11 AS build
+# Build stage
+FROM debian:bookworm-slim AS backend-build
+
+# Install Python and required packages
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3-pip \
+    python3.11-venv \
+    python3-poetry \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add python to the path and create symlink for python command
+RUN ln -s /usr/bin/python3.11 /usr/bin/python
+#ENV PATH=/usr/bin:$PATH
+
 
 WORKDIR /backend
+#ENV PYTHONPATH=/backend
 
-ENV PYTHONPATH=/backend
+# Install Poetry and dependencies
+COPY ./backend/pyproject.toml ./backend/poetry.lock ./backend/poetry.toml ./
+RUN poetry config virtualenvs.in-project true && \
+    poetry install --only main --no-root
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python && \
-    cd /usr/local/bin && \
-    ln -s /opt/poetry/bin/poetry && \
-    poetry config virtualenvs.create false
+# Copy application code and install project
+COPY ./backend/ /backend
+RUN cd /backend && poetry install --only main
 
-# Install Chromium for web loader
-# Can disable this if you don't use the web loader to reduce the image size
-# Not used for now
-# RUN apt update && apt install -y chromium chromium-driver 
+# Release stage
+FROM debian:bookworm-slim AS release
 
-# Install dependencies
-COPY ./pyproject.toml ./poetry.lock* /backend/
-RUN poetry install --no-root --no-cache --only main
+# Install python
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3-pip \
+    python3-virtualenv \
+    python3-poetry \
+    && rm -rf /var/lib/apt/lists/*
 
-# ====================================
-# Release image
-# ====================================
-FROM build AS release
+# Add python to the path
+#ENV PATH=/usr/local/bin:$PATH
+RUN ln -s /usr/bin/python3.11 /usr/bin/python
 
-COPY . .
+# Copy the virtual environment and the backend code to the release image
+COPY --from=backend-build /backend /backend
 
-# Run at built container start
+# Copy the entrypoint script and make it executable
+RUN chmod +x /backend/entrypoint.sh
 
-# Run the backend
-CMD ["python", "main.py"]
+# Set the entrypoint script as the entrypoint for the container
+ENTRYPOINT ["/backend/entrypoint.sh"]
+
+# Keep the container running, you can use this if you want to manually exec into the container for dev.
+#CMD ["tail", "-f", "/dev/null"]
