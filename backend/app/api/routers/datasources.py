@@ -3,14 +3,11 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
 from base64 import urlsafe_b64decode
-from app.services import ServiceManager
+
 from app.services.database import get_session
 from app.database.models import Datasource
-
+from app.services.datasource import get_all_datasources, get_datasource, create_datasource, delete_datasource, update_datasource_description
 datasources_router = APIRouter()
-
-def get_datasource_service():
-    return ServiceManager.get_instance().datasource_service
 
 def get_db_session():
     with get_session() as session:
@@ -34,10 +31,9 @@ class DatasourceUpdate(BaseModel):
 
 @datasources_router.get("", response_model=List[DatasourceResponse])
 async def get_datasources(
-    service = Depends(get_datasource_service),
     session: Session = Depends(get_db_session)
 ):
-    datasources = service.get_all_datasources(session)
+    datasources = get_all_datasources(session)
     # Convert to DatasourceResponse manually
     return [DatasourceResponse(
         id=datasource.id,
@@ -51,12 +47,11 @@ async def get_datasources(
 @datasources_router.get("/{encoded_identifier}", response_model=DatasourceResponse)
 async def get_datasource(
     encoded_identifier: str,
-    service = Depends(get_datasource_service),
     session: Session = Depends(get_db_session)
 ):
     try:
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
-        datasource = service.get_datasource(session, identifier)
+        datasource = get_datasource(session, identifier)
         if not datasource:
             raise HTTPException(status_code=404, detail="Datasource not found")
         # Convert to DatasourceResponse manually
@@ -76,11 +71,10 @@ async def get_datasource(
 @datasources_router.post("", response_model=DatasourceResponse)
 async def create_datasource(
     datasource: DatasourceCreate,
-    service = Depends(get_datasource_service),
     session: Session = Depends(get_db_session)
 ):
     try:
-        created = service.create_datasource(
+        created = create_datasource(
             session,
             datasource.name,
             datasource.type,
@@ -101,12 +95,11 @@ async def create_datasource(
 @datasources_router.delete("/{encoded_identifier}")
 async def delete_datasource(
     encoded_identifier: str,
-    service = Depends(get_datasource_service),
     session: Session = Depends(get_db_session)
 ):
     try:
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
-        success = await service.delete_datasource(session, identifier)
+        success = await delete_datasource(session, identifier)
         if not success:
             raise HTTPException(status_code=404, detail="Datasource not found")
         return {"message": "Datasource deleted successfully"}
@@ -119,13 +112,12 @@ async def delete_datasource(
 async def update_datasource(
     encoded_identifier: str,
     update: DatasourceUpdate,
-    service = Depends(get_datasource_service),
     session: Session = Depends(get_db_session)
 ):
     try:
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
         if update.description is not None:
-            success = service.update_datasource_description(session, identifier, update.description)
+            success = update_datasource_description(session, identifier, update.description)
             if not success:
                 raise HTTPException(status_code=404, detail="Datasource not found")
         return {"message": "Datasource updated successfully"}

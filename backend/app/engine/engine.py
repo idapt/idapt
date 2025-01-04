@@ -7,8 +7,8 @@ from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool
 #from app.engine.tools import ToolFactory
 from app.settings.manager import AppSettingsManager
-from app.services import ServiceManager
 from app.services.database import get_session
+from app.services.datasource import get_query_tool, get_all_datasources
 app_settings = AppSettingsManager.get_instance().settings
 
 import logging
@@ -22,19 +22,17 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
         # Used to display the index events in the steps ui
         callback_manager = CallbackManager(handlers=event_handlers or [])
 
-        datasource_service = ServiceManager.get_instance().datasource_service
-        
         # Get the datasources tools
         if datasource_identifier:
             # Get specific datasource tool
-            tool = datasource_service.get_query_tool(datasource_identifier)
+            tool = get_query_tool(datasource_identifier)
             tools.append(tool)
         else:
             # Get all datasource tools
             with get_session() as session:
-                datasources = datasource_service.get_all_datasources(session)
+                datasources = get_all_datasources(session)
                 for ds in datasources:
-                    tool = datasource_service.get_query_tool(ds.identifier)
+                    tool = get_query_tool(ds.identifier)
                     tools.append(tool)
 
         # For each tool, set the callback manager to be able to display the events in the steps ui

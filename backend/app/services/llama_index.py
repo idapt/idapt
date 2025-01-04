@@ -1,6 +1,8 @@
 import json
 import logging
 from app.services.database import get_session
+from app.services.datasource import get_vector_store, get_doc_store
+
 class LlamaIndexService:
     def __init__(self):
 
@@ -8,14 +10,9 @@ class LlamaIndexService:
 
     def delete_file(self, full_path: str):
         try:
-            # Get the service manager instance to avoid circular dependencies
-            from app.services import ServiceManager
-            service_manager = ServiceManager.get_instance()
-            datasource_service = service_manager.datasource_service
-
             # Get the file's ref_doc_ids from the database
             with get_session() as session:
-                file = service_manager.db_file_service.get_file(session, full_path)
+                file = db_file_service.get_file(session, full_path)
                 if not file or not file.ref_doc_ids:
                     self.logger.warning(f"No ref_doc_ids found for file: {full_path}")
                     return
@@ -25,8 +22,8 @@ class LlamaIndexService:
                 datasource_identifier = get_datasource_identifier_from_path(full_path)
 
                 # Get the datasource vector store and docstore
-                vector_store = datasource_service.get_vector_store(datasource_identifier)
-                doc_store = datasource_service.get_doc_store(datasource_identifier)
+                vector_store = get_vector_store(datasource_identifier)
+                doc_store = get_doc_store(datasource_identifier)
 
                 # Delete each ref_doc_id from the vector store and docstore
                 # Parse the json ref_doc_ids as a list
@@ -61,18 +58,13 @@ class LlamaIndexService:
     def rename_file(self, full_old_path: str, full_new_path: str):
         try:
 
-            # Get the service manager instance to avoid circular dependencies
-            from app.services import ServiceManager
-            service_manager = ServiceManager.get_instance()
-            datasource_service = service_manager.datasource_service
-
             from app.services.datasource import get_datasource_identifier_from_path
             # Get the datasource name from the path 
             datasource_identifier = get_datasource_identifier_from_path(full_old_path)
 
             # Get the datasource vector store and docstore
-            vector_store = datasource_service.get_vector_store(datasource_identifier)
-            doc_store = datasource_service.get_doc_store(datasource_identifier)
+            vector_store = get_vector_store(datasource_identifier)
+            doc_store = get_doc_store(datasource_identifier)
 
             # For now simply delete the old file from the vector store and docstore
             vector_store.delete(full_old_path)
@@ -81,7 +73,7 @@ class LlamaIndexService:
             # And sent it to generate again to pass it through the ingestion pipeline with the default transformations # TODO VERY BAD IMPLEMENTATION
 
             # Add the file to the generation queue with default transformations
-            service_manager.generate_service.add_files_to_queue([{
+            generate_service.add_files_to_queue([{
                 "path": full_new_path,
                 "transformations_stack_name_list": ["default"]
             }])

@@ -3,12 +3,10 @@ from threading import Lock
 
 from app.services.generate import GenerateService
 from app.services.file_manager import FileManagerService
-from app.services.datasource import DatasourceService
 from app.services.db_file import DBFileService
 from app.services.file import FileService
 from app.services.llama_index import LlamaIndexService
 from app.services.file_system import FileSystemService
-from app.services.ingestion_pipeline import IngestionPipelineService
 from app.services.ollama_status import OllamaStatusService
 
 logger = logging.getLogger(__name__)
@@ -54,11 +52,6 @@ class ServiceManager:
             self.db_file_service,
             self.file_system_service,
             self.llama_index_service
-        )
-        
-        self.datasource_service = DatasourceService(
-            self.db_file_service,
-            self.file_manager_service
         )
 
         self.generate_service = GenerateService(

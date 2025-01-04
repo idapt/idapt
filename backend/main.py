@@ -70,6 +70,12 @@ async def lifespan(app: FastAPI):
     from app.database.init_db import initialize_database
     initialize_database()
     
+    # Initialize default datasources
+    from app.services.datasource import _init_default_datasources
+    from app.services.database import get_session
+    with get_session() as session:
+        _init_default_datasources(session)
+    
     # Initialize services
     from app.services import ServiceManager
     service_manager = ServiceManager.get_instance()

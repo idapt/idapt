@@ -18,7 +18,7 @@ from llama_index.core.extractors import (
 
 from app.services.database import get_session
 from app.services.db_file import DBFileService
-from app.services.datasource import DatasourceService
+from app.services.datasource import get_storage_components
 from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
 
 
@@ -34,13 +34,12 @@ class IngestionPipelineService:
     This only takes care of the llama index part
     """
 
-    def __init__(self, db_file_service: DBFileService, datasource_service: DatasourceService):
+    def __init__(self, db_file_service: DBFileService):
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)  # Set log level as we are in a child thread
         
         self.db_file_service = db_file_service
-        self.datasource_service = datasource_service
         self.pipelines = {}
 
         self.TRANSFORMATIONS_STACKS = {
@@ -170,7 +169,7 @@ class IngestionPipelineService:
 
 
             # Create the ingestion pipeline for the datasource
-            vector_store, doc_store, _ = self.datasource_service.get_storage_components(datasource_identifier)
+            vector_store, doc_store, _ = get_storage_components(datasource_identifier)
 
             # Create the ingestion pipeline for the datasource
             ingestion_pipeline = IngestionPipeline(

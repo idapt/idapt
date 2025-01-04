@@ -5,7 +5,7 @@ from app.services.ingestion_pipeline import IngestionPipelineService
 from app.services.db_file import DBFileService
 from app.services.database import get_session
 from app.services.llama_index import LlamaIndexService
-from app.services.datasource import DatasourceService, get_datasource_identifier_from_path
+from app.services.datasource import get_datasource_identifier_from_path
 from app.services.file_manager import FileManagerService
 from app.services.file_system import FileSystemService
 from app.database.models import File, FileStatus
@@ -46,15 +46,9 @@ class GenerateServiceWorker:
             self.file_system_service,
             self.llama_index_service
         )
-        
-        self.datasource_service = DatasourceService(
-            self.db_file_service,
-            self.file_manager_service
-        )
 
         self.ingestion_pipeline_service = IngestionPipelineService(
             self.db_file_service,
-            self.datasource_service
         )
 
     def run(self):
