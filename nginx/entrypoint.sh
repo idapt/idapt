@@ -8,11 +8,14 @@ mkdir -p /tmp/nginx-config
 
 # Process nginx.conf with environment variables
 envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /etc/nginx/nginx.conf
-#yes | cp -rf /tmp/nginx-config/nginx.conf /etc/nginx/nginx.conf
 
-# Process server.conf with environment variables
-envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /etc/nginx/conf.d/server.conf
-#yes | cp -rf /tmp/nginx-config/server.conf /etc/nginx/conf.d/server.conf
+# If environment is dev, process dev-server.conf with environment variables
+if [ "$ENVIRONMENT" = "dev" ]; then
+    envsubst '$HOST_DOMAIN' < /nginx-config-source/dev-server.conf > /etc/nginx/conf.d/dev-server.conf
+else
+    # Else process server.conf with environment variables
+    envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /etc/nginx/conf.d/server.conf
+fi
 
 
 # If there is user provided ssl certificates in the source folder, copy them to the intended location in the letsencrypt folder where nginx will look for them
@@ -61,9 +64,9 @@ if [ -n "$(find /nginx-certs-source -type f \( -name '*.crt' -o -name '*.key' -o
     echo "Starting nginx without certbot support"
     nginx -g 'daemon off;'
 else
-    # Else if the app is running in local mode
-    if [ "$HOST_DOMAIN" = "localhost" ]; then
-        echo "Setting USE_LOCAL_CA=1 to use local CA for localhost"
+    # Else if the app is running in local mode with a local domain like localhost, 127.0.0.1, or a local ip address like 192.168.*.* or the environment is dev
+    if [ "$HOST_DOMAIN" = "localhost" ] || [ "$HOST_DOMAIN" = "127.0.0.1" ] || [ "$HOST_DOMAIN" = "192.168.*.*" ] || [ "$ENVIRONMENT" = "dev" ]; then
+        echo "Setting USE_LOCAL_CA=1 to use local CA for local ip address or dev environment"
         export USE_LOCAL_CA=1
     fi
     echo "Starting nginx with certbot support"

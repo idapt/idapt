@@ -9,7 +9,6 @@ RUN mkdir -p /nginx-config-source
 COPY ./config/ /nginx-config-source/
 RUN chmod 775 /nginx-config-source/*
 
-# The user provided ssl certificates for dev only
 # Copy user provided nginx ssl certificates
 RUN mkdir -p /nginx-certs-source
 # Copy all of the certs folder from the host
@@ -17,8 +16,8 @@ COPY ./certs/ /nginx-certs-source/
 # Only chmod files if they exist
 RUN find /nginx-certs-source -type f -exec chmod 775 {} + || true
 
-# Copy the dev entrypoint script and make it executable
-COPY dev.entrypoint.sh /entrypoint.sh
+# Copy the entrypoint script and make it executable
+COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Use the custom entrypoint script of the image

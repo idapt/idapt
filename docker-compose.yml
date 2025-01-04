@@ -15,7 +15,6 @@ services:
       HOST_DOMAIN: ${HOST_DOMAIN}
       # Container variables
       CERTBOT_EMAIL: ${CERTBOT_EMAIL}
-      USE_LOCAL_CA: 0
     env_file:
       - ./nginx/.env
       - ./frontend/.env

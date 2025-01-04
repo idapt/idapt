@@ -72,11 +72,11 @@ services:
       context: ./nginx
       dockerfile: ./dev.Dockerfile
     environment:
+      ENVIRONMENT: dev
       # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}
       # Container variables
       CERTBOT_EMAIL: ${CERTBOT_EMAIL}
-      USE_LOCAL_CA: 1 # For dev we use a local CA to avoid harrasing letsencrypt.
     env_file:
       - ./nginx/.env
     ports:
