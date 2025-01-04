@@ -10,7 +10,7 @@ import os
 
 # The services are already initialized in the main.py file
 from app.services.db_file import create_file, get_file, delete_file, update_file, get_folder_contents, get_folder_files_recursive, get_folder
-from app.services.file_system import FileSystemService, get_full_path_from_path
+from app.services.file_system import write_file, read_file, delete_file, rename_file, delete_folder, get_full_path_from_path
 from app.services.llama_index import LlamaIndexService
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
 from app.services.database import get_session
@@ -23,9 +23,8 @@ class FileManagerService:
     Service for managing files and folders
     """
 
-    def __init__(self, file_system_service: FileSystemService, llama_index_service: LlamaIndexService):
+    def __init__(self, llama_index_service: LlamaIndexService):
         self.logger = logging.getLogger(__name__)
-        self.file_system = file_system_service
         self.llama_index = llama_index_service
         
         with get_session() as session:
@@ -144,7 +143,7 @@ class FileManagerService:
             full_path = get_full_path_from_path(item.path)
             
             # Write file to filesystem with metadata
-            await self.file_system.write_file(
+            await write_file(
                 full_path,
                 content=decoded_file_data,
                 created_at_unix_timestamp=item.file_created_at,
@@ -180,7 +179,7 @@ class FileManagerService:
                 raise HTTPException(status_code=404, detail="File not found")
             
             # Get file content from filesystem
-            file_content = await self.file_system.read_file(full_path)
+            file_content = await read_file(full_path)
 
             return {
                 "content": file_content,
@@ -209,7 +208,7 @@ class FileManagerService:
                 )
 
             # Proceed with deletion
-            await self.file_system.delete_file(full_path)
+            await delete_file(full_path)
             self.llama_index.delete_file(full_path)
             result = delete_file(session, full_path)
             
@@ -243,7 +242,7 @@ class FileManagerService:
                         processing_files.append(file.path)
                         continue
 
-                    await self.file_system.delete_file(file.path)
+                    await delete_file(file.path)
                     self.llama_index.delete_file(file.path)
                     delete_file(session, file.path)
                     deleted_files.append(file.path)
@@ -254,7 +253,7 @@ class FileManagerService:
 
             # Delete folder from filesystem if no files are being processed
             if not processing_files:
-                await self.file_system.delete_folder(full_path)
+                await delete_folder(full_path)
                 
                 # Delete everything from database in one transaction
                 if not delete_folder(session, full_path):
@@ -284,7 +283,7 @@ class FileManagerService:
                 raise HTTPException(status_code=404, detail="File not found")
 
             # Rename in filesystem
-            await self.file_system.rename_file(full_path, new_name)
+            await rename_file(full_path, new_name)
             
             new_full_path = file.path.replace(file.name, new_name)
             
@@ -322,7 +321,7 @@ class FileManagerService:
                     relative_path = os.path.relpath(file.path, folder.path)
                     
                     # Read file content
-                    file_content = await self.file_system.read_file(file.path)
+                    file_content = await read_file(file.path)
 
                     # Write file content to zip
                     if file_content:

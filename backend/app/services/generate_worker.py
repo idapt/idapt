@@ -7,7 +7,6 @@ from app.services.database import get_session
 from app.services.llama_index import LlamaIndexService
 from app.services.datasource import get_datasource_identifier_from_path
 from app.services.file_manager import FileManagerService
-from app.services.file_system import FileSystemService
 from app.database.models import File, FileStatus
 import json
 from multiprocessing import Queue
@@ -37,10 +36,7 @@ class GenerateServiceWorker:
         # Core services with their own thread safety
         self.llama_index_service = LlamaIndexService()
 
-        self.file_system_service = FileSystemService()
-
         self.file_manager_service = FileManagerService(
-            self.file_system_service,
             self.llama_index_service
         )
 

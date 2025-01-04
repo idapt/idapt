@@ -5,75 +5,70 @@ import shutil
 
 from app.config import DATA_DIR
 
-class FileSystemService:
-    """
-    Service for managing files and folders in the filesystem
-    """
-    
-    async def write_file(self, full_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
-        """Write content to a file in the filesystem and set its metadata"""
-        try:
-            full_path = Path(full_path)
+async def write_file(full_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
+    """Write content to a file in the filesystem and set its metadata"""
+    try:
+        full_path = Path(full_path)
 
-            # Create parent directories if they don't exist
-            if not full_path.parent.exists():
-                os.makedirs(str(full_path.parent), exist_ok=True)
+        # Create parent directories if they don't exist
+        if not full_path.parent.exists():
+            os.makedirs(str(full_path.parent), exist_ok=True)
+        
+        if isinstance(content, str):
+            content = content.encode()
             
-            if isinstance(content, str):
-                content = content.encode()
-                
-            # Write the file content
-            with open(str(full_path), "wb") as f:
-                f.write(content)
+        # Write the file content
+        with open(str(full_path), "wb") as f:
+            f.write(content)
 
-            # Set file timestamps
-            # ! The file creation time will be set to the current time regardless of the value passed in
-            os.utime(str(full_path), (created_at_unix_timestamp, modified_at_unix_timestamp))
+        # Set file timestamps
+        # ! The file creation time will be set to the current time regardless of the value passed in
+        os.utime(str(full_path), (created_at_unix_timestamp, modified_at_unix_timestamp))
 
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
 
-    async def read_file(self, full_path: str) -> bytes:
-        """Read file from the filesystem"""
-        try:
-            with open(str(full_path), "rb") as f:
-                return f.read()
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
+async def read_file(full_path: str) -> bytes:
+    """Read file from the filesystem"""
+    try:
+        with open(str(full_path), "rb") as f:
+            return f.read()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
 
-    async def create_folder(self, full_path: str):
-        """Create a folder in the filesystem"""
-        try:
-            os.makedirs(str(full_path), exist_ok=True)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")
+async def create_folder(full_path: str):
+    """Create a folder in the filesystem"""
+    try:
+        os.makedirs(str(full_path), exist_ok=True)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")
 
-    async def delete_file(self, full_path: str):
-        try:
-            full_path = Path(full_path)
-            if full_path.exists():
-                os.unlink(str(full_path))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
+async def delete_file(full_path: str):
+    try:
+        full_path = Path(full_path)
+        if full_path.exists():
+            os.unlink(str(full_path))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
 
-    async def rename_file(self, full_old_path: str, new_file_name: str) -> str:
-        try:
-            full_old_path = Path(full_old_path)
-            directory = full_old_path.parent
-            new_path = directory / new_file_name
-            os.rename(str(full_old_path), str(new_path))
-            return str(new_path)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
+async def rename_file(full_old_path: str, new_file_name: str) -> str:
+    try:
+        full_old_path = Path(full_old_path)
+        directory = full_old_path.parent
+        new_path = directory / new_file_name
+        os.rename(str(full_old_path), str(new_path))
+        return str(new_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
 
-    async def delete_folder(self, full_path: str):
-        """Delete a folder and its contents from the filesystem"""
-        try:
-            full_path = Path(full_path)
-            if full_path.exists():
-                shutil.rmtree(str(full_path))
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
+async def delete_folder(full_path: str):
+    """Delete a folder and its contents from the filesystem"""
+    try:
+        full_path = Path(full_path)
+        if full_path.exists():
+            shutil.rmtree(str(full_path))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
 
 def get_full_path_from_path(path: str) -> str:
     """Convert frontend path to backend full path"""
