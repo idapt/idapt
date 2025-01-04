@@ -19,7 +19,7 @@ def init_llm(settings: AppSettings):
         #case "azure-openai":
         #    return init_azure_openai_llm(settings.llm.azure_openai_model, settings.system_prompt)
         case _:
-            return init_ollama_llm(settings.remote_ollama, settings.temperature, settings.system_prompt)
+            return init_ollama_llm(settings.ollama, settings.temperature, settings.system_prompt)
         
 def init_embedding_model(settings: AppSettings):
     """Initialize embedding model based on embedding_model_provider setting"""
@@ -37,4 +37,4 @@ def init_embedding_model(settings: AppSettings):
         #case "text-embeddings-inference":
         #    return init_tei_embedding(settings.tei, settings.embedding_dim)
         case _:
-            return init_ollama_embedding(settings.remote_ollama)
+            return init_ollama_embedding(settings.ollama)

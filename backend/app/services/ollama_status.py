@@ -43,17 +43,17 @@ class OllamaStatusService:
             app_settings : AppSettings = AppSettingsManager.get_instance().settings
             
             # Check LLM models
-            if app_settings.llm_model_provider == "remote_ollama":
+            if app_settings.llm_model_provider == "ollama":
                 self._check_model(
-                    app_settings.remote_ollama.llm_host,
-                    app_settings.remote_ollama.llm_model
+                    app_settings.ollama.llm_host,
+                    app_settings.ollama.llm_model
                 )
                 
             # Check embedding models
-            if app_settings.embedding_model_provider == "remote_ollama":
+            if app_settings.embedding_model_provider == "ollama":
                 self._check_model(
-                    app_settings.remote_ollama.embedding_host,
-                    app_settings.remote_ollama.embedding_model
+                    app_settings.ollama.embedding_host,
+                    app_settings.ollama.embedding_model
                 )
                 
         except Exception as e:
@@ -161,16 +161,16 @@ class OllamaStatusService:
                 return False
             
             # Check LLM models
-            if app_settings.llm_model_provider == "remote_ollama":
-                base_url = app_settings.remote_ollama.llm_host
-                model = app_settings.remote_ollama.llm_model
+            if app_settings.llm_model_provider == "ollama":
+                base_url = app_settings.ollama.llm_host
+                model = app_settings.ollama.llm_model
                 
                 self._check_model(base_url, model)
 
             # Check embedding models
-            if app_settings.embedding_model_provider == "remote_ollama":
-                base_url = app_settings.remote_ollama.embedding_host
-                model = app_settings.remote_ollama.embedding_model
+            if app_settings.embedding_model_provider == "ollama":
+                base_url = app_settings.ollama.embedding_host
+                model = app_settings.ollama.embedding_model
                 
                 self._check_model(base_url, model)
                     
