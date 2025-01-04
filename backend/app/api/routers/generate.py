@@ -2,23 +2,17 @@ from fastapi import APIRouter, WebSocket, HTTPException, Depends, BackgroundTask
 import logging
 from typing import List
 from pydantic import BaseModel, Field
-from app.services import ServiceManager
 from app.services.generate import GenerateService
 from app.services.file_system import get_full_path_from_path
 from app.services.database import get_session
 from sqlalchemy.orm import Session
-from functools import lru_cache
 
 logger = logging.getLogger(__name__)
 
 generate_router = r = APIRouter()
 
-@lru_cache()
-def get_service_manager():
-    return ServiceManager.get_instance()
-
-def get_generate_service():
-    return get_service_manager().generate_service
+def get_generate_service(): # TODO
+    return GenerateService()
 
 def get_db_session():
     with get_session() as session:

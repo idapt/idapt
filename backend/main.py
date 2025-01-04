@@ -82,10 +82,15 @@ async def lifespan(app: FastAPI):
     with get_session() as session:
         create_default_filestructure(session)
 
-    
-    # Initialize services
-    from app.services import ServiceManager
-    service_manager = ServiceManager.get_instance()
+    # Initialize ollama status service
+    from app.services.ollama_status import OllamaStatusService
+    ollama_status_service = OllamaStatusService()
+    ollama_status_service.initialize()
+
+    # Initialize generate service
+    from app.services.generate import GenerateService
+    generate_service = GenerateService()
+
     logger.info(f"Services initialized in process {current_pid}")
     
     yield  # Application runs here
