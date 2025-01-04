@@ -25,8 +25,6 @@ services:
       - '80:80/tcp'
       - '443:443/tcp'
       - '443:443/udp'
-    networks:
-      idapt-external-network: {}
     # Expose the host.docker.internal so that we can access ollama runnning on the localost from the container.
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -51,9 +49,3 @@ services:
 volumes:
   user_data:
   nginx_data:
-
-networks:
-  idapt-external-network:
-    attachable: false
-    name: idapt-external-network
-    driver: bridge
