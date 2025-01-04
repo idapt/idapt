@@ -57,25 +57,19 @@ class TEISettings(BaseModel):
 
 class AppSettings(BaseModel):
     llm_model_provider: Literal[
-        "local_ollama", "remote_ollama", "openai", 
+        "remote_ollama", "openai", 
         "text-generation-inference", "anthropic", "groq", 
         "gemini", "mistral", "azure-openai"
-    ] = "local_ollama"
+    ] = "remote_ollama"
     
     embedding_model_provider: Literal[
-        "local_ollama", "remote_ollama", "openai",
+        "remote_ollama", "openai",
         "azure-openai", "gemini", "mistral", "fastembed",
         "text-embeddings-inference"
-    ] = "local_ollama"
+    ] = "remote_ollama"
 
     # Provider settings
-    local_ollama: OllamaSettings = Field(default_factory=OllamaSettings)
-    remote_ollama: OllamaSettings = Field(
-        default_factory=lambda: OllamaSettings(
-            llm_host="http://localhost:11434",
-            embedding_host="http://localhost:11434"
-        )
-    )
+    remote_ollama: OllamaSettings = Field(default_factory=OllamaSettings)
     openai: OpenAISettings = Field(default_factory=OpenAISettings)
     anthropic: AnthropicSettings = Field(default_factory=AnthropicSettings)
     groq: GroqSettings = Field(default_factory=GroqSettings)
@@ -103,10 +97,10 @@ class AppSettings(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "llm_model_provider": "local_ollama",
-                "ollama_model": "llama3.1:8b",
+            #"example": {
+                #"llm_model_provider": "remote_ollama",
+                #"ollama_model": "llama3.1:8b",
                 # ... other example values
-            }
+            #}
         }
  

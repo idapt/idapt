@@ -67,7 +67,6 @@ export interface AppSettings {
   embedding_model_provider: string;
   
   // Provider settings
-  local_ollama: OllamaSettings;
   remote_ollama: OllamaSettings;
   openai: OpenAISettings;
   anthropic: AnthropicSettings;
@@ -88,7 +87,6 @@ export interface AppSettings {
 }
 
 export const LLM_MODEL_PROVIDER_OPTIONS = [
-  "local_ollama",
   "remote_ollama",
   "openai",
   //"text-generation-inference",
@@ -100,7 +98,6 @@ export const LLM_MODEL_PROVIDER_OPTIONS = [
 ] as const;
 
 export const LLM_MODEL_OPTIONS: Record<string, string[]> = {
-  local_ollama: ["llama3.1:8b", "mistral:7b", "mixtral:8x7b", "phi:latest", "custom"],
   remote_ollama: ["llama3.1:8b", "mistral:7b", "mixtral:8x7b", "phi:latest", "custom"],
   openai: ["gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo", "custom"],
   //anthropic: ["claude-3-opus", "claude-3-sonnet", "claude-3-haiku", "claude-2.1", "custom"],
@@ -112,7 +109,6 @@ export const LLM_MODEL_OPTIONS: Record<string, string[]> = {
 };
 
 export const EMBEDDING_PROVIDER_OPTIONS = [
-  "local_ollama",
   "remote_ollama",
   //"fastembed",
   "openai",
@@ -122,7 +118,6 @@ export const EMBEDDING_PROVIDER_OPTIONS = [
   //"text-embeddings-inference",
 ] as const;
 export const EMBEDDING_MODEL_OPTIONS: Record<string, string[]> = {
-  local_ollama: ["Losspost/stella_en_1.5b_v5", "bge-m3", "nomic-embed-text", "custom"],
   remote_ollama: ["Losspost/stella_en_1.5b_v5", "bge-m3", "nomic-embed-text", "custom"],
   openai: ["text-embedding-3-large", "text-embedding-3-small", "custom"],
   //"azure-openai": ["text-embedding-ada-002", "custom"],

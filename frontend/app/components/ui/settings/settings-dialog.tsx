@@ -161,7 +161,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <label className="text-sm font-medium">Model</label>
             <Select
               value={
-                settings.llm_model_provider === "local_ollama" ? (isCustomModel(settings.llm_model_provider, settings.local_ollama.llm_model) ? "custom" : settings.local_ollama.llm_model) :
                 settings.llm_model_provider === "remote_ollama" ? (isCustomModel(settings.llm_model_provider, settings.remote_ollama.llm_model) ? "custom" : settings.remote_ollama.llm_model) :
                 settings.llm_model_provider === "openai" ? (isCustomModel(settings.llm_model_provider, settings.openai.llm_model) ? "custom" : settings.openai.llm_model) :
                 settings.llm_model_provider === "anthropic" ? (isCustomModel(settings.llm_model_provider, settings.anthropic.llm_model) ? "custom" : settings.anthropic.llm_model) :
@@ -176,7 +175,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 if (!settings) return;
 
                 const providerSettings = {
-                  local_ollama: settings.local_ollama,
                   remote_ollama: settings.remote_ollama,
                   openai: settings.openai,
                   anthropic: settings.anthropic,
@@ -222,7 +220,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </Select>
 
             {isCustomModel(settings.llm_model_provider, 
-              settings.llm_model_provider === "local_ollama" ? settings.local_ollama.llm_model :
               settings.llm_model_provider === "remote_ollama" ? settings.remote_ollama.llm_model :
               settings.llm_model_provider === "openai" ? settings.openai.llm_model :
               settings.llm_model_provider === "anthropic" ? settings.anthropic.llm_model :
@@ -237,7 +234,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 <Input
                   placeholder="Enter custom model name"
                   value={
-                    settings.llm_model_provider === "local_ollama" ? settings.local_ollama.llm_model :
                     settings.llm_model_provider === "remote_ollama" ? settings.remote_ollama.llm_model :
                     settings.llm_model_provider === "openai" ? settings.openai.llm_model :
                     settings.llm_model_provider === "anthropic" ? settings.anthropic.llm_model :
@@ -252,7 +248,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                     if (!settings) return;
                   
                     const providerSettings = {
-                      local_ollama: settings.local_ollama,
                       remote_ollama: settings.remote_ollama,
                       openai: settings.openai,
                       anthropic: settings.anthropic,
@@ -301,7 +296,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <label className="text-sm font-medium">Embedding Model</label>
             <Select
               value={
-                settings.embedding_model_provider === "local_ollama" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.local_ollama.embedding_model) ? "custom" : settings.local_ollama.embedding_model) :
                 settings.embedding_model_provider === "remote_ollama" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.remote_ollama.embedding_model) ? "custom" : settings.remote_ollama.embedding_model) :
                 settings.embedding_model_provider === "openai" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.openai.embedding_model) ? "custom" : settings.openai.embedding_model) :
                 settings.embedding_model_provider === "azure-openai" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.azure_openai.embedding_model) ? "custom" : settings.azure_openai.embedding_model) :
@@ -312,7 +306,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               }
               onValueChange={(value: string) => {
                 const modelKey = 
-                  settings.embedding_model_provider === "local_ollama" ? "local_ollama.embedding_model" :
                   settings.embedding_model_provider === "remote_ollama" ? "remote_ollama.embedding_model" :
                   settings.embedding_model_provider === "openai" ? "openai.embedding_model" :
                   settings.embedding_model_provider === "azure-openai" ? "azure_openai.embedding_model" :
@@ -351,7 +344,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </Select>
 
             {isCustomEmbeddingModel(settings.embedding_model_provider,
-              settings.embedding_model_provider === "local_ollama" ? settings.local_ollama.embedding_model :
               settings.embedding_model_provider === "remote_ollama" ? settings.remote_ollama.embedding_model :
               settings.embedding_model_provider === "openai" ? settings.openai.embedding_model :
               settings.embedding_model_provider === "azure-openai" ? settings.azure_openai.embedding_model :
@@ -364,7 +356,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                 <Input
                   placeholder="Enter custom embedding model name"
                   value={
-                    settings.embedding_model_provider === "local_ollama" ? (settings.local_ollama.embedding_model === "custom" ? "" : settings.local_ollama.embedding_model) :
                     settings.embedding_model_provider === "remote_ollama" ? (settings.remote_ollama.embedding_model === "custom" ? "" : settings.remote_ollama.embedding_model) :
                     settings.embedding_model_provider === "openai" ? (settings.openai.embedding_model === "custom" ? "" : settings.openai.embedding_model) :
                     settings.embedding_model_provider === "azure-openai" ? (settings.azure_openai.embedding_model === "custom" ? "" : settings.azure_openai.embedding_model) :
@@ -375,7 +366,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
                   }
                   onChange={(e) => {
                     const modelKey = 
-                      settings.embedding_model_provider === "local_ollama" ? "ollama_embedding_model" :
                       settings.embedding_model_provider === "remote_ollama" ? "ollama_embedding_model" :
                       settings.embedding_model_provider === "openai" ? "openai_embedding_model" :
                       settings.embedding_model_provider === "azure-openai" ? "azure_openai_embedding_model" :
@@ -402,7 +392,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               <Input
                 value={settings.remote_ollama.embedding_host}
                 onChange={(e) => setSettings({...settings, remote_ollama: {...settings.remote_ollama, embedding_host: e.target.value}})}
-                placeholder="http://localhost:11434"
               />
             </div>
           )}
@@ -442,14 +431,14 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             />
           </div>
 
-          {/* Only show the ollama request timeout input if the model provider is local_ollama or remote_ollama */}
-          {(settings.llm_model_provider === "local_ollama" || settings.llm_model_provider === "remote_ollama") && (
+          {/* Only show the ollama request timeout input if the model provider is remote_ollama */}
+          {settings.llm_model_provider === "remote_ollama" && (
             <div className="space-y-2">
               <label className="text-sm font-medium">Ollama Request Timeout (s)</label>
               <Input
                 type="number"
-                value={settings.local_ollama.llm_request_timeout}
-                onChange={(e) => setSettings({...settings, local_ollama: {...settings.local_ollama, llm_request_timeout: parseInt(e.target.value)}})}
+                value={settings.remote_ollama.llm_request_timeout}
+                onChange={(e) => setSettings({...settings, remote_ollama: {...settings.remote_ollama, llm_request_timeout: parseInt(e.target.value)}})}
               />
             </div>
           )}
@@ -472,7 +461,6 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               <Input
                 value={settings.tei.embedding_host}
                 onChange={(e) => setSettings({...settings, tei: {...settings.tei, embedding_host: e.target.value}})}
-                placeholder="http://localhost:8080"
               />
             </div>
           )}
