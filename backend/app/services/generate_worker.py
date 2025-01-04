@@ -4,7 +4,7 @@ from asyncio import new_event_loop, set_event_loop
 from app.services.ingestion_pipeline import IngestionPipelineService
 from app.services.db_file import get_files_by_status, update_file_status, mark_stack_as_processed
 from app.services.database import get_session
-from app.services.llama_index import LlamaIndexService
+from app.services.llama_index import delete_file_llama_index
 from app.services.datasource import get_datasource_identifier_from_path
 from app.services.file_manager import FileManagerService
 from app.database.models import File, FileStatus
@@ -33,12 +33,7 @@ class GenerateServiceWorker:
         self.ollama_status_service = OllamaStatusService()
         self.ollama_status_service.initialize()
         
-        # Core services with their own thread safety
-        self.llama_index_service = LlamaIndexService()
-
-        self.file_manager_service = FileManagerService(
-            self.llama_index_service
-        )
+        self.file_manager_service = FileManagerService()
 
         self.ingestion_pipeline_service = IngestionPipelineService()
 
@@ -90,7 +85,7 @@ class GenerateServiceWorker:
                             
                         self.logger.info(f"Reprocessing interrupted file: {oldest_processing_file.path}")
                         try:
-                            self.llama_index_service.delete_file(oldest_processing_file.path)
+                            delete_file_llama_index(oldest_processing_file.path)
                         except Exception as e:
                             self.logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
                             

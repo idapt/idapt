@@ -11,7 +11,7 @@ import os
 # The services are already initialized in the main.py file
 from app.services.db_file import create_file, get_file, delete_file, update_file, get_folder_contents, get_folder_files_recursive, get_folder
 from app.services.file_system import write_file, read_file, delete_file, rename_file, delete_folder, get_full_path_from_path
-from app.services.llama_index import LlamaIndexService
+from app.services.llama_index import delete_file_llama_index, rename_file_llama_index
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
 from app.services.database import get_session
 from app.database.models import File, Folder, FileStatus
@@ -23,9 +23,8 @@ class FileManagerService:
     Service for managing files and folders
     """
 
-    def __init__(self, llama_index_service: LlamaIndexService):
+    def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.llama_index = llama_index_service
         
         with get_session() as session:
             self._create_default_filestructure(session)
@@ -209,7 +208,7 @@ class FileManagerService:
 
             # Proceed with deletion
             await delete_file(full_path)
-            self.llama_index.delete_file(full_path)
+            delete_file_llama_index(full_path)
             result = delete_file(session, full_path)
             
             if not result:
@@ -243,7 +242,7 @@ class FileManagerService:
                         continue
 
                     await delete_file(file.path)
-                    self.llama_index.delete_file(file.path)
+                    delete_file_llama_index(file.path)
                     delete_file(session, file.path)
                     deleted_files.append(file.path)
                 except Exception as e:
@@ -293,7 +292,7 @@ class FileManagerService:
                 raise HTTPException(status_code=500, detail="Failed to update file in database")
 
             # Update in LlamaIndex
-            await self.llama_index.rename_file(full_old_path=full_path, full_new_path=new_full_path) 
+            rename_file_llama_index(full_old_path=full_path, full_new_path=new_full_path) 
 
         except Exception as e:
             self.logger.error(f"Error renaming file: {str(e)}")
