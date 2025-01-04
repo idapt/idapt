@@ -4,7 +4,7 @@ import os
 import uuid
 from typing import List, Optional
 
-from app.services.file import DocumentFile, FileService
+from app.services.file import DocumentFile, save_file
 from e2b_code_interpreter import CodeInterpreter
 from e2b_code_interpreter.models import Logs
 from llama_index.core.tools import FunctionTool
@@ -78,7 +78,7 @@ class E2BCodeInterpreter:
         # Output from e2b doesn't have a name. Create a random name for it.
         filename = f"e2b_file_{uuid.uuid4()}.{ext}"
 
-        document_file = FileService.save_file(
+        document_file = save_file(
             buffer, file_name=filename, save_dir=self.output_dir
         )
 
