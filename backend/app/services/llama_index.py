@@ -1,6 +1,6 @@
 import json
 import logging
-
+from app.services.database import get_session
 class LlamaIndexService:
     def __init__(self):
 
@@ -14,7 +14,7 @@ class LlamaIndexService:
             datasource_service = service_manager.datasource_service
 
             # Get the file's ref_doc_ids from the database
-            with service_manager.db_service.get_session() as session:
+            with get_session() as session:
                 file = service_manager.db_file_service.get_file(session, full_path)
                 if not file or not file.ref_doc_ids:
                     self.logger.warning(f"No ref_doc_ids found for file: {full_path}")

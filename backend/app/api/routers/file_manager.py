@@ -9,6 +9,7 @@ from app.api.models.file_models import FileUploadRequest
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path
 from app.services.file_manager import FileManagerService
 from app.services import ServiceManager
+from app.services.database import get_session
 
 import logging
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ def get_file_manager_service():
     return ServiceManager.get_instance().file_manager_service
 
 def get_db_session():
-    with ServiceManager.get_instance().db_service.get_session() as session:
+    with get_session() as session:
         yield session
 
 def decode_path_safe(encoded_path: str) -> str:

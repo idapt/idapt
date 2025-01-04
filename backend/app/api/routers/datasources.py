@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from base64 import urlsafe_b64decode
 from app.services import ServiceManager
+from app.services.database import get_session
 from app.database.models import Datasource
 
 datasources_router = APIRouter()
@@ -12,7 +13,7 @@ def get_datasource_service():
     return ServiceManager.get_instance().datasource_service
 
 def get_db_session():
-    with ServiceManager.get_instance().db_service.get_session() as session:
+    with get_session() as session:
         yield session
 
 class DatasourceCreate(BaseModel):

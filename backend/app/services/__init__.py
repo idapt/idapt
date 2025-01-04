@@ -1,7 +1,6 @@
 import logging
 from threading import Lock
 
-from app.services.database import DatabaseService
 from app.services.generate import GenerateService
 from app.services.file_manager import FileManagerService
 from app.services.datasource import DatasourceService
@@ -43,7 +42,6 @@ class ServiceManager:
         self.ollama_status_service.initialize()
 
         # Then database-dependent services
-        self.db_service = DatabaseService()
         self.db_file_service = DBFileService()
         self.file_system_service = FileSystemService()
         self.file_service = FileService()
@@ -53,20 +51,17 @@ class ServiceManager:
 
         # Dependent services
         self.file_manager_service = FileManagerService(
-            self.db_service, 
             self.db_file_service,
             self.file_system_service,
             self.llama_index_service
         )
         
         self.datasource_service = DatasourceService(
-            self.db_service,
             self.db_file_service,
             self.file_manager_service
         )
 
         self.generate_service = GenerateService(
-            self.db_service,
             self.db_file_service
         )
         

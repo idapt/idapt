@@ -16,7 +16,7 @@ from llama_index.core.extractors import (
 
 #from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 
-from app.services.database import DatabaseService
+from app.services.database import get_session
 from app.services.db_file import DBFileService
 from app.services.datasource import DatasourceService
 from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
@@ -34,12 +34,10 @@ class IngestionPipelineService:
     This only takes care of the llama index part
     """
 
-    def __init__(self, db_file_service: DBFileService, db_service: DatabaseService, datasource_service: DatasourceService):
+    def __init__(self, db_file_service: DBFileService, datasource_service: DatasourceService):
 
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)  # Set log level as we are in a child thread
-
-        self.db_service = db_service
         
         self.db_file_service = db_file_service
         self.datasource_service = datasource_service
@@ -156,7 +154,7 @@ class IngestionPipelineService:
                 doc.excluded_llm_metadata_keys.append("origin")
             
             
-            with self.db_service.get_session() as session:
+            with get_session() as session:
                 # Override the file creation time to the current time with the times from the database
                 for doc in documents:
                     # Get the file from the database
@@ -234,7 +232,7 @@ class IngestionPipelineService:
 
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess
-                    with self.db_service.get_session() as session:
+                    with get_session() as session:
                         file = self.db_file_service.get_file(session, doc.metadata["file_path"])
                         if file:
                             # Parse the json ref_doc_ids as a list

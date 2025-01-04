@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from app.services import ServiceManager
 from app.services.generate import GenerateService
 from app.services.file_system import get_full_path_from_path
+from app.services.database import get_session
 from sqlalchemy.orm import Session
 from functools import lru_cache
 
@@ -20,7 +21,7 @@ def get_generate_service():
     return get_service_manager().generate_service
 
 def get_db_session():
-    with ServiceManager.get_instance().db_service.get_session() as session:
+    with get_session() as session:
         yield session
 
 class GenerateRequest(BaseModel):

@@ -8,6 +8,7 @@ from llama_index.core.tools import BaseTool
 #from app.engine.tools import ToolFactory
 from app.settings.manager import AppSettingsManager
 from app.services import ServiceManager
+from app.services.database import get_session
 app_settings = AppSettingsManager.get_instance().settings
 
 import logging
@@ -30,7 +31,7 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
             tools.append(tool)
         else:
             # Get all datasource tools
-            with ServiceManager.get_instance().db_service.get_session() as session:
+            with get_session() as session:
                 datasources = datasource_service.get_all_datasources(session)
                 for ds in datasources:
                     tool = datasource_service.get_query_tool(ds.identifier)

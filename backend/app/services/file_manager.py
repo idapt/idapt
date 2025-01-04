@@ -14,8 +14,8 @@ from app.services.file_system import FileSystemService
 from app.services.llama_index import LlamaIndexService
 from app.services.file_system import get_full_path_from_path
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
+from app.services.database import get_session
 from app.database.models import File, Folder, FileStatus
-from app.services.database import DatabaseService
 
 import logging
 
@@ -24,14 +24,13 @@ class FileManagerService:
     Service for managing files and folders
     """
 
-    def __init__(self, db_service: DatabaseService, db_file_service: DBFileService, file_system_service: FileSystemService, llama_index_service: LlamaIndexService):
+    def __init__(self, db_file_service: DBFileService, file_system_service: FileSystemService, llama_index_service: LlamaIndexService):
         self.logger = logging.getLogger(__name__)
-        self.db_service = db_service
         self.db_file_service = db_file_service
         self.file_system = file_system_service
         self.llama_index = llama_index_service
         
-        with self.db_service.get_session() as session:
+        with get_session() as session:
             self._create_default_filestructure(session)
 
     def _create_default_filestructure(self, session: Session):

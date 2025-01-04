@@ -3,7 +3,7 @@ import asyncio
 from asyncio import new_event_loop, set_event_loop
 from app.services.ingestion_pipeline import IngestionPipelineService
 from app.services.db_file import DBFileService
-from app.services.database import DatabaseService
+from app.services.database import get_session
 from app.services.llama_index import LlamaIndexService
 from app.services.datasource import DatasourceService, get_datasource_identifier_from_path
 from app.services.file_manager import FileManagerService
@@ -35,7 +35,6 @@ class GenerateServiceWorker:
         self.ollama_status_service.initialize()
         
         # Core services with their own thread safety
-        self.db_service = DatabaseService()
         self.db_file_service = DBFileService()
   
         self.llama_index_service = LlamaIndexService()
@@ -43,21 +42,18 @@ class GenerateServiceWorker:
         self.file_system_service = FileSystemService()
 
         self.file_manager_service = FileManagerService(
-            self.db_service, 
             self.db_file_service,
             self.file_system_service,
             self.llama_index_service
         )
         
         self.datasource_service = DatasourceService(
-            self.db_service,
             self.db_file_service,
             self.file_manager_service
         )
 
         self.ingestion_pipeline_service = IngestionPipelineService(
             self.db_file_service,
-            self.db_service,
             self.datasource_service
         )
 
@@ -86,7 +82,7 @@ class GenerateServiceWorker:
                     await asyncio.sleep(1)
                     continue
                 
-                with self.db_service.get_session() as session:
+                with get_session() as session:
                     # Process interrupted files first
                     while True:
                         oldest_processing_file = session.query(File).filter(

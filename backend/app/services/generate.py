@@ -4,7 +4,7 @@ import logging
 import json
 from typing import List, Set
 from app.database.models import FileStatus
-from app.services.database import DatabaseService
+from app.services.database import get_session
 from app.services.db_file import DBFileService
 from app.services.generate_worker import GenerateServiceWorker
 from requests import Session
@@ -24,10 +24,9 @@ class GenerateService:
                 cls._instance = super().__new__(cls)
             return cls._instance
             
-    def __init__(self, db_service : DatabaseService, db_file_service : DBFileService):
+    def __init__(self, db_file_service : DBFileService):
         if not hasattr(self, 'initialized'):
             self.logger = logging.getLogger(__name__)
-            self.db_service = db_service
             self.db_file_service = db_file_service
             
             # IPC Queue for worker -> service communication
@@ -86,7 +85,7 @@ class GenerateService:
     def get_queue_status(self) -> dict:
         """Get the current status of the generation queue"""
         try:
-            with self.db_service.get_session() as session:
+            with get_session() as session:
                 queued_files = self.db_file_service.get_files_by_status(
                     session, 
                     FileStatus.QUEUED
