@@ -29,8 +29,8 @@ class E2BToolOutput(BaseModel):
 
 
 class E2BCodeInterpreter:
-    output_dir = "/backend_data/output/tools"
-    uploaded_files_dir = "/backend_data/output/uploaded"
+    output_dir = "/data/.idapt/output/tools"
+    uploaded_files_dir = "/data/.idapt/output/uploaded"
 
     def __init__(self, api_key: Optional[str] = None):
         if api_key is None:

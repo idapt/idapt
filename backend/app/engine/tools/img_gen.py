@@ -27,7 +27,7 @@ class ImageGeneratorToolOutput(BaseModel):
 
 class ImageGeneratorTool:
     _IMG_OUTPUT_FORMAT = "webp"
-    _IMG_OUTPUT_DIR = "/backend_data/output/tools"
+    _IMG_OUTPUT_DIR = "/data/.idapt/output/tools"
     _IMG_GEN_API = "https://api.stability.ai/v2beta/stable-image/generate/core"
 
     def __init__(self, api_key: str = None):

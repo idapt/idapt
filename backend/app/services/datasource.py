@@ -223,7 +223,7 @@ class DatasourceService:
     def _create_vector_store(self, datasource_identifier: str) -> ChromaVectorStore:
         try:
             # Create the embeddings directory if it doesn't exist
-            embeddings_dir = Path("/data/.idapt")
+            embeddings_dir = Path("/data/.idapt/embeddings")
             embeddings_dir.mkdir(parents=True, exist_ok=True)
             embeddings_file = embeddings_dir / f"{datasource_identifier}"
             

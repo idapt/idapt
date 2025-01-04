@@ -190,10 +190,10 @@ class IngestionPipelineService:
 
             # Load/create pipeline cache
             #try:
-                #ingestion_pipeline.load(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
+                #ingestion_pipeline.load(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
             #except Exception as e:
             #    self.logger.error(f"No existing pipeline cache found: {str(e)}")
-                #ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
+                #ingestion_pipeline.persist(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
 
 
             # For each transformations stack we need to apply
@@ -280,7 +280,7 @@ class IngestionPipelineService:
                 # No need to insert nodes into index as we use a vector store
 
             # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
-            #ingestion_pipeline.persist(f"/backend_data/output/pipeline_storage_{datasource_identifier}")
+            #ingestion_pipeline.persist(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
 
             self.logger.info(f"Processed {full_file_paths}")
 

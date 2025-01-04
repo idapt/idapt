@@ -144,19 +144,19 @@ RUN mkdir -p /var/www/letsencrypt && \
     mkdir -p /etc/letsencrypt && \
     mkdir -p /etc/local_ca && \
     mkdir -p /var/log/nginx && \
-    mkdir -p /backend_data && \
     mkdir -p /data && \
+    mkdir -p /data/.idapt && \
     chown -R nginx:nginx /var/www/letsencrypt && \
     chown -R nginx:nginx /etc/letsencrypt && \
     chown -R nginx:nginx /etc/local_ca && \
     chown -R nginx:nginx /var/log/nginx && \
     chown -R nginx:nginx /etc/nginx && \
-    chown -R backend:backend /backend_data && \
-    chown -R backend:backend /data
+    chown -R backend:backend /data && \
+    chown -R backend:backend /data/.idapt
 
 
 # Add volume mount points metadata
-VOLUME ["/etc/letsencrypt", "/backend_data", "/data"]
+VOLUME ["/etc/letsencrypt", "/data"]
 
 
 # Add exposed ports metadata

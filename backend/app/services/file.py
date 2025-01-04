@@ -18,9 +18,9 @@ from llama_index.indices.managed.llama_cloud.base import LlamaCloudIndex
 from llama_index.readers.file import FlatReader
 from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
-PRIVATE_STORE_PATH = str(Path("/backend_data/output", "uploaded"))
-TOOL_STORE_PATH = str(Path("/backend_data/output", "tools"))
-LLAMA_CLOUD_STORE_PATH = str(Path("/backend_data/output", "llamacloud"))
+PRIVATE_STORE_PATH = str(Path("/data/.idapt/output", "uploaded"))
+TOOL_STORE_PATH = str(Path("/data/.idapt/output", "tools"))
+LLAMA_CLOUD_STORE_PATH = str(Path("/data/.idapt/output", "llamacloud"))
 class DocumentFile(BaseModel):
     id: str
     name: str  # Stored file name
@@ -109,7 +109,7 @@ class FileService:
             The metadata of the saved file.
         """
         if save_dir is None:
-            save_dir = os.path.join("/backend_data/output", "uploaded")
+            save_dir = os.path.join("/data/.idapt/output", "uploaded")
         file_id = str(uuid.uuid4())
         name, extension = os.path.splitext(file_name)
         extension = extension.lstrip(".")

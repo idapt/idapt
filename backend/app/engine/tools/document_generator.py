@@ -6,7 +6,7 @@ from io import BytesIO
 
 from llama_index.core.tools.function_tool import FunctionTool
 
-OUTPUT_DIR = "/backend_data/output/tools"
+OUTPUT_DIR = "/data/.idapt/output/tools"
 
 
 class DocumentType(Enum):

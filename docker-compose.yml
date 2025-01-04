@@ -32,8 +32,7 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - nginx_data:/etc/letsencrypt # Persist the certificates.
-      - backend_data:/backend_data # The volume where the app data is stored.
-      - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://127.0.0.1/api/health && nginx -t || exit 1"]
       interval: 5s
@@ -50,8 +49,7 @@ services:
     #  - NET_BIND_SERVICE  # Only for nginx
 
 volumes:
-  backend_data:
-  idapt_data:
+  user_data:
   nginx_data:
 
 networks:

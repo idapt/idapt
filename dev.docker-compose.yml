@@ -28,8 +28,7 @@ services:
       - ./backend/.env
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
-      - backend_data:/backend_data # The volume where the app data is stored.
-      - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
     restart: always
     # Container security hardening
     security_opt:
@@ -107,8 +106,7 @@ services:
     #  - NET_BIND_SERVICE  # Only for nginx
 
 volumes:
-  backend_data:
-  idapt_data:
+  user_data:
   nginx_data:
 
 # One network for each service to keep them isolated.
