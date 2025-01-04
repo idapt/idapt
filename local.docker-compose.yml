@@ -1,0 +1,114 @@
+name: idapt
+services:
+
+  # Integrated Ollama instance
+  idapt-ollama:
+    container_name: idapt-ollama
+    image: ollama/ollama:latest
+    expose:
+      - "11434"
+    networks:
+      idapt-ollama-external-network: {}
+      idapt-ollama-network: {}
+    runtime: nvidia # Remove this if you don't want to use GPU for ollama.
+    deploy: # Remove this if you don't want to use GPU for ollama.
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: ["gpu"]
+              count: all
+    healthcheck:
+      test: ["CMD", "ollama", "--version"]  # Check if Ollama is responding
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - ollama_data:/root/.ollama # Store the models in a volume so that we don't download them again at each rebuild
+    restart: always
+    # Container security hardening
+    security_opt:
+      - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+
+
+
+
+# Nginx to manage every communication between containers and outside world.
+  idapt:
+    container_name: idapt
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      # Frontend variables
+      ENVIRONMENT: prod
+      NEXT_PUBLIC_HOST_DOMAIN: localhost
+      # Entrypoint script variables
+      HOST_DOMAIN: localhost
+      # Container variables
+      CERTBOT_EMAIL: dummy@dummy.com
+      USE_LOCAL_CA: 1
+    env_file:
+      - ./nginx/.env
+      - ./frontend/.env
+      - ./backend/.env
+    ports:
+      # Expose the nginx listening ports through the host firewall.
+      # Add 127.0.0.1 to only open ports locally and not through the host firewall.
+      - '127.0.0.1:80:80/tcp'
+      - '127.0.0.1:443:443/tcp'
+      - '127.0.0.1:443:443/udp'
+    depends_on:
+      idapt-ollama:
+        condition: service_healthy
+    # Nginx has access to every container exposed via their own network for routing.
+    networks:
+      idapt-external-network: {}
+      idapt-ollama-network: {}
+    volumes:
+      - nginx_letsencrypt:/etc/letsencrypt # Persist the certificates.
+      - backend_data:/backend_data # The volume where the app data is stored.
+      - idapt_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1/api/health && nginx -t || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: always
+    # Container security hardening
+    security_opt:
+      - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+    #cap_add:
+    #  - NET_BIND_SERVICE  # Only for nginx
+
+
+
+
+volumes:
+  backend_data:
+  idapt_data:
+  ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
+  nginx_letsencrypt:
+
+# One network for each service to keep them isolated.
+networks:
+  # Dedicated external networks for services that need internet access
+  idapt-external-network:
+    attachable: false
+    name: idapt-external-network
+    driver: bridge
+  idapt-ollama-external-network:
+    attachable: false
+    name: idapt-ollama-external-network
+    driver: bridge
+  # Internal networks for inter container communication.
+  idapt-ollama-network:
+    internal: true
+    attachable: false
+    name: idapt-ollama-network
+    driver: bridge
