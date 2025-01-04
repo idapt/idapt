@@ -2,6 +2,7 @@ import json
 import logging
 from app.services.database import get_session
 from app.services.datasource import get_vector_store, get_doc_store
+from app.services.db_file import get_file
 
 class LlamaIndexService:
     def __init__(self):
@@ -12,7 +13,7 @@ class LlamaIndexService:
         try:
             # Get the file's ref_doc_ids from the database
             with get_session() as session:
-                file = db_file_service.get_file(session, full_path)
+                file = get_file(session, full_path)
                 if not file or not file.ref_doc_ids:
                     self.logger.warning(f"No ref_doc_ids found for file: {full_path}")
                     return

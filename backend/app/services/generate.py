@@ -5,7 +5,7 @@ import json
 from typing import List, Set
 from app.database.models import FileStatus
 from app.services.database import get_session
-from app.services.db_file import DBFileService
+from app.services.db_file import get_files_by_status, update_file_status, mark_stack_as_processed
 from app.services.generate_worker import GenerateServiceWorker
 from requests import Session
 from fastapi import WebSocket
@@ -24,10 +24,9 @@ class GenerateService:
                 cls._instance = super().__new__(cls)
             return cls._instance
             
-    def __init__(self, db_file_service : DBFileService):
+    def __init__(self):
         if not hasattr(self, 'initialized'):
             self.logger = logging.getLogger(__name__)
-            self.db_file_service = db_file_service
             
             # IPC Queue for worker -> service communication
             self.status_queue = Queue()
@@ -68,7 +67,7 @@ class GenerateService:
         try:
             for file in files:
                 stacks_to_process : List[str] = file.get("transformations_stack_name_list", ["default"])
-                self.db_file_service.update_file_status(
+                update_file_status(
                     session,
                     file["path"],
                     FileStatus.QUEUED,
@@ -86,15 +85,15 @@ class GenerateService:
         """Get the current status of the generation queue"""
         try:
             with get_session() as session:
-                queued_files = self.db_file_service.get_files_by_status(
+                queued_files = get_files_by_status(
                     session, 
                     FileStatus.QUEUED
                 )
-                processing_files = self.db_file_service.get_files_by_status(
+                processing_files = get_files_by_status(
                     session,
                     FileStatus.PROCESSING
                 )
-                completed_files = self.db_file_service.get_files_by_status(
+                completed_files = get_files_by_status(
                     session,
                     FileStatus.COMPLETED
                 )

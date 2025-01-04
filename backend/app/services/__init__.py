@@ -40,7 +40,6 @@ class ServiceManager:
         self.ollama_status_service.initialize()
 
         # Then database-dependent services
-        self.db_file_service = DBFileService()
         self.file_system_service = FileSystemService()
         self.file_service = FileService()
         
@@ -49,14 +48,11 @@ class ServiceManager:
 
         # Dependent services
         self.file_manager_service = FileManagerService(
-            self.db_file_service,
             self.file_system_service,
             self.llama_index_service
         )
 
-        self.generate_service = GenerateService(
-            self.db_file_service
-        )
+        self.generate_service = GenerateService()
         
         self.logger.info("Services initialized successfully")
     

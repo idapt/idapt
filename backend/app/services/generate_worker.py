@@ -2,7 +2,7 @@ import logging
 import asyncio
 from asyncio import new_event_loop, set_event_loop
 from app.services.ingestion_pipeline import IngestionPipelineService
-from app.services.db_file import DBFileService
+from app.services.db_file import get_files_by_status, update_file_status, mark_stack_as_processed
 from app.services.database import get_session
 from app.services.llama_index import LlamaIndexService
 from app.services.datasource import get_datasource_identifier_from_path
@@ -35,21 +35,16 @@ class GenerateServiceWorker:
         self.ollama_status_service.initialize()
         
         # Core services with their own thread safety
-        self.db_file_service = DBFileService()
-  
         self.llama_index_service = LlamaIndexService()
 
         self.file_system_service = FileSystemService()
 
         self.file_manager_service = FileManagerService(
-            self.db_file_service,
             self.file_system_service,
             self.llama_index_service
         )
 
-        self.ingestion_pipeline_service = IngestionPipelineService(
-            self.db_file_service,
-        )
+        self.ingestion_pipeline_service = IngestionPipelineService()
 
     def run(self):
         """Main entry point for the worker thread"""
@@ -125,9 +120,9 @@ class GenerateServiceWorker:
         """Send status update through IPC queue"""
         try:
             status = {
-                "queued_count": len(self.db_file_service.get_files_by_status(session, FileStatus.QUEUED)),
-                "processing_count": len(self.db_file_service.get_files_by_status(session, FileStatus.PROCESSING)),
-                "processed_files": [f.path for f in self.db_file_service.get_files_by_status(session, FileStatus.COMPLETED)]
+                "queued_count": len(get_files_by_status(session, FileStatus.QUEUED)),
+                "processing_count": len(get_files_by_status(session, FileStatus.PROCESSING)),
+                "processed_files": [f.path for f in get_files_by_status(session, FileStatus.COMPLETED)]
             }
             self.status_queue.put(status)
         except Exception as e:
@@ -137,7 +132,7 @@ class GenerateServiceWorker:
         """Process a single file through the ingestion pipeline"""
         try:
             # Update status to processing
-            self.db_file_service.update_file_status(
+            update_file_status(
                 session,
                 file.path,
                 FileStatus.PROCESSING
@@ -161,7 +156,7 @@ class GenerateServiceWorker:
                             transformations_stack_name_list=[stack_name]
                         )
                         
-                        self.db_file_service.mark_stack_as_processed(
+                        mark_stack_as_processed(
                             session,
                             file.path,
                             stack_name
@@ -171,7 +166,7 @@ class GenerateServiceWorker:
                         continue
                         
             # Update status to completed
-            self.db_file_service.update_file_status(
+            update_file_status(
                 session,
                 file.path,
                 FileStatus.COMPLETED
@@ -180,7 +175,7 @@ class GenerateServiceWorker:
             
         except Exception as e:
             self.logger.error(f"Failed to process file {file.path}: {str(e)}")
-            self.db_file_service.update_file_status(
+            update_file_status(
                 session,
                 file.path,
                 FileStatus.ERROR

@@ -9,10 +9,9 @@ import base64
 import os
 
 # The services are already initialized in the main.py file
-from app.services.db_file import DBFileService
-from app.services.file_system import FileSystemService
+from app.services.db_file import create_file, get_file, delete_file, update_file, get_folder_contents, get_folder_files_recursive, get_folder
+from app.services.file_system import FileSystemService, get_full_path_from_path
 from app.services.llama_index import LlamaIndexService
-from app.services.file_system import get_full_path_from_path
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
 from app.services.database import get_session
 from app.database.models import File, Folder, FileStatus
@@ -24,9 +23,8 @@ class FileManagerService:
     Service for managing files and folders
     """
 
-    def __init__(self, db_file_service: DBFileService, file_system_service: FileSystemService, llama_index_service: LlamaIndexService):
+    def __init__(self, file_system_service: FileSystemService, llama_index_service: LlamaIndexService):
         self.logger = logging.getLogger(__name__)
-        self.db_file_service = db_file_service
         self.file_system = file_system_service
         self.llama_index = llama_index_service
         
@@ -157,7 +155,7 @@ class FileManagerService:
             file_size = len(decoded_file_data)
 
             # Create file in database with full path
-            file = self.db_file_service.create_file(
+            file = create_file(
                 session=session,
                 name=item.name,
                 path=full_path,
@@ -177,7 +175,7 @@ class FileManagerService:
     async def download_file(self, session: Session, full_path: str) -> Dict[str, str]:
         try:
             # First try to get file from database to see fast if it exists
-            file = self.db_file_service.get_file(session, full_path)
+            file = get_file(session, full_path)
             if not file:
                 raise HTTPException(status_code=404, detail="File not found")
             
@@ -199,7 +197,7 @@ class FileManagerService:
 
     async def delete_file(self, session: Session, full_path: str):
         try:
-            file = self.db_file_service.get_file(session, full_path)
+            file = get_file(session, full_path)
             if not file:
                 raise HTTPException(status_code=404, detail="File not found")
             
@@ -213,7 +211,7 @@ class FileManagerService:
             # Proceed with deletion
             await self.file_system.delete_file(full_path)
             self.llama_index.delete_file(full_path)
-            result = self.db_file_service.delete_file(session, full_path)
+            result = delete_file(session, full_path)
             
             if not result:
                 self.logger.warning(f"Failed to delete file from database for path: {full_path}")
@@ -226,12 +224,12 @@ class FileManagerService:
         try:
             self.logger.info(f"Deleting folder: {full_path}")
 
-            folder = self.db_file_service.get_folder(session, full_path)
+            folder = get_folder(session, full_path)
             if not folder:
                 raise HTTPException(status_code=404, detail="Folder not found")
 
             # Get all files in folder and subfolders recursively
-            files, subfolders = self.db_file_service.get_folder_files_recursive(session, full_path)
+            files, subfolders = get_folder_files_recursive(session, full_path)
             
             processing_files = []
             deleted_files = []
@@ -247,7 +245,7 @@ class FileManagerService:
 
                     await self.file_system.delete_file(file.path)
                     self.llama_index.delete_file(file.path)
-                    self.db_file_service.delete_file(session, file.path)
+                    delete_file(session, file.path)
                     deleted_files.append(file.path)
                 except Exception as e:
                     self.logger.warning(f"Error deleting file {file.path}: {str(e)}")
@@ -259,7 +257,7 @@ class FileManagerService:
                 await self.file_system.delete_folder(full_path)
                 
                 # Delete everything from database in one transaction
-                if not self.db_file_service.delete_folder(session, full_path):
+                if not delete_folder(session, full_path):
                     raise HTTPException(status_code=500, detail="Failed to delete folder from database")
             else:
                 # Raise an exception with information about processing files
@@ -281,7 +279,7 @@ class FileManagerService:
 
     async def rename_file(self, session: Session, full_path: str, new_name: str):
         try:
-            file = self.db_file_service.get_file(session, full_path)
+            file = get_file(session, full_path)
             if not file:
                 raise HTTPException(status_code=404, detail="File not found")
 
@@ -291,7 +289,7 @@ class FileManagerService:
             new_full_path = file.path.replace(file.name, new_name)
             
             # Update database
-            updated_file = self.db_file_service.update_file(session, full_path, new_full_path)
+            updated_file = update_file(session, full_path, new_full_path)
             if not updated_file:
                 raise HTTPException(status_code=500, detail="Failed to update file in database")
 
@@ -306,7 +304,7 @@ class FileManagerService:
         try:
 
             # Get folder from database
-            folder = self.db_file_service.get_folder(session, full_path)
+            folder = get_folder(session, full_path)
             if not folder:
                 raise HTTPException(status_code=404, detail="Folder not found")
             
@@ -316,7 +314,7 @@ class FileManagerService:
             # Create zip file
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 # Get all files recursively
-                files, _ = self.db_file_service.get_folder_files_recursive(session, full_path)
+                files, _ = get_folder_files_recursive(session, full_path)
                 
                 # Iterate over all retrieved files
                 for file in files:
@@ -348,7 +346,7 @@ class FileManagerService:
         """Get contents of a specific folder"""
         try:            
             
-            folder_contents = self.db_file_service.get_folder_contents(session, full_path)
+            folder_contents = get_folder_contents(session, full_path)
 
             return folder_contents
         except Exception as e:

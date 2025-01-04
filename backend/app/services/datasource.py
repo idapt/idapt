@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.database.models import Datasource, Folder
 from app.services.database import get_session
-from app.services.db_file import DBFileService
+from app.services.db_file import get_folder_id
 from app.services.file_manager import FileManagerService
 from app.services.file_system import get_full_path_from_path
 from app.settings.manager import AppSettingsManager
@@ -93,7 +93,7 @@ def create_datasource(session: Session, name: str, type: str, settings: dict = N
 
         path = identifier
         full_path = get_full_path_from_path(path)
-        root_folder_id = db_file_service.get_folder_id(session, "/data")
+        root_folder_id = get_folder_id(session, "/data")
 
         # Create root folder for datasource
         datasource_folder = Folder(
