@@ -1,39 +1,6 @@
 name: idapt_dev
+
 services:
-
-  # Integrated Ollama instance
-  idapt-ollama:
-    container_name: idapt-ollama
-    image: ollama/ollama:latest
-    expose:
-      - "11434"
-    networks:
-      idapt-ollama-external-network: {}
-      idapt-ollama-network: {}
-    runtime: nvidia # Remove this if you don't want to use GPU for ollama.
-    deploy: # Remove this if you don't want to use GPU for ollama.
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: ["gpu"]
-              count: all
-    # Removed for dev to not clutter the logs.
-    #healthcheck: # Causes issues when pulling large models or when api is busy for a long time.
-    #  test: ["CMD", "ollama", "--version"]  # Check if Ollama is responding
-    #  interval: 1s                    # Run the health check every 2 seconds
-    #  timeout: 5s                     # Timeout for the health check is 30 seconds
-    #  retries: 30                       # Retry 5 times before marking it as unhealthy
-    volumes:
-      - ./ollama_data:/root/.ollama # Store the models in dev folder so that we don't download them again at each rebuild
-    restart: always
-    # Container security hardening
-    security_opt:
-      - no-new-privileges:true
-    #cap_drop: # TODO
-    #  - ALL
-
-
 
   # The backend is the main service of the application.
   idapt-backend:
@@ -46,10 +13,9 @@ services:
     networks:
       idapt-backend-external-network: {}
       idapt-backend-network: {}
-      idapt-ollama-network: {}
-    depends_on:
-      idapt-ollama:
-        condition: service_started # Removed for dev to not clutter the logs.
+    # Expose the host.docker.internal so that we can access ollama runnning on the localost from the container.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 1s
@@ -70,8 +36,6 @@ services:
       - no-new-privileges:true
     #cap_drop: # TODO
     #  - ALL
-
-
 
   idapt-frontend:
     build:
@@ -101,9 +65,6 @@ services:
     #cap_drop: # TODO
     #  - ALL
 
-
-
-
 # Nginx to manage every communication between containers and outside world.
   idapt-nginx:
     container_name: idapt-nginx
@@ -130,7 +91,7 @@ services:
       idapt-frontend-network: {}
       idapt-backend-network: {}
     volumes:
-      - nginx_letsencrypt:/etc/letsencrypt
+      - nginx_data:/etc/letsencrypt
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
@@ -145,15 +106,10 @@ services:
     #cap_add:
     #  - NET_BIND_SERVICE  # Only for nginx
 
-
-
 volumes:
   backend_data:
   idapt_data:
-  #ollama_data: # TODO use a shared read only volume for ollama models to not have duplicates for each pod.
-  nginx_letsencrypt:
-
-
+  nginx_data:
 
 # One network for each service to keep them isolated.
 networks:
@@ -170,10 +126,6 @@ networks:
     attachable: false
     name: idapt-backend-external-network
     driver: bridge
-  idapt-ollama-external-network:
-    attachable: false
-    name: idapt-ollama-external-network
-    driver: bridge
   # Internal networks for inter container communication.
   idapt-backend-network:
     internal: true
@@ -184,9 +136,4 @@ networks:
     internal: true
     attachable: false
     name: idapt-frontend-network
-    driver: bridge
-  idapt-ollama-network:
-    internal: true
-    attachable: false
-    name: idapt-ollama-network
     driver: bridge

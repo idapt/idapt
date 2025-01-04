@@ -4,10 +4,10 @@ from typing import Literal, Optional
 # Provider-specific settings
 class OllamaSettings(BaseModel):
     llm_model: str = "llama3.1:8b"
-    llm_host: str = "http://idapt-ollama:11434"
+    llm_host: str = "http://host.docker.internal:11434"
     llm_request_timeout: float = 300
     embedding_model: str = "Losspost/stella_en_1.5b_v5"
-    embedding_host: str = "http://idapt-ollama:11434"
+    embedding_host: str = "http://host.docker.internal:11434"
     embedding_request_timeout: float = 60
 
 class OpenAISettings(BaseModel):
@@ -57,20 +57,20 @@ class TEISettings(BaseModel):
 
 class AppSettings(BaseModel):
     llm_model_provider: Literal[
-        "integrated_ollama", "custom_ollama", "openai", 
+        "local_ollama", "remote_ollama", "openai", 
         "text-generation-inference", "anthropic", "groq", 
         "gemini", "mistral", "azure-openai"
-    ] = "integrated_ollama"
+    ] = "local_ollama"
     
     embedding_model_provider: Literal[
-        "integrated_ollama", "custom_ollama", "openai",
+        "local_ollama", "remote_ollama", "openai",
         "azure-openai", "gemini", "mistral", "fastembed",
         "text-embeddings-inference"
-    ] = "integrated_ollama"
+    ] = "local_ollama"
 
     # Provider settings
-    integrated_ollama: OllamaSettings = Field(default_factory=OllamaSettings)
-    custom_ollama: OllamaSettings = Field(
+    local_ollama: OllamaSettings = Field(default_factory=OllamaSettings)
+    remote_ollama: OllamaSettings = Field(
         default_factory=lambda: OllamaSettings(
             llm_host="http://localhost:11434",
             embedding_host="http://localhost:11434"
@@ -104,7 +104,7 @@ class AppSettings(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "llm_model_provider": "integrated_ollama",
+                "llm_model_provider": "local_ollama",
                 "ollama_model": "llama3.1:8b",
                 # ... other example values
             }
