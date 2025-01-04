@@ -9,7 +9,7 @@ from app.services.datasource import get_datasource_identifier_from_path
 from app.database.models import File, FileStatus
 import json
 from multiprocessing import Queue
-from app.services.ollama_status import OllamaStatusService
+
 class GenerateServiceWorker:
     """Worker class that runs in a separate thread to process files"""
     
@@ -28,10 +28,12 @@ class GenerateServiceWorker:
 
         self.logger.info("Initializing generate worker services...")
 
-        # Ollama status service
+        # Init ollama status service for this thread
+        from app.services.ollama_status import OllamaStatusService
         self.ollama_status_service = OllamaStatusService()
         self.ollama_status_service.initialize()
-        
+
+        # Init ingestion pipeline service for this thread
         self.ingestion_pipeline_service = IngestionPipelineService()
 
     def run(self):

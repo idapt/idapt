@@ -8,14 +8,25 @@ import requests
 import json
 
 class OllamaStatusService:
+    _instance = None
+    _instance_lock = threading.Lock()
+    
+    def __new__(cls, *args, **kwargs):
+        with cls._instance_lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+            return cls._instance
+            
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self.active_connections: Set[WebSocket] = set()
-        self.is_downloading = False
-        self._initialized = False
-        self._check_interval = 1  # seconds
-        self._stop_event = threading.Event()
-        self._check_thread = None
+        if not hasattr(self, 'initialized'):
+            self.logger = logging.getLogger(__name__)
+            self.active_connections: Set[WebSocket] = set()
+            self.is_downloading = False
+            self._initialized = False
+            self._check_interval = 1  # seconds
+            self._stop_event = threading.Event()
+            self._check_thread = None
+            self.initialized = True
         
     def initialize(self):
         """Safe initialization that can be called after other services"""

@@ -1,6 +1,10 @@
 from fastapi import APIRouter, WebSocket, Depends
+from app.services.ollama_status import OllamaStatusService
 
 ollama_status_router = r = APIRouter()
+
+def get_ollama_status_service():
+    return OllamaStatusService() 
 
 @r.get("")
 async def get_ollama_status(
@@ -24,3 +28,4 @@ async def ollama_status_websocket(
                 break
     finally:
         await status_service.disconnect(websocket) 
+

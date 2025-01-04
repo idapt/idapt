@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 generate_router = r = APIRouter()
 
-def get_generate_service(): # TODO
+def get_generate_service():
     return GenerateService()
 
 def get_db_session():

@@ -84,12 +84,12 @@ async def lifespan(app: FastAPI):
 
     # Initialize ollama status service
     from app.services.ollama_status import OllamaStatusService
-    ollama_status_service = OllamaStatusService()
-    ollama_status_service.initialize()
+    ollama_service = OllamaStatusService()
+    ollama_service.initialize()
 
-    # Initialize generate service
+    # Initialize generate service - just instantiate it since __init__ handles setup
     from app.services.generate import GenerateService
-    generate_service = GenerateService()
+    GenerateService()
 
     logger.info(f"Services initialized in process {current_pid}")
     
