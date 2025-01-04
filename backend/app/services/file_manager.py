@@ -13,352 +13,342 @@ from app.services.db_file import create_file, get_file, delete_file, update_file
 from app.services.file_system import write_file, read_file, delete_file, rename_file, delete_folder, get_full_path_from_path
 from app.services.llama_index import delete_file_llama_index, rename_file_llama_index
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
-from app.services.database import get_session
 from app.database.models import File, Folder, FileStatus
 
 import logging
 
-class FileManagerService:
-    """
-    Service for managing files and folders
-    """
+logger = logging.getLogger(__name__)
 
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
+def create_default_filestructure(session: Session):
+    """Create the default filestructure in the database"""
+    try:
+        # Check if root folder exists
+        root_folder = session.query(Folder).filter(Folder.path == "/").first()
+        if not root_folder:
+            root_folder = Folder(
+                name="/",
+                path="/",
+                parent_id=None
+            )
+            session.add(root_folder)
+            session.flush()  # Flush to get the root_folder.id
         
-        with get_session() as session:
-            self._create_default_filestructure(session)
-
-    def _create_default_filestructure(self, session: Session):
-        """Create the default filestructure in the database"""
-        try:
-            # Check if root folder exists
-            root_folder = session.query(Folder).filter(Folder.path == "/").first()
-            if not root_folder:
-                root_folder = Folder(
-                    name="/",
-                    path="/",
-                    parent_id=None
-                )
-                session.add(root_folder)
-                session.flush()  # Flush to get the root_folder.id
-            
-            # Check if data folder exists
-            data_folder = session.query(Folder).filter(Folder.path == "/data").first()
-            if not data_folder:
-                data_folder = Folder(
-                    name="/data",
-                    path="/data",
-                    parent_id=root_folder.id
-                )
-                session.add(data_folder)
-                session.flush()
-            
-            session.commit()
-            
-        except Exception as e:
-            session.rollback()
-            self.logger.error(f"Error creating default filestructure: {str(e)}")
-            raise
-
-    async def upload_files(self, request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:
-        try:
-            total = len(request.items)
-            processed = []
-            skipped = []
-            
-            self.logger.info(f"Uploading {total} files")
-            
-            for idx, item in enumerate(request.items, 1):
-                try:
-                    self.logger.info(f"Uploading file {idx}/{total}: {item.path}")
-                    
-                    result = await self.upload_file(session, item)
-                    if result:
-                        processed.append(result)
-
-                    yield {
-                        "event": "message",
-                        "data": FileUploadProgress(
-                            total=total,
-                            current=idx,
-                            processed_items=processed + skipped,
-                            status="processing"
-                        ).model_dump_json()
-                    }
-                    
-                    await asyncio.sleep(0.1)
-                    
-                except Exception as e:
-                    self.logger.error(f"Error uploading file {item.path}: {str(e)}")
-                    error_message = str(e)
-                    yield {
-                        "event": "message",
-                        "data": FileUploadProgress(
-                            total=total,
-                            current=idx,
-                            processed_items=processed + skipped,
-                            status="error",
-                            error=f"Error uploading {item.path}: {error_message}"
-                        ).model_dump_json()
-                    }
-                    return
-
-            
-            # Final success message
-            yield {
-                "event": "message",
-                "data": FileUploadProgress(
-                    total=total,
-                    current=total,
-                    processed_items=processed + skipped,
-                    status="completed"
-                ).model_dump_json()
-            }
-
-        except Exception as e:
-            self.logger.error(f"Error during file upload process: {str(e)}")
-            yield {
-                "event": "message",
-                "data": FileUploadProgress(
-                    total=total,
-                    current=0,
-                    processed_items=[],
-                    status="error",
-                    error=f"Upload failed: {str(e)}"
-                ).model_dump_json()
-            }
-
-    async def upload_file(self, session: Session, item: FileUploadItem) -> str:
-        """Process a single upload item (file or folder)"""
-        try:
-            self.logger.info(f"Starting upload for file: {item.name}")
-
-            # Decode the base64 file content into text
-            decoded_file_data, _ = self.preprocess_base64_file(item.content)
-            
-            # Use full path for managing files in the backend
-            # TODO : Move this to router api ?
-            full_path = get_full_path_from_path(item.path)
-            
-            # Write file to filesystem with metadata
-            await write_file(
-                full_path,
-                content=decoded_file_data,
-                created_at_unix_timestamp=item.file_created_at,
-                modified_at_unix_timestamp=item.file_modified_at
+        # Check if data folder exists
+        data_folder = session.query(Folder).filter(Folder.path == "/data").first()
+        if not data_folder:
+            data_folder = Folder(
+                name="/data",
+                path="/data",
+                parent_id=root_folder.id
             )
+            session.add(data_folder)
+            session.flush()
+        
+        session.commit()
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error creating default filestructure: {str(e)}")
+        raise
 
-            # Calculate the file size
-            file_size = len(decoded_file_data)
-
-            # Create file in database with full path
-            file = create_file(
-                session=session,
-                name=item.name,
-                path=full_path,
-                size=file_size,
-                file_created_at=item.file_created_at,
-                file_modified_at=item.file_modified_at
-            )
-            
-            self.logger.info(f"File created with ID: {file.id}")
-            
-            return f"Uploaded file: {full_path}"
+async def upload_files(request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:
+    try:
+        total = len(request.items)
+        processed = []
+        skipped = []
+        
+        logger.info(f"Uploading {total} files")
+        
+        for idx, item in enumerate(request.items, 1):
+            try:
+                logger.info(f"Uploading file {idx}/{total}: {item.path}")
                 
-        except Exception as e:
-            self.logger.error(f"Error during file upload: {str(e)}")
-            raise
+                result = await upload_file(session, item)
+                if result:
+                    processed.append(result)
 
-    async def download_file(self, session: Session, full_path: str) -> Dict[str, str]:
-        try:
-            # First try to get file from database to see fast if it exists
-            file = get_file(session, full_path)
-            if not file:
-                raise HTTPException(status_code=404, detail="File not found")
-            
-            # Get file content from filesystem
-            file_content = await read_file(full_path)
+                yield {
+                    "event": "message",
+                    "data": FileUploadProgress(
+                        total=total,
+                        current=idx,
+                        processed_items=processed + skipped,
+                        status="processing"
+                    ).model_dump_json()
+                }
+                
+                await asyncio.sleep(0.1)
+                
+            except Exception as e:
+                logger.error(f"Error uploading file {item.path}: {str(e)}")
+                error_message = str(e)
+                yield {
+                    "event": "message",
+                    "data": FileUploadProgress(
+                        total=total,
+                        current=idx,
+                        processed_items=processed + skipped,
+                        status="error",
+                        error=f"Error uploading {item.path}: {error_message}"
+                    ).model_dump_json()
+                }
+                return
 
-            return {
-                "content": file_content,
-                "filename": file.name,
-                "mime_type": file.mime_type,
-                "size": file.size,
-                "created_at": file.file_created_at,
-                "modified_at": file.file_modified_at
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error downloading file: {str(e)}")
-            raise
-
-    async def delete_file(self, session: Session, full_path: str):
-        try:
-            file = get_file(session, full_path)
-            if not file:
-                raise HTTPException(status_code=404, detail="File not found")
-            
-            # Check if file is being processed
-            if file.status in [FileStatus.QUEUED, FileStatus.PROCESSING]:
-                raise HTTPException(
-                    status_code=409,
-                    detail="File is currently being processed and cannot be deleted"
-                )
-
-            # Proceed with deletion
-            await delete_file(full_path)
-            delete_file_llama_index(full_path)
-            result = delete_file(session, full_path)
-            
-            if not result:
-                self.logger.warning(f"Failed to delete file from database for path: {full_path}")
         
-        except Exception as e:
-            self.logger.error(f"Error deleting file: {str(e)}")
-            raise
+        # Final success message
+        yield {
+            "event": "message",
+            "data": FileUploadProgress(
+                total=total,
+                current=total,
+                processed_items=processed + skipped,
+                status="completed"
+            ).model_dump_json()
+        }
 
-    async def delete_folder(self, session: Session, full_path: str):
-        try:
-            self.logger.info(f"Deleting folder: {full_path}")
+    except Exception as e:
+        logger.error(f"Error during file upload process: {str(e)}")
+        yield {
+            "event": "message",
+            "data": FileUploadProgress(
+                total=total,
+                current=0,
+                processed_items=[],
+                status="error",
+                error=f"Upload failed: {str(e)}"
+            ).model_dump_json()
+        }
 
-            folder = get_folder(session, full_path)
-            if not folder:
-                raise HTTPException(status_code=404, detail="Folder not found")
+async def upload_file(session: Session, item: FileUploadItem) -> str:
+    """Process a single upload item (file or folder)"""
+    try:
+        logger.info(f"Starting upload for file: {item.name}")
 
-            # Get all files in folder and subfolders recursively
-            files, subfolders = get_folder_files_recursive(session, full_path)
+        # Decode the base64 file content into text
+        decoded_file_data, _ = preprocess_base64_file(item.content)
+        
+        # Use full path for managing files in the backend
+        # TODO : Move this to router api ?
+        full_path = get_full_path_from_path(item.path)
+        
+        # Write file to filesystem with metadata
+        await write_file(
+            full_path,
+            content=decoded_file_data,
+            created_at_unix_timestamp=item.file_created_at,
+            modified_at_unix_timestamp=item.file_modified_at
+        )
+
+        # Calculate the file size
+        file_size = len(decoded_file_data)
+
+        # Create file in database with full path
+        file = create_file(
+            session=session,
+            name=item.name,
+            path=full_path,
+            size=file_size,
+            file_created_at=item.file_created_at,
+            file_modified_at=item.file_modified_at
+        )
+        
+        logger.info(f"File created with ID: {file.id}")
+        
+        return f"Uploaded file: {full_path}"
             
-            processing_files = []
-            deleted_files = []
-            failed_files = []
+    except Exception as e:
+        logger.error(f"Error during file upload: {str(e)}")
+        raise
 
-            # First delete from filesystem and LlamaIndex
-            for file in files:
-                try:
-                    # Skip files that are being processed
-                    if file.status in [FileStatus.PROCESSING]:
-                        processing_files.append(file.path)
-                        continue
+async def download_file(session: Session, full_path: str) -> Dict[str, str]:
+    try:
+        # First try to get file from database to see fast if it exists
+        file = get_file(session, full_path)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get file content from filesystem
+        file_content = await read_file(full_path)
 
-                    await delete_file(file.path)
-                    delete_file_llama_index(file.path)
-                    delete_file(session, file.path)
-                    deleted_files.append(file.path)
-                except Exception as e:
-                    self.logger.warning(f"Error deleting file {file.path}: {str(e)}")
-                    failed_files.append(file.path)
+        return {
+            "content": file_content,
+            "filename": file.name,
+            "mime_type": file.mime_type,
+            "size": file.size,
+            "created_at": file.file_created_at,
+            "modified_at": file.file_modified_at
+        }
+        
+    except Exception as e:
+        logger.error(f"Error downloading file: {str(e)}")
+        raise
+
+async def delete_file(session: Session, full_path: str):
+    try:
+        file = get_file(session, full_path)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Check if file is being processed
+        if file.status in [FileStatus.QUEUED, FileStatus.PROCESSING]:
+            raise HTTPException(
+                status_code=409,
+                detail="File is currently being processed and cannot be deleted"
+            )
+
+        # Proceed with deletion
+        await delete_file(full_path)
+        delete_file_llama_index(full_path)
+        result = delete_file(session, full_path)
+        
+        if not result:
+            logger.warning(f"Failed to delete file from database for path: {full_path}")
+    
+    except Exception as e:
+        logger.error(f"Error deleting file: {str(e)}")
+        raise
+
+async def delete_folder(session: Session, full_path: str):
+    try:
+        logger.info(f"Deleting folder: {full_path}")
+
+        folder = get_folder(session, full_path)
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found")
+
+        # Get all files in folder and subfolders recursively
+        files, subfolders = get_folder_files_recursive(session, full_path)
+        
+        processing_files = []
+        deleted_files = []
+        failed_files = []
+
+        # First delete from filesystem and LlamaIndex
+        for file in files:
+            try:
+                # Skip files that are being processed
+                if file.status in [FileStatus.PROCESSING]:
+                    processing_files.append(file.path)
                     continue
 
-            # Delete folder from filesystem if no files are being processed
-            if not processing_files:
-                await delete_folder(full_path)
+                await delete_file(file.path)
+                delete_file_llama_index(file.path)
+                delete_file(session, file.path)
+                deleted_files.append(file.path)
+            except Exception as e:
+                logger.warning(f"Error deleting file {file.path}: {str(e)}")
+                failed_files.append(file.path)
+                continue
+
+        # Delete folder from filesystem if no files are being processed
+        if not processing_files:
+            await delete_folder(full_path)
+            
+            # Delete everything from database in one transaction
+            if not delete_folder(session, full_path):
+                raise HTTPException(status_code=500, detail="Failed to delete folder from database")
+        else:
+            # Raise an exception with information about processing files
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Some files are being processed and cannot be deleted",
+                    "processing_files": processing_files,
+                    "deleted_files": deleted_files,
+                    "failed_files": failed_files
+                }
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting folder: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def rename_file(session: Session, full_path: str, new_name: str):
+    try:
+        file = get_file(session, full_path)
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Rename in filesystem
+        await rename_file(full_path, new_name)
+        
+        new_full_path = file.path.replace(file.name, new_name)
+        
+        # Update database
+        updated_file = update_file(session, full_path, new_full_path)
+        if not updated_file:
+            raise HTTPException(status_code=500, detail="Failed to update file in database")
+
+        # Update in LlamaIndex
+        rename_file_llama_index(full_old_path=full_path, full_new_path=new_full_path) 
+
+    except Exception as e:
+        logger.error(f"Error renaming file: {str(e)}")
+        raise
+
+async def download_folder(session: Session, full_path: str) -> Dict[str, Any]:
+    try:
+
+        # Get folder from database
+        folder = get_folder(session, full_path)
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found")
+        
+        # Create a memory buffer for the zip file
+        zip_buffer = BytesIO()
+        
+        # Create zip file
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Get all files recursively
+            files, _ = get_folder_files_recursive(session, full_path)
+            
+            # Iterate over all retrieved files
+            for file in files:
+                # Calculate relative path within the zip
+                relative_path = os.path.relpath(file.path, folder.path)
                 
-                # Delete everything from database in one transaction
-                if not delete_folder(session, full_path):
-                    raise HTTPException(status_code=500, detail="Failed to delete folder from database")
-            else:
-                # Raise an exception with information about processing files
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "message": "Some files are being processed and cannot be deleted",
-                        "processing_files": processing_files,
-                        "deleted_files": deleted_files,
-                        "failed_files": failed_files
-                    }
-                )
+                # Read file content
+                file_content = await read_file(file.path)
 
-        except HTTPException:
-            raise
-        except Exception as e:
-            self.logger.error(f"Error deleting folder: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
+                # Write file content to zip
+                if file_content:
+                    zip_file.writestr(relative_path, file_content)
+        
+        # Get the zip content
+        zip_buffer.seek(0)
+        zip_content = zip_buffer.getvalue()
+        
+        return {
+            "content": zip_content,
+            "filename": f"{folder.name}.zip",
+            "mime_type": "application/zip"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error creating folder zip: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating folder zip: {str(e)}")
 
-    async def rename_file(self, session: Session, full_path: str, new_name: str):
-        try:
-            file = get_file(session, full_path)
-            if not file:
-                raise HTTPException(status_code=404, detail="File not found")
+def get_folder_contents(session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
+    """Get contents of a specific folder"""
+    try:            
+        
+        folder_contents = get_folder_contents(session, full_path)
 
-            # Rename in filesystem
-            await rename_file(full_path, new_name)
-            
-            new_full_path = file.path.replace(file.name, new_name)
-            
-            # Update database
-            updated_file = update_file(session, full_path, new_full_path)
-            if not updated_file:
-                raise HTTPException(status_code=500, detail="Failed to update file in database")
-
-            # Update in LlamaIndex
-            rename_file_llama_index(full_old_path=full_path, full_new_path=new_full_path) 
-
-        except Exception as e:
-            self.logger.error(f"Error renaming file: {str(e)}")
-            raise
-
-    async def download_folder(self, session: Session, full_path: str) -> Dict[str, Any]:
-        try:
-
-            # Get folder from database
-            folder = get_folder(session, full_path)
-            if not folder:
-                raise HTTPException(status_code=404, detail="Folder not found")
-            
-            # Create a memory buffer for the zip file
-            zip_buffer = BytesIO()
-            
-            # Create zip file
-            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                # Get all files recursively
-                files, _ = get_folder_files_recursive(session, full_path)
+        return folder_contents
+    except Exception as e:
+        logger.error(f"Error getting folder contents: {str(e)}")
+        raise
                 
-                # Iterate over all retrieved files
-                for file in files:
-                    # Calculate relative path within the zip
-                    relative_path = os.path.relpath(file.path, folder.path)
-                    
-                    # Read file content
-                    file_content = await read_file(file.path)
-
-                    # Write file content to zip
-                    if file_content:
-                        zip_file.writestr(relative_path, file_content)
-            
-            # Get the zip content
-            zip_buffer.seek(0)
-            zip_content = zip_buffer.getvalue()
-            
-            return {
-                "content": zip_content,
-                "filename": f"{folder.name}.zip",
-                "mime_type": "application/zip"
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error creating folder zip: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Error creating folder zip: {str(e)}")
-
-    def get_folder_contents(self, session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
-        """Get contents of a specific folder"""
-        try:            
-            
-            folder_contents = get_folder_contents(session, full_path)
-
-            return folder_contents
-        except Exception as e:
-            self.logger.error(f"Error getting folder contents: {str(e)}")
-            raise
-                    
-    def preprocess_base64_file(self, base64_content: str) -> Tuple[bytes, str | None]:
-        """ Decode base64 file content and return the file data and extension """
-        try:
-            header, data = base64_content.split(",", 1)
-            mime_type = header.split(";")[0].split(":", 1)[1]
-            #extension = mimetypes.guess_extension(mime_type).lstrip(".")
-            # File data as bytes
-            return base64.b64decode(data), None #extension
-        except Exception as e:
-            self.logger.error(f"Error preprocessing base64 file: {str(e)}")
-            raise
+def preprocess_base64_file(base64_content: str) -> Tuple[bytes, str | None]:
+    """ Decode base64 file content and return the file data and extension """
+    try:
+        header, data = base64_content.split(",", 1)
+        mime_type = header.split(";")[0].split(":", 1)[1]
+        #extension = mimetypes.guess_extension(mime_type).lstrip(".")
+        # File data as bytes
+        return base64.b64decode(data), None #extension
+    except Exception as e:
+        logger.error(f"Error preprocessing base64 file: {str(e)}")
+        raise

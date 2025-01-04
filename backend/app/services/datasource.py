@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.database.models import Datasource, Folder
 from app.services.database import get_session
 from app.services.db_file import get_folder_id
-from app.services.file_manager import FileManagerService
+from app.services.file_manager import delete_folder
 from app.services.file_system import get_full_path_from_path
 from app.settings.manager import AppSettingsManager
 
@@ -146,7 +146,7 @@ async def delete_datasource(session: Session, identifier: str) -> bool:
         
         # Then try to delete all files and folders using the stored path
         try:
-            await file_manager_service.delete_folder(session, root_folder_path)
+            await delete_folder(session, root_folder_path)
         except Exception as e:
             logger.error(f"Failed to delete datasource files and folders: {str(e)}")
             # Restore the root_folder_id reference since deletion failed

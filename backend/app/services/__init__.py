@@ -2,7 +2,6 @@ import logging
 from threading import Lock
 
 from app.services.generate import GenerateService
-from app.services.file_manager import FileManagerService
 from app.services.ollama_status import OllamaStatusService
 
 logger = logging.getLogger(__name__)
@@ -31,12 +30,8 @@ class ServiceManager:
         self.logger = logging.getLogger(__name__)
         self.logger.info("Initializing services...")
         
-        # Initialize stateless services first
         self.ollama_status_service = OllamaStatusService()
         self.ollama_status_service.initialize()
-
-        # Dependent services
-        self.file_manager_service = FileManagerService()
 
         self.generate_service = GenerateService()
         

@@ -7,17 +7,13 @@ from base64 import urlsafe_b64decode
 from app.api.models.models import FolderContentsResponse, FileResponse, FolderResponse
 from app.api.models.file_models import FileUploadRequest
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path
-from app.services.file_manager import FileManagerService
-from app.services import ServiceManager
+from app.services.file_manager import upload_files, download_file, delete_file, delete_folder, rename_file, get_folder_contents, download_folder
 from app.services.database import get_session
 
 import logging
 logger = logging.getLogger(__name__)
 
 file_manager_router = r = APIRouter()
-
-def get_file_manager_service():
-    return ServiceManager.get_instance().file_manager_service
 
 def get_db_session():
     with get_session() as session:
@@ -33,20 +29,18 @@ def decode_path_safe(encoded_path: str) -> str:
 async def upload_files(
     request: FileUploadRequest,
     background_tasks: BackgroundTasks,
-    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ) -> EventSourceResponse:
-    return EventSourceResponse(file_manager.upload_files(request, background_tasks, session))
+    return EventSourceResponse(upload_files(request, background_tasks, session))
 
 @r.get("/file/{encoded_path}/download")
 async def download_file(
     encoded_path: str,
-    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
-    result = await file_manager.download_file(session, full_path)
+    result = await download_file(session, full_path)
     return Response(
         content=result["content"],
         media_type="application/octet-stream",
@@ -60,35 +54,32 @@ async def download_file(
 @r.delete("/file/{encoded_path}")
 async def delete_file(
     encoded_path: str,
-    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
-    await file_manager.delete_file(session, full_path)
+    await delete_file(session, full_path)
     return {"success": True}
 
 @r.delete("/folder/{encoded_path}")
 async def delete_folder(
     encoded_path: str,
-    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
-    await file_manager.delete_folder(session, full_path)
+    await delete_folder(session, full_path)
     return {"success": True}
 
 @r.put("/file/{encoded_path}/rename")
 async def rename_file(
     encoded_path: str, 
     new_name: str, 
-    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
-    await file_manager.rename_file(session, full_path, new_name)
+    await rename_file(session, full_path, new_name)
     return {"success": True}
 
 @r.get("/folder")
@@ -96,7 +87,6 @@ async def rename_file(
 @r.get("/folder/{encoded_path}")
 async def get_folder_contents(
     encoded_path: str | None = None,
-    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ) -> FolderContentsResponse:
     """Get contents of a folder"""
@@ -106,7 +96,7 @@ async def get_folder_contents(
     else:
         path = ""
     full_path = get_full_path_from_path(path)
-    files, folders = file_manager.get_folder_contents(session, full_path)
+    files, folders = get_folder_contents(session, full_path)
     files = [FileResponse(
         id=file.id,
         name=file.name,
@@ -132,12 +122,11 @@ async def get_folder_contents(
 @r.get("/folder/{encoded_path}/download")
 async def download_folder(
     encoded_path: str,
-    file_manager: FileManagerService = Depends(get_file_manager_service),
     session: Session = Depends(get_db_session)
 ):
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
-    result = await file_manager.download_folder(session, full_path)
+    result = await download_folder(session, full_path)
     return Response(
         content=result["content"],
         media_type=result["mime_type"],

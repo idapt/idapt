@@ -6,7 +6,6 @@ from app.services.db_file import get_files_by_status, update_file_status, mark_s
 from app.services.database import get_session
 from app.services.llama_index import delete_file_llama_index
 from app.services.datasource import get_datasource_identifier_from_path
-from app.services.file_manager import FileManagerService
 from app.database.models import File, FileStatus
 import json
 from multiprocessing import Queue
@@ -33,8 +32,6 @@ class GenerateServiceWorker:
         self.ollama_status_service = OllamaStatusService()
         self.ollama_status_service.initialize()
         
-        self.file_manager_service = FileManagerService()
-
         self.ingestion_pipeline_service = IngestionPipelineService()
 
     def run(self):
