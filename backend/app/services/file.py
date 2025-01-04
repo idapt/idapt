@@ -138,7 +138,7 @@ class FileService:
             logger.error(f"Unexpected error when writing to file {file_path}: {str(e)}")
             raise
         logger.info(f"Saved file to {file_path}")
-        file_url_prefix = os.getenv("FILESERVER_URL_PREFIX")
+        file_url_prefix = "http://localhost:8000/api/files"
         if file_url_prefix is None:
             logger.warning(
                 "FILESERVER_URL_PREFIX is not set, fallback to http://localhost:8000/api/files"

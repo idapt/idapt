@@ -64,7 +64,7 @@ export function LlamaCloudSelector({
   );
 
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_USE_LLAMACLOUD === "true" && !config) {
+    /*if (process.env.NEXT_PUBLIC_USE_LLAMACLOUD === "true" && !config) {
       fetch(`${backend}/api/chat/config/llamacloud`)
         .then((response) => {
           if (!response.ok) {
@@ -82,7 +82,7 @@ export function LlamaCloudSelector({
           updateRequestParams(pipeline);
         })
         .catch((error) => console.error("Error fetching config", error));
-    }
+    }*/
   }, [backend, config, defaultPipeline, updateRequestParams]);
 
   const setPipeline = (pipelineConfig?: PipelineConfig) => {

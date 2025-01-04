@@ -195,7 +195,7 @@ class DocumentGenerator:
 
         cls._write_to_file(content, file_path)
 
-        file_url = f"{os.getenv('FILESERVER_URL_PREFIX')}/{file_path}"
+        file_url = f"http://localhost:8000/api/files/{file_path}"
         return file_url
 
     @staticmethod

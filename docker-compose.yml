@@ -10,15 +10,11 @@ services:
     environment:
       # Frontend variables
       ENVIRONMENT: prod
-      NEXT_PUBLIC_HOST_DOMAIN: ${HOST_DOMAIN}
       # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}
       # Container variables
       CERTBOT_EMAIL: ${CERTBOT_EMAIL}
-    env_file:
-      - ./nginx/.env
-      - ./frontend/.env
-      - ./backend/.env
+      NEXT_TELEMETRY_DISABLED: 1
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.

@@ -144,7 +144,7 @@ app = create_app()
 if __name__ == "__main__":
 
     app_host = "0.0.0.0" #os.getenv("HOST_DOMAIN", "0.0.0.0") # For now use 0.0.0.0
-    app_port = int(os.getenv("APP_PORT", "8000"))
+    app_port = 8000
     
     if environment == "dev":
         logger.info("Starting in development mode with hot reload")

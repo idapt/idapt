@@ -33,7 +33,7 @@ class AnnotationFileData(BaseModel):
 
     @staticmethod
     def _get_url_llm_content(file: DocumentFile) -> Optional[str]:
-        url_prefix = os.getenv("FILESERVER_URL_PREFIX")
+        url_prefix = "http://localhost:8000/api/files"
         if url_prefix:
             if file.url is not None:
                 return f"File URL: {file.url}\n"
@@ -274,7 +274,7 @@ class SourceNodes(BaseModel):
 
     @classmethod
     def get_url_from_metadata(cls, metadata: Dict[str, Any]) -> Optional[str]:
-        url_prefix = os.getenv("FILESERVER_URL_PREFIX")
+        url_prefix = "http://localhost:8000/api/files"
         if not url_prefix:
             logger.warning(
                 "Warning: FILESERVER_URL_PREFIX not set in environment variables. Can't use file server"

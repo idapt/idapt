@@ -24,8 +24,6 @@ services:
     environment:
       ENVIRONMENT: dev
       HOST_DOMAIN: ${HOST_DOMAIN}
-    env_file:
-      - ./backend/.env
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
@@ -51,9 +49,7 @@ services:
       #  condition: service_healthy
     environment:
       ENVIRONMENT: dev
-      NEXT_PUBLIC_HOST_DOMAIN: ${HOST_DOMAIN}
-    env_file:
-      - ./frontend/.env
+      NEXT_TELEMETRY_DISABLED: 1
     volumes:
       - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
     restart: always
@@ -76,8 +72,6 @@ services:
       HOST_DOMAIN: ${HOST_DOMAIN}
       # Container variables
       CERTBOT_EMAIL: ${CERTBOT_EMAIL}
-    env_file:
-      - ./nginx/.env
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.

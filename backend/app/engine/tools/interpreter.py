@@ -35,7 +35,7 @@ class E2BCodeInterpreter:
     def __init__(self, api_key: Optional[str] = None):
         if api_key is None:
             api_key = os.getenv("E2B_API_KEY")
-        filesever_url_prefix = os.getenv("FILESERVER_URL_PREFIX")
+        filesever_url_prefix = "http://localhost:8000/api/files"
         if not api_key:
             raise ValueError(
                 "E2B_API_KEY key is required to run code interpreter. Get it here: https://e2b.dev/docs/getting-started/api-key"

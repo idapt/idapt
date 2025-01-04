@@ -34,7 +34,7 @@ class ImageGeneratorTool:
         if not api_key:
             api_key = os.getenv("STABILITY_API_KEY")
         self._api_key = api_key
-        self.fileserver_url_prefix = os.getenv("FILESERVER_URL_PREFIX")
+        self.fileserver_url_prefix = "http://localhost:8000/api/files"
         if self._api_key is None:
             raise ValueError(
                 "STABILITY_API_KEY key is required to run image generator. Get it here: https://platform.stability.ai/account/keys"
@@ -55,7 +55,7 @@ class ImageGeneratorTool:
         output_path = os.path.join(self._IMG_OUTPUT_DIR, filename)
         with open(output_path, "wb") as f:
             f.write(image_data)
-        url = f"{os.getenv('FILESERVER_URL_PREFIX')}/{self._IMG_OUTPUT_DIR}/{filename}"
+        url = f"http://localhost:8000/api/files{self._IMG_OUTPUT_DIR}/{filename}"
         logger.info(f"Saved image to {output_path}.\nURL: {url}")
         return url
 

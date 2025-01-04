@@ -18,7 +18,18 @@ class NextQuestionSuggestion:
 
     @classmethod
     def get_configured_prompt(cls) -> Optional[str]:
-        prompt = os.getenv("NEXT_QUESTION_PROMPT", None)
+        prompt = """You're a helpful assistant! Your task is to suggest the next question that user might ask. 
+Here is the conversation history
+---------------------
+{conversation}
+---------------------
+Given the conversation history, please give me 3 questions that you might ask next!
+Your answer should be wrapped in three sticks which follows the following format:
+```
+<question 1>
+<question 2>
+<question 3>
+```"""
         if not prompt:
             return None
         return PromptTemplate(prompt)
