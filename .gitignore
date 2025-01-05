@@ -36,6 +36,7 @@ nginx/certs/*.pem
 
 # For dev
 ollama_data/
+user_data/
 
 # General
 
