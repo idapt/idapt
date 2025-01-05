@@ -1,8 +1,10 @@
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status, Depends
 from llama_index.core.llms import MessageRole
 
+from app.settings.models import AppSettings
+from app.settings.manager import get_app_settings
 from app.api.routers.events import EventCallbackHandler
 from app.api.models.models import (
     ChatData,
@@ -25,6 +27,7 @@ async def chat_route(
     request: Request,
     data: ChatData,
     background_tasks: BackgroundTasks,
+    app_settings: AppSettings = Depends(get_app_settings),
 ):
     try:
         last_message_content = data.get_last_message_content()
@@ -39,6 +42,7 @@ async def chat_route(
         )
         event_handler = EventCallbackHandler()
         chat_engine = get_chat_engine(
+            app_settings=app_settings,
             filters=filters,
             params=params,
             event_handlers=[event_handler]
@@ -62,6 +66,7 @@ async def chat_route(
 @r.post("/request")
 async def chat_request_route(
     data: ChatData,
+    app_settings: AppSettings = Depends(get_app_settings),
 ) -> Result:
     last_message_content = data.get_last_message_content()
     messages = data.get_history_messages()
@@ -73,7 +78,7 @@ async def chat_request_route(
         f"Creating chat engine with filters: {str(filters)}",
     )
 
-    chat_engine = get_chat_engine(filters=filters, params=params)
+    chat_engine = get_chat_engine(app_settings=app_settings, filters=filters, params=params)
 
     response = await chat_engine.achat(last_message_content, messages)
     return Result(

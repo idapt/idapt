@@ -1,10 +1,12 @@
-from fastapi import APIRouter, WebSocket, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 import logging
 from typing import List
 from pydantic import BaseModel, Field
 from app.services.generate import get_queue_status, process_queued_files
 from app.services.file_system import get_full_path_from_path
 from app.services.db_file import update_db_file_status
+from app.settings.models import AppSettings
+from app.settings.manager import get_app_settings
 from app.database.models import FileStatus
 from app.services.database import get_session
 from sqlalchemy.orm import Session
@@ -27,7 +29,8 @@ class GenerateRequest(BaseModel):
 async def generate_route(
     request: GenerateRequest,
     background_tasks: BackgroundTasks,
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_db_session),
+    app_settings: AppSettings = Depends(get_app_settings),
 ):
     """Add files to generation queue and start processing if needed"""
     try:
@@ -45,7 +48,7 @@ async def generate_route(
 
         # Start processing the files in the background
         # TODO Move the generate service to a separate api running on its own server
-        background_tasks.add_task(process_queued_files, session)
+        background_tasks.add_task(process_queued_files, session, app_settings)
 
         # Get the current status of the queue
         status = get_queue_status(session)

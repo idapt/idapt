@@ -28,25 +28,13 @@ logger.info(f"Starting application initialization in process {os.getpid()}")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI application"""
-    # Startup
-    current_pid = os.getpid()
-    logger.info(f"Starting up application in process {current_pid}")
-    
-    # Initialize observability first
+
+    # Initialize observability for logging of this api
     from app.observability import init_observability
     init_observability()
-    
-    # Initialize settings
-    from app.settings.manager import AppSettingsManager
-    AppSettingsManager.get_instance().settings
-
-    logger.info(f"Services initialized in process {current_pid}")
-    
+     
     yield  # Application runs here
     
-    # Shutdown
-    logger.info(f"Shutting down application in process {current_pid}")
-
 
 def create_app() -> FastAPI:
     app = FastAPI(

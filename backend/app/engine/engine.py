@@ -6,18 +6,17 @@ from llama_index.core.callbacks import CallbackManager
 from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool
 #from app.engine.tools import ToolFactory
-from app.settings.manager import AppSettingsManager
+from app.settings.models import AppSettings
 from app.settings.model_initialization import init_llm
 from app.services.database import get_session
 from app.services.datasource import get_all_datasources
 from app.services.llama_index import get_query_tool
-app_settings = AppSettingsManager.get_instance().settings
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-def get_chat_engine(datasource_identifier: str = None, filters=None, params=None, event_handlers=None, **kwargs):
+def get_chat_engine(app_settings: AppSettings, datasource_identifier: str = None, filters=None, params=None, event_handlers=None, **kwargs):
     try:
         # The tools that will be used by the agent
         tools: List[BaseTool] = []
@@ -25,20 +24,19 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
         callback_manager = CallbackManager(handlers=event_handlers or [])
 
         # Init the llm from the app settings
-        app_settings = AppSettingsManager.get_instance().settings
         llm = init_llm(app_settings)
 
         # Get the datasources tools
         with get_session() as session:
             if datasource_identifier:
                 # Get specific datasource tool
-                tool = get_query_tool(session, datasource_identifier, llm)
+                tool = get_query_tool(session, datasource_identifier, llm, app_settings)
                 tools.append(tool)
             else:
                 # Get all datasource tools
                 datasources = get_all_datasources(session)
                 for ds in datasources:
-                    tool = get_query_tool(session, ds.identifier, llm)
+                    tool = get_query_tool(session, ds.identifier, llm, app_settings)
                     tools.append(tool)
 
         # For each tool, set the callback manager to be able to display the events in the steps ui

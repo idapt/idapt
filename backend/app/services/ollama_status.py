@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from app.settings.manager import AppSettingsManager
 from app.settings.models import AppSettings
 import requests
 import time
@@ -61,11 +60,9 @@ def _check_ollama_model(base_url: str, model_name: str):
         logger.error(f"Error checking/pulling model {model_name}: {str(e)}")
         return False
 
-def can_process() -> bool:
+def can_process(app_settings: AppSettings) -> bool:
     """Check if Ollama models are ready for processing"""
     try:
-        app_settings : AppSettings = AppSettingsManager.get_instance().settings
-        
         # Check LLM models
         if app_settings.llm_model_provider == "ollama":
             base_url = app_settings.ollama.llm_host
@@ -88,11 +85,11 @@ def can_process() -> bool:
         logger.error(f"Error checking if can process: {str(e)}")
         return False 
     
-def wait_for_ollama_models():
+def wait_for_ollama_models(app_settings: AppSettings):
     """Wait for Ollama models to be ready"""
     while True:
         # Check if we need to wait for Ollama models
-        if can_process():
+        if can_process(app_settings):
             return
         
         logger.info("Waiting for Ollama models to be ready before processing files...")

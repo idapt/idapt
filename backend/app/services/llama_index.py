@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.database.models import Datasource
-from app.settings.manager import AppSettingsManager
 from app.services.db_file import get_db_file
+from app.settings.models import AppSettings
 
 from llama_index.core.indices import VectorStoreIndex
 from llama_index.core.tools import BaseTool, QueryEngineTool
@@ -52,9 +52,9 @@ def get_index(datasource_identifier: str) -> VectorStoreIndex:
     # TODO Add caching
     return _create_index(datasource_identifier)
 
-def get_query_tool(session: Session, datasource_identifier: str, llm: LLM) -> BaseTool:
+def get_query_tool(session: Session, datasource_identifier: str, llm: LLM, app_settings: AppSettings) -> BaseTool:
     # TODO Add caching
-    return _create_query_tool(session, datasource_identifier, llm)
+    return _create_query_tool(session, datasource_identifier, llm, app_settings)
 
 
 
@@ -174,11 +174,9 @@ def _create_index(datasource_identifier: str) -> VectorStoreIndex:
         logger.error(f"Error creating index: {str(e)}")
         raise
 
-def _create_query_tool(session: Session, datasource_identifier: str, llm: LLM) -> BaseTool:
+def _create_query_tool(session: Session, datasource_identifier: str, llm: LLM, app_settings: AppSettings) -> BaseTool:
     try:
         index = get_index(datasource_identifier)
-
-        app_settings = AppSettingsManager.get_instance().settings
 
         retriever = VectorIndexRetriever(
             index=index,

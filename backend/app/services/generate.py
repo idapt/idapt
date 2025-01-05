@@ -1,4 +1,3 @@
-import logging
 from app.services.ingestion_pipeline import process_files
 from app.services.db_file import update_db_file_status, mark_db_stack_as_processed, get_db_files_by_status
 from app.services.database import get_session
@@ -6,26 +5,32 @@ from app.services.datasource import get_datasource_identifier_from_path
 from app.services.llama_index import delete_file_llama_index
 from app.services.ollama_status import wait_for_ollama_models
 from app.database.models import File, FileStatus
+from app.settings.models import AppSettings
+
 from sqlalchemy.orm import Session
 import json
 import time
+import logging
 
 logger = logging.getLogger(__name__)
     
-def process_queued_files(session: Session):
+def process_queued_files(
+        session: Session,
+        app_settings: AppSettings
+    ):
     """Processing loop"""
     try:
         # Wait for Ollama models to be ready
-        wait_for_ollama_models()
+        wait_for_ollama_models(app_settings)
         
         # Run forever
         while True:
             try:
                 # Process all files marked as processing that have been interrupted with unfinished processing
-                _process_files_marked_as_processing(session)
+                _process_files_marked_as_processing(session, app_settings)
 
                 # Process all queued files
-                _process_all_queued_files(session)
+                _process_all_queued_files(session, app_settings)
             except Exception as e:
                 logger.error(f"Processing loop error, retrying: {str(e)}")
                 time.sleep(2)
@@ -36,7 +41,7 @@ def process_queued_files(session: Session):
     except Exception as e:
         logger.error(f"Processing loop error: {str(e)}")
 
-def _process_files_marked_as_processing(session):
+def _process_files_marked_as_processing(session, app_settings: AppSettings):
     """Process all files marked as processing"""
     try:
         with get_session() as session:            
@@ -67,7 +72,7 @@ def _process_files_marked_as_processing(session):
                     except Exception as e:
                         logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
                         
-                    _process_single_file(session, oldest_processing_file)
+                    _process_single_file(session, oldest_processing_file, app_settings)
                 except Exception as e:
                     logger.error(f"Failed to process interrupted file {oldest_processing_file.path}: {str(e)}, marking as error")
                     try:
@@ -78,7 +83,7 @@ def _process_files_marked_as_processing(session):
         logger.error(f"Failed to process all queued files: {str(e)}")
         return False
         
-def _process_all_queued_files(session) -> bool:
+def _process_all_queued_files(session, app_settings: AppSettings) -> bool:
     """Process all queued files"""
     try:
         with get_session() as session:
@@ -93,7 +98,7 @@ def _process_all_queued_files(session) -> bool:
                     ).first()
                     
                     if queued_file:
-                        _process_single_file(session, queued_file)
+                        _process_single_file(session, queued_file, app_settings)
                     else:
                         return
                 except Exception as e:
@@ -106,7 +111,7 @@ def _process_all_queued_files(session) -> bool:
         logger.error(f"Failed to process all queued files: {str(e)}")
         return False
 
-def _process_single_file(session, file):
+def _process_single_file(session, file, app_settings: AppSettings):
     """Process a single file through the ingestion pipeline"""
     try:
         # Update status to processing
@@ -130,6 +135,7 @@ def _process_single_file(session, file):
                     process_files(
                         full_file_paths=[file.path],
                         datasource_identifier=datasource_identifier,
+                        app_settings=app_settings,
                         transformations_stack_name_list=[stack_name]
                     )
                     

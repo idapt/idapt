@@ -10,7 +10,6 @@ Settings.embed_model = None
 
 from llama_index.core.ingestion import IngestionPipeline, DocstoreStrategy
 from llama_index.core.readers import SimpleDirectoryReader
-from llama_index.core.settings import Settings
 from llama_index.core.node_parser import SentenceSplitter, HierarchicalNodeParser
 from llama_index.core.extractors import (
     SummaryExtractor,
@@ -26,7 +25,7 @@ from app.services.database import get_session
 from app.services.db_file import get_db_file
 from app.services.datasource import get_storage_components
 from app.settings.model_initialization import init_embedding_model
-
+from app.settings.models import AppSettings
 import nest_asyncio
 
 nest_asyncio.apply()
@@ -116,7 +115,7 @@ TRANSFORMATIONS_STACKS = {
 }
 
 # At this point the files are grouped by ingestion stack
-async def process_files(full_file_paths: List[str], datasource_identifier: str, transformations_stack_name_list: List[str] = ["default"]):
+async def process_files(full_file_paths: List[str], datasource_identifier: str, app_settings: AppSettings, transformations_stack_name_list: List[str] = ["default"]):
     """Process a list of files through the ingestion pipeline"""
     try:            
         # Use SimpleDirectoryReader from llama index as it try to use existing apropriate readers based on the file type to get the most metadata from it
@@ -197,8 +196,6 @@ async def process_files(full_file_paths: List[str], datasource_identifier: str, 
             # TODO Add a way to only update on each when app settings are changed, complicated as this is run in a child thread and appsettings updates are not done here.
             # If the cached embed model is not set, set it
             #if not self.cached_embed_model:
-            from app.settings.manager import AppSettingsManager
-            app_settings = AppSettingsManager.get_instance().settings
 
             # Init the embed model from the app settings
             embed_model = init_embedding_model(app_settings)
