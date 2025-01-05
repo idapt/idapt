@@ -5,7 +5,7 @@ import shutil
 
 from app.config import DATA_DIR
 
-async def write_file(full_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
+async def write_file_filesystem(full_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
     """Write content to a file in the filesystem and set its metadata"""
     try:
         full_path = Path(full_path)
@@ -28,7 +28,7 @@ async def write_file(full_path: str, content: bytes | str, created_at_unix_times
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
 
-async def read_file(full_path: str) -> bytes:
+async def read_file_filesystem(full_path: str) -> bytes:
     """Read file from the filesystem"""
     try:
         with open(str(full_path), "rb") as f:
@@ -36,14 +36,14 @@ async def read_file(full_path: str) -> bytes:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
 
-async def create_folder(full_path: str):
+async def create_folder_filesystem(full_path: str):
     """Create a folder in the filesystem"""
     try:
         os.makedirs(str(full_path), exist_ok=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")
 
-async def delete_file(full_path: str):
+async def delete_file_filesystem(full_path: str):
     try:
         full_path = Path(full_path)
         if full_path.exists():
@@ -51,7 +51,7 @@ async def delete_file(full_path: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
 
-async def rename_file(full_old_path: str, new_file_name: str) -> str:
+async def rename_file_filesystem(full_old_path: str, new_file_name: str) -> str:
     try:
         full_old_path = Path(full_old_path)
         directory = full_old_path.parent
@@ -61,7 +61,7 @@ async def rename_file(full_old_path: str, new_file_name: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
 
-async def delete_folder(full_path: str):
+async def delete_folder_filesystem(full_path: str):
     """Delete a folder and its contents from the filesystem"""
     try:
         full_path = Path(full_path)

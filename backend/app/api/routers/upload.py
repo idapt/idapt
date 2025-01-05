@@ -19,7 +19,7 @@ class FileUploadRequest(BaseModel):
 
 
 @r.post("")
-def upload_file(request: FileUploadRequest) -> DocumentFile:
+def upload_file_route(request: FileUploadRequest) -> DocumentFile:
     """
     To upload a private file from the chat UI.
     """

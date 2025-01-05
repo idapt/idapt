@@ -49,7 +49,7 @@ if _is_llama_cloud_service_configured():
 
 
 @r.get("")
-async def chat_config() -> ChatConfig:
+async def chat_config_route() -> ChatConfig:
     starter_questions = None
     conversation_starters = os.getenv("CONVERSATION_STARTERS")
     if conversation_starters and conversation_starters.strip():

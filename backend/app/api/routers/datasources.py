@@ -30,7 +30,7 @@ class DatasourceUpdate(BaseModel):
     description: Optional[str] = None
 
 @datasources_router.get("", response_model=List[DatasourceResponse])
-async def get_datasources(
+async def get_datasources_route(
     session: Session = Depends(get_db_session)
 ):
     datasources = get_all_datasources(session)
@@ -45,7 +45,7 @@ async def get_datasources(
     ) for datasource in datasources]
 
 @datasources_router.get("/{encoded_identifier}", response_model=DatasourceResponse)
-async def get_datasource(
+async def get_datasource_route(
     encoded_identifier: str,
     session: Session = Depends(get_db_session)
 ):
@@ -69,7 +69,7 @@ async def get_datasource(
         raise HTTPException(status_code=400, detail=str(e))
 
 @datasources_router.post("", response_model=DatasourceResponse)
-async def create_datasource(
+async def create_datasource_route(
     datasource: DatasourceCreate,
     session: Session = Depends(get_db_session)
 ):
@@ -93,7 +93,7 @@ async def create_datasource(
         raise HTTPException(status_code=400, detail=str(e))
 
 @datasources_router.delete("/{encoded_identifier}")
-async def delete_datasource(
+async def delete_datasource_route(
     encoded_identifier: str,
     session: Session = Depends(get_db_session)
 ):
@@ -109,7 +109,7 @@ async def delete_datasource(
         raise HTTPException(status_code=400, detail=str(e))
 
 @datasources_router.patch("/{encoded_identifier}")
-async def update_datasource(
+async def update_datasource_route(
     encoded_identifier: str,
     update: DatasourceUpdate,
     session: Session = Depends(get_db_session)

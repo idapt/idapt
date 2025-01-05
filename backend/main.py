@@ -1,4 +1,5 @@
 # flake8: noqa: E402
+import asyncio
 from app.config import DATA_DIR
 from dotenv import load_dotenv
 
@@ -7,7 +8,7 @@ load_dotenv()
 import logging
 import os
 from contextlib import asynccontextmanager
-
+import threading
 # Set up logging configuration early
 environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
 
@@ -65,32 +66,34 @@ async def lifespan(app: FastAPI):
     # Initialize settings
     from app.settings.manager import AppSettingsManager
     AppSettingsManager.get_instance().settings
+
     
     # Initialize database
     from app.database.init_db import initialize_database
     initialize_database()
+
+    from app.services.database import get_session
+
     
     # Initialize default datasources
     from app.services.datasource import _init_default_datasources
-    from app.services.database import get_session
     with get_session() as session:
         _init_default_datasources(session)
 
     # Initialize default filestructure
-    from app.services.file_manager import create_default_filestructure
-    from app.services.database import get_session
+    from app.services.db_file import create_default_db_filestructure
     with get_session() as session:
-        create_default_filestructure(session)
+        create_default_db_filestructure(session)
 
-    # Initialize ollama status service
-    from app.services.ollama_status import OllamaStatusService
-    ollama_service = OllamaStatusService()
-    ollama_service.initialize()
+    # Initialize ollama status service for the main thread
+    #from app.services.ollama_status import OllamaStatusService
+    #ollama_service = OllamaStatusService()
+    #ollama_service.initialize()
 
-    # Initialize generate service - just instantiate it since __init__ handles setup
-    from app.services.generate import GenerateService
-    GenerateService()
-
+    # Initialize generate service in a separate thread for processing files in the background via the db
+    #from app.services.generate_worker import start_generate_worker
+    #threading.Thread(target=start_generate_worker).start()
+    
     logger.info(f"Services initialized in process {current_pid}")
     
     yield  # Application runs here

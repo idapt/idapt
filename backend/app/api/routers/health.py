@@ -8,5 +8,5 @@ logger = logging.getLogger("uvicorn")
 
 
 @r.get("")
-async def health() -> str:
+async def health_route() -> str:
     return "OK"

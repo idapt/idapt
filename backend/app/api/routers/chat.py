@@ -21,7 +21,7 @@ logger = logging.getLogger("uvicorn")
 
 # streaming endpoint - delete if not needed
 @r.post("")
-async def chat(
+async def chat_route(
     request: Request,
     data: ChatData,
     background_tasks: BackgroundTasks,
@@ -60,7 +60,7 @@ async def chat(
 
 # non-streaming endpoint - delete if not needed
 @r.post("/request")
-async def chat_request(
+async def chat_request_route(
     data: ChatData,
 ) -> Result:
     last_message_content = data.get_last_message_content()

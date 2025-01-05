@@ -62,9 +62,11 @@ export function useGenerateStatusSocket() {
 
   useEffect(() => {
     // Fetch initial status before connecting to WebSocket
-    fetchInitialStatus().then(() => {
-      connect();
-    });
+    //fetchInitialStatus().then(() => {
+    //  connect();
+    //});
+    // For now just get the status every 1 second // TODO Reimplement websocket support
+    const interval = setInterval(fetchInitialStatus, 1000);
 
     return () => {
       if (reconnectTimeoutRef.current) {
@@ -73,6 +75,7 @@ export function useGenerateStatusSocket() {
       if (wsRef.current) {
         wsRef.current.close();
       }
+      clearInterval(interval);
     };
   }, [backend]);
 } 

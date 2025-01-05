@@ -40,10 +40,10 @@ class OllamaStatusService:
             
     def _check_models_loop(self):
         """Background thread to periodically check model status"""
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
         while not self._stop_event.is_set():
             # Set the logger of this thread to the logger passed in and set logging level to info as this is a new thread
-            self.logger = logging.getLogger(__name__)
-            self.logger.setLevel(logging.INFO)
             self._check_and_download_models()
             self._stop_event.wait(self._check_interval)
             

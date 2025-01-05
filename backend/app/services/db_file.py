@@ -9,7 +9,41 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
     
-def create_folder_path(session: Session, full_path: str) -> Folder:
+def create_default_db_filestructure(session: Session):
+    """Create the default filestructure in the database"""
+    try:
+        # Check if root folder exists
+        root_folder = session.query(Folder).filter(Folder.path == "/").first()
+        if not root_folder:
+            root_folder = Folder(
+                name="/",
+                path="/",
+                parent_id=None
+            )
+            session.add(root_folder)
+            session.flush()  # Flush to get the root_folder.id
+            logger.info("Created default root folder in database")
+        # Check if data folder exists
+        data_folder = session.query(Folder).filter(Folder.path == "/data").first()
+        if not data_folder:
+            data_folder = Folder(
+                name="/data",
+                path="/data",
+                parent_id=root_folder.id
+            )
+            session.add(data_folder)
+            session.flush()
+            logger.info("Created default data folder in database")
+
+        session.commit()
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error creating default filestructure: {str(e)}")
+        raise
+
+
+def create_db_folder_path(session: Session, full_path: str) -> Folder:
     """Create folder hierarchy and return the last folder"""
     # Convert to Path object and make absolute
     path = Path(full_path).absolute()
@@ -60,7 +94,7 @@ def create_folder_path(session: Session, full_path: str) -> Folder:
     # Return the last folder created, the one at the end of the path
     return current_folder
 
-def create_file(
+def create_db_file(
     session: Session,
     name: str,
     path: str,
@@ -77,7 +111,7 @@ def create_file(
         folder_id = None
         if path.count('/') >= 1:
             parent_path = str(Path(path).parent)
-            folder_id = create_folder_path(session, parent_path).id
+            folder_id = create_db_folder_path(session, parent_path).id
         else:
             folder_id = None # Root folder
 
@@ -104,10 +138,10 @@ def create_file(
         raise
     return file
 
-def get_folder_contents(session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
+def get_db_folder_contents(session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
 
     # Get folder id from path
-    folder_id = get_folder_id(session, full_path)
+    folder_id = get_db_folder_id(session, full_path)
 
     # Get all folders in this folder
     folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
@@ -117,17 +151,17 @@ def get_folder_contents(session: Session, full_path: str) -> Tuple[List[File], L
     
     return files, folders
 
-def get_file(session: Session, full_path: str) -> File | None:
+def get_db_file(session: Session, full_path: str) -> File | None:
     """Get a file by ID"""
     return session.query(File).filter(File.path == full_path).first()
 
-def get_folder(session: Session, full_path: str) -> Folder | None:
+def get_db_folder(session: Session, full_path: str) -> Folder | None:
     """Get a folder by ID"""
     return session.query(Folder).filter(Folder.path == full_path).first()
 
-def delete_file(session: Session, full_path: str) -> bool:
+def delete_db_file(session: Session, full_path: str) -> bool:
     """Delete a file from the database"""
-    file = self.get_file(session, full_path)
+    file = get_db_file(session, full_path)
     if file:                
         # Then delete from database
         session.delete(file)
@@ -135,15 +169,15 @@ def delete_file(session: Session, full_path: str) -> bool:
         return True
     return False
 
-def delete_folder(session: Session, full_path: str) -> bool:
+def delete_db_folder(session: Session, full_path: str) -> bool:
     """Delete a folder and all its contents from the database"""
     # Get the folder from the database
-    folder = get_folder(session, full_path)
+    folder = get_db_folder(session, full_path)
     # If the folder exists
     if folder:
         try:
             # Delete all files in this folder and subfolders recursively
-            files, _ = get_folder_files_recursive(session, full_path)
+            files, _ = get_db_folder_files_recursive(session, full_path)
             
             # Delete all files in a single transaction
             for file in files:
@@ -172,10 +206,10 @@ def delete_subfolders(session: Session, folder_id: int):
         session.delete(subfolder)
 
 
-def update_file(session: Session, full_old_path: str, full_new_path: str) -> File | None:
+def update_db_file(session: Session, full_old_path: str, full_new_path: str) -> File | None:
     """Update file name and path"""
     # Get the file from the database
-    file = get_file(session, full_old_path)
+    file = get_db_file(session, full_old_path)
     # If the file exists
     if file:
         # Get filename from new path
@@ -191,11 +225,11 @@ def update_file(session: Session, full_old_path: str, full_new_path: str) -> Fil
     # If the file does not exist, return None
     return None
 
-def get_folder_files_recursive(session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
+def get_db_folder_files_recursive(session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
     """Get all files in a folder and its subfolders recursively"""
     
     # Get folder id from path
-    folder_id = get_folder_id(session, full_path)
+    folder_id = get_db_folder_id(session, full_path)
 
     # Get direct files in this folder
     files = session.query(File).filter(File.folder_id == folder_id).all()
@@ -205,23 +239,23 @@ def get_folder_files_recursive(session: Session, full_path: str) -> Tuple[List[F
     
     # Recursively get files from subfolders
     for subfolder in subfolders:
-        subfolder_files, subfolder_folders = get_folder_files_recursive(session, subfolder.path)
+        subfolder_files, subfolder_folders = get_db_folder_files_recursive(session, subfolder.path)
         files.extend(subfolder_files)
         subfolders.extend(subfolder_folders)
     
     return files, subfolders
 
-def get_file_id(session: Session, full_path: str) -> int | None:
+def get_db_file_id(session: Session, full_path: str) -> int | None:
     """Get the ID of a file by path"""
     file = session.query(File).filter(File.path == full_path).first()
     return file.id if file else None
 
-def get_folder_id(session: Session, full_path: str) -> int | None:
+def get_db_folder_id(session: Session, full_path: str) -> int | None:
     """Get the ID of a folder by path"""
     folder = session.query(Folder).filter(Folder.path == full_path).first()
     return folder.id if folder else None
 
-def update_file_status(
+def update_db_file_status(
     session: Session,
     file_path: str,
     status: FileStatus,
@@ -230,7 +264,7 @@ def update_file_status(
 ) -> File:
     """Update file status and stacks to process"""
     try:
-        file = get_file(session, file_path)
+        file = get_db_file(session, file_path)
         if not file:
             raise ValueError(f"File not found: {file_path}")
             
@@ -254,13 +288,13 @@ def update_file_status(
         logger.error(f"Error updating file status: {str(e)}")
         raise
 
-def mark_stack_as_processed(
+def mark_db_stack_as_processed(
     session: Session,
     file_path: str,
     stack_name: str
 ) -> File:
     """Add a stack to the list of processed stacks"""
-    file = get_file(session, file_path)
+    file = get_db_file(session, file_path)
     if not file:
         raise ValueError(f"File not found: {file_path}")
     
@@ -280,7 +314,7 @@ def mark_stack_as_processed(
     session.commit()
     return file
 
-def get_files_by_status(
+def get_db_files_by_status(
     session: Session,
     status: FileStatus
 ) -> List[File]:

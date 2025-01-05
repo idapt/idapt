@@ -7,7 +7,8 @@ from base64 import urlsafe_b64decode
 from app.api.models.models import FolderContentsResponse, FileResponse, FolderResponse
 from app.api.models.file_models import FileUploadRequest
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path
-from app.services.file_manager import upload_files, download_file, delete_file, delete_folder, rename_file, get_folder_contents, download_folder
+from app.services.db_file import get_db_folder_contents
+from app.services.file_manager import upload_files, download_file, delete_file, delete_folder, rename_file, download_folder
 from app.services.database import get_session
 
 import logging
@@ -26,7 +27,7 @@ def decode_path_safe(encoded_path: str) -> str:
         raise HTTPException(status_code=400, detail="Invalid path encoding")
 
 @r.post("/upload")
-async def upload_files(
+async def upload_files_route(
     request: FileUploadRequest,
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_db_session)
@@ -34,7 +35,7 @@ async def upload_files(
     return EventSourceResponse(upload_files(request, background_tasks, session))
 
 @r.get("/file/{encoded_path}/download")
-async def download_file(
+async def download_file_route(
     encoded_path: str,
     session: Session = Depends(get_db_session)
 ):
@@ -52,7 +53,7 @@ async def download_file(
     )
 
 @r.delete("/file/{encoded_path}")
-async def delete_file(
+async def delete_file_route(
     encoded_path: str,
     session: Session = Depends(get_db_session)
 ):
@@ -62,7 +63,7 @@ async def delete_file(
     return {"success": True}
 
 @r.delete("/folder/{encoded_path}")
-async def delete_folder(
+async def delete_folder_route(
     encoded_path: str,
     session: Session = Depends(get_db_session)
 ):
@@ -72,7 +73,7 @@ async def delete_folder(
     return {"success": True}
 
 @r.put("/file/{encoded_path}/rename")
-async def rename_file(
+async def rename_file_route(
     encoded_path: str, 
     new_name: str, 
     session: Session = Depends(get_db_session)
@@ -85,18 +86,19 @@ async def rename_file(
 @r.get("/folder")
 @r.get("/folder/")
 @r.get("/folder/{encoded_path}")
-async def get_folder_contents(
+async def get_folder_contents_route(
     encoded_path: str | None = None,
     session: Session = Depends(get_db_session)
 ) -> FolderContentsResponse:
     """Get contents of a folder"""
+    logger.info(f"Getting folder contents for path: {encoded_path}")
     path = None
     if encoded_path:
         path = decode_path_safe(encoded_path)
     else:
         path = ""
     full_path = get_full_path_from_path(path)
-    files, folders = get_folder_contents(session, full_path)
+    files, folders = get_db_folder_contents(session, full_path)
     files = [FileResponse(
         id=file.id,
         name=file.name,
@@ -120,7 +122,7 @@ async def get_folder_contents(
     return FolderContentsResponse(files=files, folders=folders)
 
 @r.get("/folder/{encoded_path}/download")
-async def download_folder(
+async def download_folder_route(
     encoded_path: str,
     session: Session = Depends(get_db_session)
 ):

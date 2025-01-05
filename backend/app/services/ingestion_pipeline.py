@@ -17,7 +17,7 @@ from llama_index.core.extractors import (
 #from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 
 from app.services.database import get_session
-from app.services.db_file import get_file
+from app.services.db_file import get_db_file
 from app.services.datasource import get_storage_components
 from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
 
@@ -156,7 +156,7 @@ class IngestionPipelineService:
                 # Override the file creation time to the current time with the times from the database
                 for doc in documents:
                     # Get the file from the database
-                    file = get_file(session, doc.metadata["file_path"])
+                    file = get_db_file(session, doc.metadata["file_path"])
                     # Set the creation and modification times
                     doc.metadata["created_at"] = file.file_created_at.isoformat()
                     doc.metadata["modified_at"] = file.file_modified_at.isoformat()
@@ -231,7 +231,7 @@ class IngestionPipelineService:
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess
                     with get_session() as session:
-                        file = get_file(session, doc.metadata["file_path"])
+                        file = get_db_file(session, doc.metadata["file_path"])
                         if file:
                             # Parse the json ref_doc_ids as a list
                             file_ref_doc_ids = json.loads(file.ref_doc_ids) if file.ref_doc_ids else []

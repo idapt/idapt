@@ -7,14 +7,14 @@ def get_ollama_status_service():
     return OllamaStatusService() 
 
 @r.get("")
-async def get_ollama_status(
+async def get_ollama_status_route(
     status_service = Depends(get_ollama_status_service)
 ):
     """Get the current status of Ollama model downloads"""
     return {"is_downloading": status_service.get_status()}
 
 @r.websocket("/ws")
-async def ollama_status_websocket(
+async def ollama_status_websocket_route(
     websocket: WebSocket,
     status_service = Depends(get_ollama_status_service)
 ):

@@ -9,14 +9,14 @@ def get_app_settings_manager():
     return AppSettingsManager.get_instance()
 
 @r.get("")
-async def get_settings(
+async def get_settings_route(
     app_settings_manager: AppSettingsManager = Depends(get_app_settings_manager)
 ) -> AppSettings:
     """Get current application settings"""
     return app_settings_manager.settings
 
 @r.post("")
-async def update_settings(
+async def update_settings_route(
     settings: AppSettings,
     app_settings_manager: AppSettingsManager = Depends(get_app_settings_manager)
 ):

@@ -1,18 +1,17 @@
-from fastapi import APIRouter, WebSocket, HTTPException, Depends, BackgroundTasks
+from fastapi import APIRouter, WebSocket, HTTPException, Depends
 import logging
 from typing import List
 from pydantic import BaseModel, Field
-from app.services.generate import GenerateService
+from app.services.generate import get_queue_status
 from app.services.file_system import get_full_path_from_path
+from app.services.db_file import update_db_file_status
+from app.database.models import FileStatus
 from app.services.database import get_session
 from sqlalchemy.orm import Session
-
+import asyncio
 logger = logging.getLogger(__name__)
 
 generate_router = r = APIRouter()
-
-def get_generate_service():
-    return GenerateService()
 
 def get_db_session():
     with get_session() as session:
@@ -25,62 +24,64 @@ class GenerateRequest(BaseModel):
     }])
 
 @r.post("")
-async def generate(
+async def generate_route(
     request: GenerateRequest,
-    background_tasks: BackgroundTasks,
-    generate_service: GenerateService = Depends(get_generate_service),
     session: Session = Depends(get_db_session)
 ):
-    """
-    Add multiple files to the generation queue for processing.
-    Returns immediately with queue status.
-    """
+    """Add files to generation queue and start processing if needed"""
     try:
-        logger.info(f"Trigger Generating {len(request.files)} files")
-        # Convert to full paths and maintain transformation stack names
-        files = [{
-            # The given path is not a full path as the frontend is not aware of the DATA_DIR
-            "path": get_full_path_from_path(file["path"]),
-            "transformations_stack_name_list": file.get("transformations_stack_name_list")
-        } for file in request.files]
-        
-        # Add to queue
-        # Use background tasks to avoid blocking the main thread
-        background_tasks.add_task(generate_service.add_files_to_queue, files, session)
+        logger.info(f"Marking {len(request.files)} files as queued")
 
+        # Mark the file as queued in the database and add thier stacks to process with
+        for file in request.files:
+            update_db_file_status(
+                session,
+                # The given path is not a full path as the frontend is not aware of the DATA_DIR
+                get_full_path_from_path(file["path"]),
+                FileStatus.QUEUED,
+                file.get("transformations_stack_name_list", ["default"])
+            )
+
+        status = get_queue_status(session)
+                
         return {
             "status": "queued",
             "message": f"Added {len(request.files)} files to generation queue",
-            "total_files": len(request.files)
+            "queue_status": status
         }
     except Exception as e:
         logger.error(f"Error in generate endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @r.get("/status")
-async def get_generation_status(
-    generate_service: GenerateService = Depends(get_generate_service)
+async def get_generation_status_route(
+    session: Session = Depends(get_db_session)
 ):
     """Get the current status of the generation queue"""
     try:
-        status = generate_service.get_queue_status()
+        status = get_queue_status(session)
+        logger.info(f"Generation status: {status}")
         return status
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@r.websocket("/status/ws")
-async def generate_status_websocket(
-    websocket: WebSocket,
-    generate_service: GenerateService = Depends(get_generate_service)
-):
-    """WebSocket endpoint for generation status updates"""
-    try:
-        await generate_service.connect(websocket)
-        while True:
-            try:
-                # Keep connection alive and wait for client messages
-                await websocket.receive_text()
-            except Exception:
-                break
-    finally:
-        await generate_service.disconnect(websocket) 
+#@r.websocket("/status/ws")
+#async def generate_status_websocket(
+#    websocket: WebSocket,
+#    session: Session = Depends(get_db_session)
+#):
+#    """WebSocket endpoint for generation status updates"""
+#    while True:
+#        await asyncio.sleep(1)
+#        # TODO Reimplement this, either use db on update or ...
+#    #try:
+#    #    await GenerateService().connect(websocket)
+#    #    while True:
+#    #    try:
+#    #        # Keep connection alive and wait for client messages
+#    #        await websocket.receive_text()
+#    #    except Exception:
+#    #        break
+#    #finally:
+#    #    await generate_service.disconnect(websocket) 
+#
