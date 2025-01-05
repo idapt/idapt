@@ -2,14 +2,19 @@ from contextlib import contextmanager
 from typing import Generator, AsyncGenerator
 from sqlalchemy.orm import Session, sessionmaker
 from fastapi import HTTPException
-from app.database.connection import get_connection_string
 from sqlalchemy import create_engine
 import logging
+from app.database.connection import get_connection_string
+from app.database.initialization.migration_manager import run_migrations
 
 logger = logging.getLogger(__name__)
 
 def create_session() -> Session:
     """Create a new database session"""
+
+    # Run migrations and set up the database if needed
+    run_migrations()
+
     engine = create_engine(
         get_connection_string(),
         connect_args={

@@ -72,9 +72,9 @@ def create_datasource(session: Session, name: str, type: str, settings: dict = N
         session.commit()
 
         # Initialize all llama-index components using identifier
-        get_storage_components(session, identifier)
-        get_index(session, identifier)
-        get_query_tool(session, identifier)
+        get_storage_components(identifier)
+        get_index(identifier)
+        get_query_tool(identifier)
 
         return datasource
     except Exception as e:

@@ -67,26 +67,6 @@ async def lifespan(app: FastAPI):
     from app.settings.manager import AppSettingsManager
     AppSettingsManager.get_instance().settings
 
-    
-    # Initialize database
-    from app.database.init_db import initialize_database
-    initialize_database()
-
-    from app.services.database import get_session
-
-    
-    # Initialize default datasources
-    from app.services.datasource import _init_default_datasources
-    with get_session() as session:
-        _init_default_datasources(session)
-
-    # Initialize default filestructure
-    from app.services.db_file import create_default_db_filestructure
-    with get_session() as session:
-        create_default_db_filestructure(session)
-
-
-
     logger.info(f"Services initialized in process {current_pid}")
     
     yield  # Application runs here
