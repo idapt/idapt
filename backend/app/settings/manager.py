@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+import os
 
 from app.config import APP_DATA_DIR
 from app.settings.models import AppSettings
@@ -12,6 +12,9 @@ SETTINGS_FILE = Path(APP_DATA_DIR) / "app-settings.json"
 
 def get_app_settings() -> AppSettings:
     try:
+        # Create the directory if it doesn't exist
+        os.makedirs(APP_DATA_DIR, exist_ok=True)
+        
         settings_file = Path(APP_DATA_DIR) / "app-settings.json"
         # If the settings file exists, load the settings from it and return it
         if settings_file.exists():
@@ -31,7 +34,11 @@ def get_app_settings() -> AppSettings:
 
 def save_app_settings(settings: AppSettings) -> None:
     try:
+        # Create the directory if it doesn't exist
+        os.makedirs(APP_DATA_DIR, exist_ok=True)
+        
         SETTINGS_FILE.write_text(settings.model_dump_json(indent=2))
         logger.info(f"Saved settings to {SETTINGS_FILE}")
     except Exception as e:
         logger.error(f"Error saving settings: {str(e)}")
+        raise e
