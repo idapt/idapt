@@ -19,7 +19,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def upload_files(request: FileUploadRequest, background_tasks: BackgroundTasks, session: Session) -> AsyncGenerator[dict, None]:
+async def upload_files(request: FileUploadRequest, session: Session) -> AsyncGenerator[dict, None]:
     try:
         total = len(request.items)
         processed = []

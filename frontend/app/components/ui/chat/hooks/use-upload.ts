@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
+import { useGenerate } from '../../file-manager/hooks/use-generate';
 
 interface FileUploadItem {
   path: string;
@@ -12,6 +13,7 @@ interface FileUploadItem {
 
 export function useUpload() {
   const { backend } = useClientConfig();
+  const { generate } = useGenerate();
   const abortControllerRef = useRef<AbortController>();
   const shouldCancelAllRef = useRef(false);
   const [currentFile, setCurrentFile] = useState("");
@@ -47,6 +49,16 @@ export function useUpload() {
 
           if (!response.ok) {
             throw new Error(`Failed to upload ${uploadItem.name}`);
+          }
+
+          // Trigger the file processing pipeline generate with the uploaded file
+          try {
+            await generate([{
+              path: uploadItem.path,
+            }]);
+          } catch (error) {
+            console.error('Failed to trigger generation:', error);
+            // We don't throw here as we don't want to fail the upload if generation fails
           }
           
           // Mark file as completed after successful upload

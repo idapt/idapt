@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 import logging
 from typing import List
 from pydantic import BaseModel, Field
-from app.services.generate import get_queue_status, process_queued_files
+from app.services.generate import get_queue_status, process_queued_files, should_start_processing
 from app.services.file_system import get_full_path_from_path
 from app.services.db_file import update_db_file_status
 from app.settings.models import AppSettings
@@ -48,7 +48,8 @@ async def generate_route(
 
         # Start processing the files in the background
         # TODO Move the generate service to a separate api running on its own server
-        background_tasks.add_task(process_queued_files, session, app_settings)
+        if should_start_processing(session):    
+            background_tasks.add_task(process_queued_files, session, app_settings)
 
         # Get the current status of the queue
         status = get_queue_status(session)

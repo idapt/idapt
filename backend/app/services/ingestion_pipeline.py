@@ -26,9 +26,6 @@ from app.services.db_file import get_db_file
 from app.services.datasource import get_storage_components
 from app.settings.model_initialization import init_embedding_model
 from app.settings.models import AppSettings
-import nest_asyncio
-
-nest_asyncio.apply()
 
 import logging
 
@@ -115,7 +112,7 @@ TRANSFORMATIONS_STACKS = {
 }
 
 # At this point the files are grouped by ingestion stack
-async def process_files(full_file_paths: List[str], datasource_identifier: str, app_settings: AppSettings, transformations_stack_name_list: List[str] = ["default"]):
+def process_files(full_file_paths: List[str], datasource_identifier: str, app_settings: AppSettings, transformations_stack_name_list: List[str] = ["default"]):
     """Process a list of files through the ingestion pipeline"""
     try:            
         # Use SimpleDirectoryReader from llama index as it try to use existing apropriate readers based on the file type to get the most metadata from it
@@ -258,7 +255,7 @@ async def process_files(full_file_paths: List[str], datasource_identifier: str, 
             transformations.append(Settings.embed_model)
             # Set the transformations for the ingestion pipeline
             ingestion_pipeline.transformations = transformations
-            nodes = await ingestion_pipeline.arun(
+            nodes = ingestion_pipeline.run(
                 documents=documents,
                 show_progress=True,
                 #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism

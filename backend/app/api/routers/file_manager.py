@@ -29,10 +29,9 @@ def decode_path_safe(encoded_path: str) -> str:
 @r.post("/upload")
 async def upload_files_route(
     request: FileUploadRequest,
-    background_tasks: BackgroundTasks,
     session: Session = Depends(get_db_session)
 ) -> EventSourceResponse:
-    return EventSourceResponse(upload_files(request, background_tasks, session))
+    return EventSourceResponse(upload_files(request, session))
 
 @r.get("/file/{encoded_path}/download")
 async def download_file_route(

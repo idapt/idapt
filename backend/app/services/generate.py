@@ -1,3 +1,4 @@
+import datetime
 from app.services.ingestion_pipeline import process_files
 from app.services.db_file import update_db_file_status, mark_db_stack_as_processed, get_db_files_by_status
 from app.services.database import get_session
@@ -188,3 +189,29 @@ def get_queue_status(session: Session) -> dict:
     except Exception as e:
         logger.error(f"Failed to get queue status: {str(e)}")
         raise
+
+def should_start_processing(session: Session) -> bool:
+    """Check if the processing should start"""
+    
+    try:
+        # Try to get the oldest file that has been processing for the longest time
+        oldest_processing_file = session.query(File).filter(
+            File.status == FileStatus.PROCESSING
+        ).order_by(
+            File.processing_started_at.asc()
+        ).first()
+
+        if not oldest_processing_file:
+            return True
+
+        # If the file has been processing for more than 10 minutes, start start the processing because it is probably stuck/ the app has restarted and processing background task has not been restarted
+        if oldest_processing_file.processing_started_at < datetime.now() - datetime.timedelta(seconds=600):
+            return True
+
+        # A processing is probably still running
+        # TODO Make this better
+        return False
+    
+    except Exception as e:
+        logger.error(f"Failed to check if processing should start: {str(e)}")
+        return False

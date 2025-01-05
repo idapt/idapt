@@ -41,6 +41,7 @@ class File(Base):
     # Processing stacks tracking
     processed_stacks = Column(JSON, nullable=True)  # List of already processed stacks
     stacks_to_process = Column(JSON, nullable=True)  # List of stacks queued for processing
+    processing_started_at = Column(DateTime, nullable=True)
     
     # Original metadata
     file_created_at = Column(DateTime, nullable=False)
