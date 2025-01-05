@@ -2,6 +2,12 @@ import json
 from typing import List
 from fastapi import HTTPException
 
+# Set the llama index default llm and embed model to none otherwise it will raise an error.
+# We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
+from llama_index.core.settings import Settings
+Settings.llm = None
+Settings.embed_model = None
+
 from llama_index.core.ingestion import IngestionPipeline, DocstoreStrategy
 from llama_index.core.readers import SimpleDirectoryReader
 from llama_index.core.settings import Settings
@@ -19,8 +25,7 @@ from llama_index.core.extractors import (
 from app.services.database import get_session
 from app.services.db_file import get_db_file
 from app.services.datasource import get_storage_components
-from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
-
+from app.settings.model_initialization import init_embedding_model
 
 import nest_asyncio
 
@@ -194,7 +199,9 @@ async def process_files(full_file_paths: List[str], datasource_identifier: str, 
             #if not self.cached_embed_model:
             from app.settings.manager import AppSettingsManager
             app_settings = AppSettingsManager.get_instance().settings
-            update_llama_index_settings_from_app_settings(app_settings)
+
+            # Init the embed model from the app settings
+            embed_model = init_embedding_model(app_settings)
         
 
             # Set the transformations stack name for the datasource_documents

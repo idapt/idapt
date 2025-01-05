@@ -13,6 +13,7 @@ from llama_index.core.settings import Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.core.storage.index_store import SimpleIndexStore
+from llama_index.core.llms import LLM
 import chromadb
 
 import logging
@@ -51,9 +52,9 @@ def get_index(datasource_identifier: str) -> VectorStoreIndex:
     # TODO Add caching
     return _create_index(datasource_identifier)
 
-def get_query_tool(session: Session, datasource_identifier: str) -> BaseTool:
+def get_query_tool(session: Session, datasource_identifier: str, llm: LLM) -> BaseTool:
     # TODO Add caching
-    return _create_query_tool(session, datasource_identifier)
+    return _create_query_tool(session, datasource_identifier, llm)
 
 
 
@@ -173,7 +174,7 @@ def _create_index(datasource_identifier: str) -> VectorStoreIndex:
         logger.error(f"Error creating index: {str(e)}")
         raise
 
-def _create_query_tool(session: Session, datasource_identifier: str) -> BaseTool:
+def _create_query_tool(session: Session, datasource_identifier: str, llm: LLM) -> BaseTool:
     try:
         index = get_index(datasource_identifier)
 
@@ -191,7 +192,7 @@ def _create_query_tool(session: Session, datasource_identifier: str) -> BaseTool
         #)
         response_synthesizer = get_response_synthesizer(
             response_mode="compact",
-            llm=Settings.llm
+            llm=llm
         )
 
         query_engine = RetrieverQueryEngine.from_args(

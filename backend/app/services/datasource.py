@@ -3,7 +3,7 @@ from app.database.models import Datasource, Folder
 from app.services.db_file import get_db_folder_id
 from app.services.file_manager import delete_folder
 from app.services.file_system import get_full_path_from_path
-from app.services.llama_index import get_storage_components, get_index, get_query_tool, _delete_llama_index_components
+from app.services.llama_index import get_storage_components, get_index, _delete_llama_index_components
 
 import logging
 from typing import List, Optional
@@ -74,7 +74,6 @@ def create_datasource(session: Session, name: str, type: str, settings: dict = N
         # Initialize all llama-index components using identifier
         get_storage_components(identifier)
         get_index(identifier)
-        get_query_tool(identifier)
 
         return datasource
     except Exception as e:

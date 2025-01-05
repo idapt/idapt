@@ -21,8 +21,6 @@ class AppSettingsManager:
         if cls._instance is None:
             # Create a new instance
             cls._instance = cls()
-            # Update the dependent services with the new settings
-            cls._instance._update_dependent_services()
         return cls._instance
     
     @property
@@ -57,11 +55,3 @@ class AppSettingsManager:
         updated_data.update(kwargs)
         self._settings = AppSettings.model_validate(updated_data)
         self._save_settings()
-        
-        # Update dependent services
-        self._update_dependent_services()
-    
-    def _update_dependent_services(self) -> None:
-        # Update llama index settings
-        from app.settings.llama_index_settings import update_llama_index_settings_from_app_settings
-        update_llama_index_settings_from_app_settings(self.settings)

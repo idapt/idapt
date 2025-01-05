@@ -37,12 +37,16 @@ Your answer should be wrapped in three sticks which follows the following format
     @classmethod
     async def suggest_next_questions_all_messages(
         cls,
+        llm,
         messages: List[Message],
     ) -> Optional[List[str]]:
         """
         Suggest the next questions that user might ask based on the conversation history
         Return None if suggestion is disabled or there is an error
         """
+
+        # For now remove this as we need to use user specific llm and this is not stateless
+        return None
         prompt_template = cls.get_configured_prompt()
         if not prompt_template:
             return None
@@ -81,9 +85,10 @@ Your answer should be wrapped in three sticks which follows the following format
         cls,
         chat_history: List[Message],
         response: str,
+        llm,
     ) -> List[str]:
         """
         Suggest the next questions that user might ask based on the chat history and the last response
         """
         messages = chat_history + [Message(role="assistant", content=response)]
-        return await cls.suggest_next_questions_all_messages(messages)
+        return await cls.suggest_next_questions_all_messages(llm, messages)
