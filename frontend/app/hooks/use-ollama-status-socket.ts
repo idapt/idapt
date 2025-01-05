@@ -54,16 +54,21 @@ export function useOllamaStatusSocket() {
 
   useEffect(() => {
     // Fetch initial status before connecting to WebSocket
-    fetchInitialStatus().then(() => {
-      connect();
-    });
+    //fetchInitialStatus().then(() => {
+    //  connect();
+    //});
+    // For now just get the status every 1 second // TODO Reimplement websocket support
+    const interval = setInterval(fetchInitialStatus, 1000);
 
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
+      //if (reconnectTimeoutRef.current) {
+      //  clearTimeout(reconnectTimeoutRef.current);
+      //}
+      //if (wsRef.current) {
+      //  wsRef.current.close();
+      //}
+      if (interval) {
+        clearInterval(interval);
       }
     };
   }, [backend]);
