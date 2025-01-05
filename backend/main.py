@@ -1,29 +1,14 @@
 # flake8: noqa: E402
-import asyncio
-from app.config import DATA_DIR
-from dotenv import load_dotenv
-
-load_dotenv()
-
 import logging
 import os
 from contextlib import asynccontextmanager
-environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
 # Set up logging configuration
 from app.api.logging import configure_app_logging
 configure_app_logging()
 
 logger = logging.getLogger(__name__)
 
-
-import uvicorn
-
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
-
-logger.info(f"Starting application initialization in process {os.getpid()}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,7 +31,7 @@ def create_app() -> FastAPI:
     configure_cors(app)
     
     # Mount static files
-    mount_static_files(app)
+    #mount_static_files(app)
     
     # Include API router
     from app.api.routers import api_router
@@ -55,52 +40,59 @@ def create_app() -> FastAPI:
     return app
 
 def configure_cors(app: FastAPI):
+
+    from fastapi.middleware.cors import CORSMiddleware
+
+    environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
+
     if environment == "dev":
         app.add_middleware(
             CORSMiddleware,
+            # For development we allow requests from any origin
             allow_origins=["*"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
         )
-        
-        @app.get("/")
-        async def redirect_to_docs():
-            return RedirectResponse(url="/docs")
     else:
         app.add_middleware(
             CORSMiddleware,
+            # For production we only allow requests from the same machine coming from the frontend as traffic is routed through nginx and origin is 127.0.0.1:3000
             allow_origins=[f"http://127.0.0.1:3000"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
         )
 
-def mount_static_files(app: FastAPI):
-    def mount_directory(directory: str, path: str):
-        if os.path.exists(directory):
-            logger.info(f"Mounting static files '{directory}' at '{path}'")
-            app.mount(
-                path,
-                StaticFiles(directory=directory, check_dir=False),
-                name=f"{directory}-static",
-            )
-    
-    # Mount the data files to serve the file viewer
-    mount_directory(DATA_DIR, "/api/files/data")
-    # Mount the output files from tools
-    mount_directory("/data/.idapt/output", "/api/files/output")
+# TODO Implement this without using StaticFiles and only return a file if authenticated and authorized and it need to be stateless
+#def mount_static_files(app: FastAPI):
+#    def mount_directory(directory: str, path: str):
+#        if os.path.exists(directory):
+#            logger.info(f"Mounting static files '{directory}' at '{path}'")
+#            app.mount(
+#                path,
+#                StaticFiles(directory=directory, check_dir=False),
+#                name=f"{directory}-static",
+#            )
+#    
+#    # Mount the data files to serve the file viewer
+#    mount_directory(DATA_DIR, "/api/files/data")
+#    # Mount the output files from tools
+#    mount_directory("/data/.idapt/output", "/api/files/output")
 
 # Create the app instance
 app = create_app()
 
-
 # Only run these in the main process, not in reloaded processes
 if __name__ == "__main__":
 
+    import uvicorn
+
     app_host = "0.0.0.0" #os.getenv("HOST_DOMAIN", "0.0.0.0") # For now use 0.0.0.0
     app_port = 8000
-    
+
+    environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
+
     if environment == "dev":
         logger.info("Starting in development mode with hot reload")
         uvicorn.run(
