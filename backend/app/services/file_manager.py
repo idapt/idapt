@@ -1,10 +1,9 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from typing import Dict, Any, AsyncGenerator, List, Tuple
+from typing import Dict, Any, AsyncGenerator, Tuple
 import zipfile
 from io import BytesIO
 import asyncio
-from fastapi import BackgroundTasks
 import base64
 import os
 
@@ -210,7 +209,7 @@ async def delete_folder(session: Session, full_path: str):
 
         # Delete folder from filesystem if no files are being processed
         if not processing_files:
-            await delete_folder(session, full_path)
+            await delete_folder_filesystem(full_path)
             
             # Delete everything from database in one transaction
             if not delete_db_folder(session, full_path):
@@ -240,7 +239,7 @@ async def rename_file(session: Session, full_path: str, new_name: str):
             raise HTTPException(status_code=404, detail="File not found")
 
         # Rename in filesystem
-        await rename_file(full_path, new_name)
+        await rename_file_filesystem(full_path, new_name)
         
         new_full_path = file.path.replace(file.name, new_name)
         
