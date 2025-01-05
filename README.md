@@ -6,9 +6,9 @@
 
 **[idapt](https://idapt.ai) allows you to create your own personal AI by regrouping your data from multiple sources (Files, Emails, Google Drive, etc.) and allow your AI assistant to use it in your chats to provide a fully personalized experience.**
 
-Your data is completely encrypted so that even we cannot access it and the project is open source for complete transparency.
-
 You can choose to host it yourself or use our hosted version at [idapt.ai](https://idapt.ai) that uses confidential computing and encryption to ensure that only you can access your data.
+
+Your data is completely encrypted on our servers so that even we cannot access it and the project is open source for complete transparency.
 
 Go to the [website](https://idapt.ai) for more information.
 
@@ -18,25 +18,22 @@ Go to the [website](https://idapt.ai) for more information.
 
 ## Production Installation
 
-### Local Production Installation
-
-- Install [Docker](https://docs.docker.com/get-started/get-docker/) and add GPU support with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) if you want faster inference and embeddings generation.
-- Clone the repository with 
+- Install [Docker](https://docs.docker.com/get-started/get-docker/).
+- Run this command to clone the repository in your current directory and start the production server locally.
 ```bash
-git clone https://github.com/idapt/idapt.git && cd idapt
+git clone https://github.com/idapt/idapt.git && cd idapt && sudo docker compose up --build
 ```
-- Run 
-```bash
-docker compose -f local.docker-compose.yml up --build
-```
-in the idapt root folder to start the production local server.
 - Access the app at [https://localhost](https://localhost).
 - Add your data sources, setup your settings (model provider, system prompt, etc.) and start chatting with your private, personal AI assistant !
-**NOTE : The local server version of the app do not have any authentication system and is only meant to be used locally with localhost behind a safe firewall.**
 
-### Remote Production Installation
+### Model Provider
+You can use any hosted model provider that you want or use ollama for local inference, you will need to have [Ollama](https://ollama.com/) running on your machine **(at default port 11434 and with the default 0.0.0.0 host)**. We will soon propose a private hosted alternative so that you can run more powerful models.
 
-- Install [Docker](https://docs.docker.com/get-started/get-docker/) and add GPU support with the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) if you want faster inference and embeddings generation.
+### Security
+The local server version of the app do not have any authentication system and is only meant to be used locally with localhost behind a safe firewall.
+
+### Remote Installation (IN PROGRESS)
+
 - Clone the repository with 
 ```bash
 git clone https://github.com/idapt/idapt.git && cd idapt
@@ -57,8 +54,6 @@ in the idapt root folder to start the production server.
 In development mode, the frontend and backend folders are synced with the host folders so any changes you make to the code will be reflected directly in the containers.
 The containers ports are also exposed to facilitate development.
 
-### Local Development Installation
-
 - Clone the repository with 
 ```bash
 git clone https://github.com/idapt/idapt.git && cd idapt
@@ -72,26 +67,14 @@ in the idapt root folder to start the development server.
 - Access the app at [https://localhost](https://localhost).
 - Build or fix !
 
-### Remote Development Installation
-
-- Clone the repository with 
-```bash
-git clone https://github.com/idapt/idapt.git && cd idapt
-```
-- Create your '.env.local' file by copying the '.env' file and filling in the correct values.
-- Run 
-```bash
-docker compose -f dev.docker-compose.yml --env-file .env.local up --build
-```
-in the idapt root folder to start the development server.
-*This will start all the containers in development mode and sync the code changes between the host and the frontend and backend containers.*
-- Access the app at [https://localhost](https://localhost). *(or to https://your-custom-host if you changed it for remote access)*
-- Build or fix !
-
 Development notes :
 *The poetry dependencies are already installed in the container following the `pyproject.toml` file at build time.*
 *The node_modules are synced with the host.*
 *The developement stack and the production use different docker storage volumes as the compose name is different.*
+
+### Remote Development Installation 
+
+(IN PROGRESS)
 
 ## Architecture
 
