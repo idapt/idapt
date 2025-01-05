@@ -23,16 +23,16 @@ def get_chat_engine(datasource_identifier: str = None, filters=None, params=None
         callback_manager = CallbackManager(handlers=event_handlers or [])
 
         # Get the datasources tools
-        if datasource_identifier:
-            # Get specific datasource tool
-            tool = get_query_tool(datasource_identifier)
-            tools.append(tool)
-        else:
-            # Get all datasource tools
-            with get_session() as session:
+        with get_session() as session:
+            if datasource_identifier:
+                # Get specific datasource tool
+                tool = get_query_tool(session, datasource_identifier)
+                tools.append(tool)
+            else:
+                # Get all datasource tools
                 datasources = get_all_datasources(session)
                 for ds in datasources:
-                    tool = get_query_tool(ds.identifier)
+                    tool = get_query_tool(session, ds.identifier)
                     tools.append(tool)
 
         # For each tool, set the callback manager to be able to display the events in the steps ui

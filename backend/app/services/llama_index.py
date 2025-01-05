@@ -24,34 +24,34 @@ import json
 logger = logging.getLogger(__name__)
 
 
-def get_storage_components(session: Session, datasource_identifier: str) -> Tuple[ChromaVectorStore, SimpleDocumentStore, SimpleIndexStore]:
+def get_storage_components(datasource_identifier: str) -> Tuple[ChromaVectorStore, SimpleDocumentStore, SimpleIndexStore]:
     """Get or create all storage components for a datasource"""
     try:
-        vector_store = get_vector_store(session, datasource_identifier)
-        doc_store = get_doc_store(session, datasource_identifier)
-        index_store = get_index_store(session, datasource_identifier)
+        vector_store = get_vector_store(datasource_identifier)
+        doc_store = get_doc_store(datasource_identifier)
+        index_store = get_index_store(datasource_identifier)
         return vector_store, doc_store, index_store
     except Exception as e:
         logger.error(f"Error getting storage components: {str(e)}")
         raise
 
-def get_vector_store(session: Session, datasource_identifier: str) -> ChromaVectorStore:
+def get_vector_store(datasource_identifier: str) -> ChromaVectorStore:
     # TODO Add caching
-    return _create_vector_store(session, datasource_identifier)
+    return _create_vector_store(datasource_identifier)
 
-def get_doc_store(self, session: Session, datasource_identifier: str) -> SimpleDocumentStore:
+def get_doc_store(datasource_identifier: str) -> SimpleDocumentStore:
     # TODO Add caching
-    return _create_doc_store(session, datasource_identifier)
+    return _create_doc_store(datasource_identifier)
 
-def get_index_store(self, session: Session, datasource_identifier: str) -> SimpleIndexStore:
+def get_index_store(datasource_identifier: str) -> SimpleIndexStore:
     # TODO Add caching
-    return _create_index_store(session, datasource_identifier)
+    return _create_index_store(datasource_identifier)
 
-def get_index(self, session: Session, datasource_identifier: str) -> VectorStoreIndex:
+def get_index(datasource_identifier: str) -> VectorStoreIndex:
     # TODO Add caching
-    return _create_index(session, datasource_identifier)
+    return _create_index(datasource_identifier)
 
-def get_query_tool(self, session: Session, datasource_identifier: str) -> BaseTool:
+def get_query_tool(session: Session, datasource_identifier: str) -> BaseTool:
     # TODO Add caching
     return _create_query_tool(session, datasource_identifier)
 
