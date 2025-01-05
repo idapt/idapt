@@ -8,40 +8,13 @@ load_dotenv()
 import logging
 import os
 from contextlib import asynccontextmanager
-import threading
-# Set up logging configuration early
 environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
+# Set up logging configuration
+from app.api.logging import configure_app_logging
+configure_app_logging()
 
 logger = logging.getLogger(__name__)
 
-if environment == "dev":
-    # Configure more verbose logging for development
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(levelname)s: %(message)s'
-    )
-    logger.setLevel(logging.INFO)
-    # Set log levels for other specific loggers
-    logging.getLogger('uvicorn').setLevel(logging.INFO)
-    logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
-    logging.getLogger('alembic').setLevel(logging.WARNING)
-
-else:
-    # Keep detailed logging for production for now
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(levelname)s: %(message)s'
-    )
-    logger.setLevel(logging.INFO)
-    # Set log levels for specific loggers
-    logging.getLogger('uvicorn').setLevel(logging.INFO)
-    logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
-    logging.getLogger('alembic').setLevel(logging.WARNING)
-
-# Filter out health check logs from uvicorn
-logging.getLogger("uvicorn.access").addFilter(
-    lambda record: "/api/health" not in record.getMessage()
-)
 
 import uvicorn
 
