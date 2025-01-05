@@ -85,22 +85,15 @@ async def lifespan(app: FastAPI):
     with get_session() as session:
         create_default_db_filestructure(session)
 
-    # Initialize ollama status service for the main thread
-    #from app.services.ollama_status import OllamaStatusService
-    #ollama_service = OllamaStatusService()
-    #ollama_service.initialize()
 
-    # Initialize generate service in a separate thread for processing files in the background via the db
-    #from app.services.generate_worker import start_generate_worker
-    #threading.Thread(target=start_generate_worker).start()
-    
+
     logger.info(f"Services initialized in process {current_pid}")
     
     yield  # Application runs here
     
     # Shutdown
     logger.info(f"Shutting down application in process {current_pid}")
-    # Add any cleanup code here
+
 
 def create_app() -> FastAPI:
     app = FastAPI(

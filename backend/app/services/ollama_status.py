@@ -3,6 +3,7 @@ import logging
 from app.settings.manager import AppSettingsManager
 from app.settings.models import AppSettings
 import requests
+import time
 
 logger = logging.getLogger(__name__)
     
@@ -86,3 +87,13 @@ def can_process() -> bool:
     except Exception as e:
         logger.error(f"Error checking if can process: {str(e)}")
         return False 
+    
+def wait_for_ollama_models():
+    """Wait for Ollama models to be ready"""
+    while True:
+        # Check if we need to wait for Ollama models
+        if can_process():
+            return
+        
+        logger.info("Waiting for Ollama models to be ready before processing files...")
+        time.sleep(1)

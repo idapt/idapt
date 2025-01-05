@@ -69,13 +69,15 @@ export function useGenerateStatusSocket() {
     const interval = setInterval(fetchInitialStatus, 1000);
 
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+      //if (reconnectTimeoutRef.current) {
+      //  clearTimeout(reconnectTimeoutRef.current);
+      //}
+      //if (wsRef.current) {
+      //  wsRef.current.close();
+      //}
+      if (interval) {
+        clearInterval(interval);
       }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      clearInterval(interval);
     };
   }, [backend]);
 } 

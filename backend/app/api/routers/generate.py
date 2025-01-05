@@ -1,8 +1,8 @@
-from fastapi import APIRouter, WebSocket, HTTPException, Depends
+from fastapi import APIRouter, WebSocket, HTTPException, Depends, BackgroundTasks
 import logging
 from typing import List
 from pydantic import BaseModel, Field
-from app.services.generate import get_queue_status
+from app.services.generate import get_queue_status, process_queued_files
 from app.services.file_system import get_full_path_from_path
 from app.services.db_file import update_db_file_status
 from app.database.models import FileStatus
@@ -26,6 +26,7 @@ class GenerateRequest(BaseModel):
 @r.post("")
 async def generate_route(
     request: GenerateRequest,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_db_session)
 ):
     """Add files to generation queue and start processing if needed"""
@@ -42,8 +43,13 @@ async def generate_route(
                 file.get("transformations_stack_name_list", ["default"])
             )
 
+        # Start processing the files in the background
+        # TODO Move the generate service to a separate api running on its own server
+        background_tasks.add_task(process_queued_files, session)
+
+        # Get the current status of the queue
         status = get_queue_status(session)
-                
+
         return {
             "status": "queued",
             "message": f"Added {len(request.files)} files to generation queue",
