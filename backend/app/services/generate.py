@@ -1,5 +1,5 @@
 import logging
-from app.services.ingestion_pipeline import IngestionPipelineService
+from app.services.ingestion_pipeline import process_files
 from app.services.db_file import update_db_file_status, mark_db_stack_as_processed, get_db_files_by_status
 from app.services.database import get_session
 from app.services.datasource import get_datasource_identifier_from_path
@@ -106,7 +106,7 @@ def _process_all_queued_files(session) -> bool:
         logger.error(f"Failed to process all queued files: {str(e)}")
         return False
 
-def _process_single_file(self, session, file):
+def _process_single_file(session, file):
     """Process a single file through the ingestion pipeline"""
     try:
         # Update status to processing
@@ -127,7 +127,7 @@ def _process_single_file(self, session, file):
         for stack_name in stacks_to_process:
             if not processed_stacks or stack_name not in processed_stacks:
                 try:
-                    self.ingestion_pipeline_service.process_files(
+                    process_files(
                         full_file_paths=[file.path],
                         datasource_identifier=datasource_identifier,
                         transformations_stack_name_list=[stack_name]
