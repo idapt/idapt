@@ -27,7 +27,7 @@ services:
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - ./user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
-    restart: always
+    restart: unless-stopped
     # Container security hardening
     security_opt:
       - no-new-privileges:true
@@ -52,7 +52,7 @@ services:
       NEXT_TELEMETRY_DISABLED: 1
     volumes:
       - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
-    restart: always
+    restart: unless-stopped
     # Container security hardening
     user: node
     security_opt:
@@ -90,7 +90,7 @@ services:
       interval: 1s
       timeout: 5s
       retries: 30
-    restart: always
+    restart: unless-stopped
     # Container security hardening
     security_opt:
       - no-new-privileges:true
