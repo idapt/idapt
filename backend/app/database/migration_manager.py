@@ -49,6 +49,17 @@ def run_migrations(engine: Engine):
                 # Stamp with current head
                 command.stamp(alembic_cfg, "head")
                 logger.info("Database initialized and stamped with head revision")
+                
+                # Init default datasources
+                from app.services.datasource import init_default_datasources
+                init_default_datasources(connection, logger)
+                logger.info("Default datasources initialized")
+
+                # Init default folders
+                from app.services.db_file import create_default_db_filestructure
+                create_default_db_filestructure(connection, logger)
+                logger.info("Default folders initialized")
+
                 return
         
         # Check if we need to run migrations
