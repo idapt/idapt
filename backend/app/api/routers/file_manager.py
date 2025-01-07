@@ -9,16 +9,12 @@ from app.api.models.file_models import FileUploadRequest
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path
 from app.services.db_file import get_db_folder_contents
 from app.services.file_manager import upload_files, download_file, delete_file, delete_folder, rename_file, download_folder
-from app.services.database import get_session
+from app.services.database import get_db_session
 
 import logging
 logger = logging.getLogger(__name__)
 
 file_manager_router = r = APIRouter()
-
-def get_db_session():
-    with get_session() as session:
-        yield session
 
 def decode_path_safe(encoded_path: str) -> str:
     try:

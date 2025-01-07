@@ -8,16 +8,12 @@ from app.services.db_file import update_db_file_status
 from app.settings.models import AppSettings
 from app.settings.manager import get_app_settings
 from app.database.models import FileStatus
-from app.services.database import get_session
+from app.services.database import get_db_session
 from sqlalchemy.orm import Session
 import asyncio
 logger = logging.getLogger(__name__)
 
 generate_router = r = APIRouter()
-
-def get_db_session():
-    with get_session() as session:
-        yield session
 
 class GenerateRequest(BaseModel):
     files: List[dict] = Field(..., example=[{

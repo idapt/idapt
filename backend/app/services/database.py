@@ -57,3 +57,7 @@ async def get_db() -> AsyncGenerator[Session, None]:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
+
+def get_db_session():
+    with get_session() as session:
+        yield session
