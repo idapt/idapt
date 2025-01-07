@@ -1,4 +1,4 @@
-import asyncio
+from fastapi import BackgroundTasks
 import logging
 from app.settings.models import AppSettings
 import requests
@@ -12,7 +12,7 @@ async def _download_ollama_model(base_url: str, model_name: str):
         return
         
     try:
-        response = requests.post(
+        response = await requests.post(
             f"{base_url}/api/pull",
             json={"name": model_name},
             stream=True
@@ -24,7 +24,7 @@ async def _download_ollama_model(base_url: str, model_name: str):
         logger.error(f"Error downloading model {model_name}: {str(e)}")
         
         
-def _check_ollama_model(base_url: str, model_name: str):
+def _check_ollama_model(base_url: str, model_name: str, background_tasks: BackgroundTasks | None = None):
     """Check if a model is installed"""
     if not model_name or not model_name.strip():
         return
@@ -47,9 +47,10 @@ def _check_ollama_model(base_url: str, model_name: str):
             else:
                 model_name_to_check = model_name
             
-            if model_name_to_check not in installed_models:
+            # Pull only if background tasks were provided
+            if model_name_to_check not in installed_models and background_tasks:
                 # Trigger model download in background
-                asyncio.create_task(_download_ollama_model(base_url, model_name))
+                background_tasks.add_task(_download_ollama_model(base_url, model_name))
                 # Return False as the model is not installed
                 return False
             
@@ -60,7 +61,8 @@ def _check_ollama_model(base_url: str, model_name: str):
         logger.error(f"Error checking/pulling model {model_name}: {str(e)}")
         return False
 
-def can_process(app_settings: AppSettings) -> bool:
+# If you dont want to pull the models if not available, set background_tasks to None
+def can_process(app_settings: AppSettings, background_tasks: BackgroundTasks | None = None) -> bool:
     """Check if Ollama models are ready for processing"""
     try:
         # Check LLM models
@@ -68,7 +70,7 @@ def can_process(app_settings: AppSettings) -> bool:
             base_url = app_settings.ollama.llm_host
             model = app_settings.ollama.llm_model
             
-            if not _check_ollama_model(base_url, model):
+            if not _check_ollama_model(base_url, model, background_tasks):
                 return False
             
         # Check embedding models
@@ -76,7 +78,7 @@ def can_process(app_settings: AppSettings) -> bool:
             base_url = app_settings.ollama.embedding_host
             model = app_settings.ollama.embedding_model
             
-            if not _check_ollama_model(base_url, model):
+            if not _check_ollama_model(base_url, model, background_tasks):
                 return False
                 
         # If all models are installed or ollama is not used, return True
@@ -88,8 +90,8 @@ def can_process(app_settings: AppSettings) -> bool:
 def wait_for_ollama_models(app_settings: AppSettings):
     """Wait for Ollama models to be ready"""
     while True:
-        # Check if we need to wait for Ollama models
-        if can_process(app_settings):
+        # Check if we need to wait for Ollama models without pulling them if they don't exist
+        if can_process(app_settings, None):
             return
         
         logger.info("Waiting for Ollama models to be ready before processing files...")
