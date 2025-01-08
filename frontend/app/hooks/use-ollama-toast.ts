@@ -9,9 +9,9 @@ export function useOllamaToast() {
   const startDownloading = () => {
     const item: OllamaToastItem = {
       id: OLLAMA_TOAST_ID,
-      name: 'Downloading AI Model',
+      name: '',
       path: '',
-      status: 'processing',
+      status: 'pending',
       progress: 0,
       type: 'ollama'
     };
