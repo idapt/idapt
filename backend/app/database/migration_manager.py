@@ -34,7 +34,6 @@ def run_migrations(engine: Engine):
     try:
         alembic_cfg = get_alembic_config()
         alembic_cfg.set_main_option("sqlalchemy.url", str(engine.url))
-        logger.info("Database URL: " + str(engine.url))
         
         # First check if we need to create/stamp initial database
         with engine.begin() as connection:
@@ -62,12 +61,12 @@ def run_migrations(engine: Engine):
             try:
                 # Init default datasources
                 from app.services.datasource import init_default_datasources
-                init_default_datasources(session, logger)
+                init_default_datasources(session)
                 logger.info("Default datasources initialized")
 
                 # Init default folders
                 from app.services.db_file import create_default_db_filestructure
-                create_default_db_filestructure(session, logger)
+                create_default_db_filestructure(session)
                 logger.info("Default folders initialized")
                 
                 session.commit()
@@ -85,8 +84,8 @@ def run_migrations(engine: Engine):
             logger.info("Database not up to date, running migrations...")
             command.upgrade(alembic_cfg, "head")
             logger.info("Database migrations completed successfully")
-        else:
-            logger.info("Database is up to date")
+        #else:
+            #logger.info("Database is up to date")
             
     except Exception as e:
         logger.error(f"Error running database migrations: {str(e)}")

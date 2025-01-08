@@ -23,7 +23,7 @@ logger = logging.getLogger("uvicorn")
     #with get_session() as session:
     #    _init_default_datasources(session)
 
-def _init_default_datasources(session: Session):
+def init_default_datasources(session: Session):
     """Initialize default datasources if they don't exist"""
     try:
         if not get_datasource(session, "files"):
