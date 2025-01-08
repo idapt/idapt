@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
 import { useOllamaToast } from './use-ollama-toast';
 
@@ -9,7 +9,7 @@ export function useOllamaStatusSocket() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const isDownloadingRef = useRef(false);
 
-  const handleStatus = (data: { is_downloading: boolean }) => {
+  const handleStatus = useCallback((data: { is_downloading: boolean }) => {
     if (data.is_downloading && !isDownloadingRef.current) {
       isDownloadingRef.current = true;
       startDownloading();
@@ -17,9 +17,9 @@ export function useOllamaStatusSocket() {
       isDownloadingRef.current = false;
       stopDownloading();
     }
-  };
+  }, [startDownloading, stopDownloading]);
 
-  const fetchInitialStatus = async () => {
+  const fetchInitialStatus = useCallback(async () => {
     try {
       const response = await fetch(`${backend}/api/ollama-status`);
       const data = await response.json();
@@ -27,7 +27,7 @@ export function useOllamaStatusSocket() {
     } catch (error) {
       console.error('Failed to fetch initial status:', error);
     }
-  };
+  }, [backend, handleStatus]);
 
   const connect = () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -71,5 +71,5 @@ export function useOllamaStatusSocket() {
         clearInterval(interval);
       }
     };
-  }, [backend]);
+  }, [backend, fetchInitialStatus]);
 }

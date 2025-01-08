@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useProcessingToast } from './use-processing-toast';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
 
@@ -9,7 +9,7 @@ export function useGenerateStatusSocket() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const isProcessingRef = useRef(false);
 
-  const handleStatus = (data: any) => {
+  const handleStatus = useCallback((data: any) => {
     const totalFiles = data.queued_count + data.processing_count;
     const processedFiles = (data.processed_files?.length || 0);
     
@@ -25,9 +25,9 @@ export function useGenerateStatusSocket() {
         isProcessingRef.current = false;
       }
     }
-  };
+  }, [startProcessing, updateProcessing, completeProcessing, failProcessing]);
 
-  const fetchInitialStatus = async () => {
+  const fetchInitialStatus = useCallback(async () => {
     try {
       const response = await fetch(`${backend}/api/generate/status`);
       const data = await response.json();
@@ -35,7 +35,17 @@ export function useGenerateStatusSocket() {
     } catch (error) {
       console.error('Failed to fetch initial status:', error);
     }
-  };
+  }, [backend, handleStatus]);
+  
+  useEffect(() => {
+    // Use the memoized function here
+    const interval = setInterval(fetchInitialStatus, 1000);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [fetchInitialStatus]);
 
   const connect = () => {
     if (!backend || wsRef.current?.readyState === WebSocket.OPEN) {
@@ -79,5 +89,5 @@ export function useGenerateStatusSocket() {
         clearInterval(interval);
       }
     };
-  }, [backend]);
+  }, [backend, fetchInitialStatus]);
 } 
