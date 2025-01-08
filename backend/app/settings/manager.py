@@ -37,8 +37,24 @@ def save_app_settings(settings: AppSettings) -> None:
         # Create the directory if it doesn't exist
         os.makedirs(APP_DATA_DIR, exist_ok=True)
         
+        # Normalize the ollama URL
+        settings.ollama.llm_host = normalize_url(settings.ollama.llm_host)
+        settings.ollama.embedding_host = normalize_url(settings.ollama.embedding_host)
+        
         SETTINGS_FILE.write_text(settings.model_dump_json(indent=2))
         logger.info(f"Saved settings to {SETTINGS_FILE}")
     except Exception as e:
         logger.error(f"Error saving settings: {str(e)}")
         raise e
+    
+# Normalize an url
+def normalize_url(url: str) -> str:
+    """Normalize the URL to prevent double slashes and ensure proper formatting"""
+    # Remove trailing slashes
+    url = url.rstrip('/')
+    
+    # Ensure the URL has a scheme, default to http if none provided
+    if not url.startswith(('http://', 'https://')):
+        url = f"http://{url}"
+        
+    return url
