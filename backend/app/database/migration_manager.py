@@ -59,15 +59,16 @@ def run_migrations(engine: Engine):
             session = Session()
             
             try:
-                # Init default datasources
-                from app.services.datasource import init_default_datasources
-                init_default_datasources(session)
-                logger.info("Default datasources initialized")
-
+                
                 # Init default folders
                 from app.services.db_file import create_default_db_filestructure
                 create_default_db_filestructure(session)
                 logger.info("Default folders initialized")
+
+                # Init default datasources
+                from app.services.datasource import init_default_datasources
+                init_default_datasources(session)
+                logger.info("Default datasources initialized")
                 
                 session.commit()
             except Exception as e:
