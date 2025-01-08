@@ -113,16 +113,16 @@ def _create_doc_store(datasource_identifier: str) -> SimpleDocumentStore:
         # Create the docstore directory if it doesn't exist
         docstores_dir = Path("/data/.idapt/docstores")
         docstores_dir.mkdir(parents=True, exist_ok=True)
-        docstores_file = docstores_dir / f"{datasource_identifier}.json"
+        docstore_file = docstores_dir / f"{datasource_identifier}.json"
 
         docstore = None
         # If the file doesn't exist, create a new docstore and persist it
-        if not docstores_file.exists():
+        if not docstore_file.exists():
             docstore = SimpleDocumentStore()
-            docstore.persist(persist_path=str(docstores_file))
+            docstore.persist(persist_path=str(docstore_file))
         else:
             docstore = SimpleDocumentStore.from_persist_path(
-                str(docstores_file)
+                str(docstore_file)
             )
 
         return docstore
@@ -263,11 +263,17 @@ def delete_file_llama_index(session: Session, full_path: str):
                 file.processed_stacks = json.dumps(processed_stacks)
                 # Commit the changes to the file the database
                 session.commit()
-            
+
+        # Needed for now as SimpleDocumentStore is not persistent
+        doc_store.persist(persist_path=get_docstore_path(datasource_identifier))
+
 
     except Exception as e:
         logger.error(f"Error deleting file from LlamaIndex: {str(e)}")
         raise
+
+def get_docstore_path(datasource_identifier: str) -> str:
+    return f"/data/.idapt/docstores/{datasource_identifier}.json"
 
 def rename_file_llama_index(session: Session, full_old_path: str, full_new_path: str):
     try:

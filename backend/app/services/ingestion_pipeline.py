@@ -26,7 +26,7 @@ from app.services.db_file import get_db_file
 from app.services.datasource import get_storage_components
 from app.settings.model_initialization import init_embedding_model
 from app.settings.models import AppSettings
-
+from app.services.llama_index import get_docstore_path
 import logging
 
 logger = logging.getLogger("uvicorn")
@@ -264,6 +264,10 @@ def process_files(full_file_paths: List[str], datasource_identifier: str, app_se
 
         # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
         #ingestion_pipeline.persist(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
+
+        # Needed for now as SimpleDocumentStore is not persistent
+        doc_store.persist(persist_path=get_docstore_path(datasource_identifier))
+
 
         logger.info(f"Processed {full_file_paths}")
 
