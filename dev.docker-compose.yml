@@ -49,7 +49,8 @@ services:
       #  condition: service_healthy
     environment:
       ENVIRONMENT: dev
-      NEXT_TELEMETRY_DISABLED: 1
+      NEXT_TELEMETRY_DISABLED: 1 # For nextjs
+      ANONYMIZED_TELEMETRY: False # For chromadb
     volumes:
       - ./frontend:/frontend # Use a bind mount to sync the frontend code with the container and allow code changes to be synced.
     restart: unless-stopped
