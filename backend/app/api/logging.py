@@ -34,6 +34,7 @@ def configure_app_logging():
     # Set other loggers
     logging.getLogger('sqlalchemy').setLevel(logging.WARNING)
     logging.getLogger('alembic').setLevel(logging.WARNING)
+    logging.getLogger('httpx').setLevel(logging.WARNING)
       
     # Filter out health check logs from uvicorn
     logging.getLogger("uvicorn.access").addFilter(
