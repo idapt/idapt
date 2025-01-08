@@ -10,7 +10,6 @@ from app.settings.models import AppSettings
 
 from sqlalchemy.orm import Session
 import json
-import time
 import logging
 
 logger = logging.getLogger("uvicorn")
@@ -29,22 +28,15 @@ async def process_queued_files(
 
         # Wait for Ollama models to be downloaded
         await wait_for_ollama_models_to_be_downloaded(app_settings)
-        
-        # Run forever
-        while True:
-            try:
-                # Process all files marked as processing that have been interrupted with unfinished processing
-                _process_files_marked_as_processing(session, app_settings)
+   
+        logger.info("Beginning processing files")
+        # Process all files marked as processing that have been interrupted with unfinished processing
+        _process_files_marked_as_processing(session, app_settings)
 
-                # Process all queued files
-                _process_all_queued_files(session, app_settings)
-            except Exception as e:
-                logger.error(f"Processing loop error, retrying: {str(e)}")
-                time.sleep(2)
-            
-            # Wait
-            time.sleep(1)
-    
+        # Process all queued files
+        _process_all_queued_files(session, app_settings)
+   
+
     except Exception as e:
         logger.error(f"Processing loop error: {str(e)}")
 

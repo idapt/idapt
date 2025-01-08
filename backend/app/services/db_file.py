@@ -280,6 +280,14 @@ def update_db_file_status(
             existing_stacks_to_process.extend(stacks_to_process)
             # Convert back to json string
             file.stacks_to_process = json.dumps(existing_stacks_to_process)
+
+        # If we are setting the file to processing, also set the processing_started_at timestamp
+        if status == FileStatus.PROCESSING:
+            file.processing_started_at = datetime.now(timezone.utc)
+
+        # If we are setting the file to processed, also set the processing_started_at timestamp
+        if status == FileStatus.COMPLETED:
+            file.processing_started_at = None
         
         session.commit()
         return file

@@ -30,6 +30,7 @@ async def chat_route(
     app_settings: AppSettings = Depends(get_app_settings),
 ):
     try:
+        logger.info("Chat route called")
         last_message_content = data.get_last_message_content()
         messages = data.get_history_messages()
 
@@ -68,20 +69,28 @@ async def chat_request_route(
     data: ChatData,
     app_settings: AppSettings = Depends(get_app_settings),
 ) -> Result:
-    last_message_content = data.get_last_message_content()
-    messages = data.get_history_messages()
+    try:
+        logger.info("Chat request route called")
+        last_message_content = data.get_last_message_content()
+        messages = data.get_history_messages()
 
-    doc_ids = data.get_chat_document_ids()
-    filters = generate_filters(doc_ids)
-    params = data.data or {}
-    logger.info(
-        f"Creating chat engine with filters: {str(filters)}",
-    )
+        doc_ids = data.get_chat_document_ids()
+        filters = generate_filters(doc_ids)
+        params = data.data or {}
+        logger.info(
+            f"Creating chat engine with filters: {str(filters)}",
+        )
 
-    chat_engine = get_chat_engine(app_settings=app_settings, filters=filters, params=params)
+        chat_engine = get_chat_engine(app_settings=app_settings, filters=filters, params=params)
 
-    response = await chat_engine.achat(last_message_content, messages)
-    return Result(
-        result=Message(role=MessageRole.ASSISTANT, content=response.response),
-        nodes=SourceNodes.from_source_nodes(response.source_nodes),
-    )
+        response = await chat_engine.achat(last_message_content, messages)
+        return Result(
+            result=Message(role=MessageRole.ASSISTANT, content=response.response),
+            nodes=SourceNodes.from_source_nodes(response.source_nodes),
+        )
+    except Exception as e:
+        logger.error(f"Error in chat request route: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error in chat request route: {str(e)}"
+        ) from e
