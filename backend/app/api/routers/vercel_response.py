@@ -112,11 +112,11 @@ class VercelStreamResponse(StreamingResponse):
             yield cls.convert_text(token)
 
         # Generate next questions if next question prompt is configured
-        question_data = await cls._generate_next_questions(
-            chat_data.messages, final_response
-        )
-        if question_data:
-            yield cls.convert_data(question_data)
+        #question_data = await cls._generate_next_questions(
+        #    chat_data.messages, final_response
+        #)
+        #if question_data:
+        #    yield cls.convert_data(question_data)
 
         # the text_generator is the leading stream, once it's finished, also finish the event stream
         event_handler.is_done = True
