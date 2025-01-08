@@ -156,7 +156,7 @@ def process_files(full_file_paths: List[str], datasource_identifier: str, app_se
 
 
         # Create the ingestion pipeline for the datasource
-        vector_store, doc_store, _ = get_storage_components(datasource_identifier)
+        vector_store, doc_store = get_storage_components(datasource_identifier)
 
         # Create the ingestion pipeline for the datasource
         ingestion_pipeline = IngestionPipeline(

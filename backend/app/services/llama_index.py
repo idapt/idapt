@@ -3,6 +3,7 @@ from app.database.models import Datasource
 from app.services.db_file import get_db_file
 from app.settings.models import AppSettings
 
+from llama_index.core.storage import StorageContext
 from llama_index.core.indices import VectorStoreIndex
 from llama_index.core.tools import BaseTool, QueryEngineTool
 from llama_index.core.tools import ToolMetadata
@@ -12,7 +13,6 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.settings import Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
-from llama_index.core.storage.index_store import SimpleIndexStore
 from llama_index.core.llms import LLM
 import chromadb
 
@@ -25,13 +25,12 @@ import json
 logger = logging.getLogger("uvicorn")
 
 
-def get_storage_components(datasource_identifier: str) -> Tuple[ChromaVectorStore, SimpleDocumentStore, SimpleIndexStore]:
+def get_storage_components(datasource_identifier: str) -> Tuple[ChromaVectorStore, SimpleDocumentStore]:
     """Get or create all storage components for a datasource"""
     try:
         vector_store = get_vector_store(datasource_identifier)
         doc_store = get_doc_store(datasource_identifier)
-        index_store = get_index_store(datasource_identifier)
-        return vector_store, doc_store, index_store
+        return vector_store, doc_store
     except Exception as e:
         logger.error(f"Error getting storage components: {str(e)}")
         raise
@@ -43,10 +42,6 @@ def get_vector_store(datasource_identifier: str) -> ChromaVectorStore:
 def get_doc_store(datasource_identifier: str) -> SimpleDocumentStore:
     # TODO Add caching
     return _create_doc_store(datasource_identifier)
-
-def get_index_store(datasource_identifier: str) -> SimpleIndexStore:
-    # TODO Add caching
-    return _create_index_store(datasource_identifier)
 
 def get_index(datasource_identifier: str) -> VectorStoreIndex:
     # TODO Add caching
@@ -130,46 +125,22 @@ def _create_doc_store(datasource_identifier: str) -> SimpleDocumentStore:
         logger.error(f"Error creating doc store: {str(e)}")
         raise
 
-def _create_index_store(datasource_identifier: str) -> SimpleIndexStore:
-    try:
-        # Create the index store directory if it doesn't exist
-        indexstores_dir = Path("/data/.idapt/indexstores") / datasource_identifier
-        indexstores_dir.mkdir(parents=True, exist_ok=True)
-        indexstores_file = indexstores_dir / f"{datasource_identifier}.json"
-        
-        index_store = None
-        # If the file doesn't exist, create a new index store and persist it
-        if not indexstores_file.exists():
-            index_store = SimpleIndexStore()
-            index_store.persist(persist_path=str(indexstores_file))
-        else:
-            index_store = SimpleIndexStore.from_persist_path(
-                str(indexstores_file)
-            )
-        return index_store
-    except Exception as e:
-        logger.error(f"Error creating index store: {str(e)}")
-        raise
-
 def _create_index(datasource_identifier: str) -> VectorStoreIndex:
     try:
-        vector_store, doc_store, _ = get_storage_components(datasource_identifier)
-        # Recreate the index from the vector store and doc store at each app restart if needed
-        index = VectorStoreIndex.from_vector_store(
+        vector_store, doc_store = get_storage_components(datasource_identifier)
+
+        storage_context = StorageContext.from_defaults(
             vector_store=vector_store,
-            docstore=doc_store,
-            #index_store=index_store # Remove index store support for now as it is not thought to be important
+            docstore=doc_store
         )
+
+        # Recreate the index from the vector store and doc store at each app restart if needed
+        index = VectorStoreIndex.from_documents(
+            [],  # Empty nodes as they will be loaded from storage context
+            storage_context=storage_context
+        )
+
         return index
-        #storage_context = StorageContext.from_defaults(
-        #    vector_store=vector_store,
-        #    docstore=doc_store,
-        #    index_store=index_store
-        #)
-        #return VectorStoreIndex(
-        #    [],  # Empty nodes list for initial creation
-        #    storage_context=storage_context
-        #)
     except Exception as e:
         logger.error(f"Error creating index: {str(e)}")
         raise
@@ -274,6 +245,9 @@ def delete_file_llama_index(session: Session, full_path: str):
 
 def get_docstore_path(datasource_identifier: str) -> str:
     return f"/data/.idapt/docstores/{datasource_identifier}.json"
+
+def get_indexstore_path(datasource_identifier: str) -> str:
+    return f"/data/.idapt/indexstores/{datasource_identifier}.json"
 
 def rename_file_llama_index(session: Session, full_old_path: str, full_new_path: str):
     try:
