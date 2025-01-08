@@ -17,7 +17,7 @@ from llama_index.core.tools.function_tool import FunctionTool
 from llama_index.indices.managed.llama_cloud.base import LlamaCloudIndex
 from llama_index.readers.file import FlatReader
 from pydantic import BaseModel, Field
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 PRIVATE_STORE_PATH = str(Path("/data/.idapt/output", "uploaded"))
 TOOL_STORE_PATH = str(Path("/data/.idapt/output", "tools"))
 LLAMA_CLOUD_STORE_PATH = str(Path("/data/.idapt/output", "llamacloud"))

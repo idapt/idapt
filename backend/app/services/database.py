@@ -9,7 +9,7 @@ from app.database.connection import get_connection_string, get_db_path
 from app.database.migration_manager import run_migrations
 import os
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 def create_session() -> Session:
     """Create a new database session"""

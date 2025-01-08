@@ -1,11 +1,6 @@
-import logging
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 health_router = r = APIRouter()
-
-logger = logging.getLogger("uvicorn")
-
 
 @r.get("")
 async def health_route() -> str:

@@ -13,7 +13,7 @@ from app.services.datasource import get_all_datasources
 from app.services.llama_index import get_query_tool
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
 def get_chat_engine(app_settings: AppSettings, datasource_identifier: str = None, filters=None, params=None, event_handlers=None, **kwargs):

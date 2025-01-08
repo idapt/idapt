@@ -8,7 +8,7 @@ from app.engine.loaders.web import WebLoaderConfig, get_web_documents
 from llama_index.core import Document
 from app.database.connection import get_connection_string
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
 def load_configs() -> Dict[str, Any]:

@@ -17,7 +17,7 @@
 #from app.engine.ingestion.zettlekasten_index import ZettelkastenIndexSingleton
 #
 #import logging
-#logger = logging.getLogger(__name__)
+#logger = logging.getLogger("uvicorn")
 #
 #class ZettlekastenExtractor(BaseExtractor):
 #

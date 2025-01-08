@@ -6,7 +6,7 @@ from llama_index.core.settings import Settings
 from llama_index.core.tools import FunctionTool
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 # Prompt based on https://github.com/e2b-dev/ai-artifacts
 CODE_GENERATION_PROMPT = """You are a skilled software engineer. You do not make mistakes. Generate an artifact. You can install additional dependencies. You can use one of the following templates:

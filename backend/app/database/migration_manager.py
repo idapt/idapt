@@ -6,7 +6,7 @@ from sqlalchemy import Engine, create_engine
 import logging
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 def get_alembic_config() -> Config:
     """Get Alembic config"""
@@ -33,6 +33,8 @@ def run_migrations(engine: Engine):
     """Run database migrations if needed"""
     try:
         alembic_cfg = get_alembic_config()
+        alembic_cfg.set_main_option("sqlalchemy.url", str(engine.url))
+        logger.info("Database URL: " + str(engine.url))
         
         # First check if we need to create/stamp initial database
         with engine.begin() as connection:
@@ -45,30 +47,46 @@ def run_migrations(engine: Engine):
                 # Create all tables
                 from app.database.models import Base
                 Base.metadata.create_all(engine)
-                
+                logger.info("Database tables created")
                 # Stamp with current head
                 command.stamp(alembic_cfg, "head")
                 logger.info("Database initialized and stamped with head revision")
-                
+
+        # If we initialized the database, create default data
+        if not current_heads:
+            # Create a session for initialization
+            from sqlalchemy.orm import sessionmaker
+            Session = sessionmaker(bind=engine)
+            session = Session()
+            
+            try:
                 # Init default datasources
                 from app.services.datasource import init_default_datasources
-                init_default_datasources(connection, logger)
+                init_default_datasources(session, logger)
                 logger.info("Default datasources initialized")
 
                 # Init default folders
                 from app.services.db_file import create_default_db_filestructure
-                create_default_db_filestructure(connection, logger)
+                create_default_db_filestructure(session, logger)
                 logger.info("Default folders initialized")
+                
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logger.error(f"Error initializing default data: {str(e)}")
+                raise
+            finally:
+                session.close()
+            
+            return
 
-                return
-        
         # Check if we need to run migrations
         if not check_current_head(engine):
             logger.info("Database not up to date, running migrations...")
             command.upgrade(alembic_cfg, "head")
             logger.info("Database migrations completed successfully")
         else:
-            logger.debug("Database is up to date")
+            logger.info("Database is up to date")
             
     except Exception as e:
         logger.error(f"Error running database migrations: {str(e)}")

@@ -7,7 +7,7 @@ import logging
 from typing import List, Tuple
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
     
 def create_default_db_filestructure(session: Session):
     """Create the default filestructure in the database"""

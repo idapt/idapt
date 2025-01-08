@@ -12,7 +12,7 @@
 #
 #import logging
 #
-#logger = logging.getLogger(__name__)
+#logger = logging.getLogger("uvicorn")
 #
 #class SingletonMeta(type):
 #    _instances = {}

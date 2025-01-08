@@ -8,7 +8,7 @@ from llama_index.core.callbacks.schema import CBEventType
 from llama_index.core.tools.types import ToolOutput
 from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
 class CallbackEvent(BaseModel):

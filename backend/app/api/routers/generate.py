@@ -11,7 +11,7 @@ from app.database.models import FileStatus
 from app.services.database import get_db_session
 from sqlalchemy.orm import Session
 import asyncio
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 generate_router = r = APIRouter()
 

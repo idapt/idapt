@@ -6,7 +6,7 @@ import pytz  # type: ignore
 import requests  # type: ignore
 from llama_index.core.tools import FunctionTool
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
 class OpenMeteoWeather:

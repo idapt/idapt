@@ -4,7 +4,7 @@ from app.services.db_file import update_db_file_status, mark_db_stack_as_process
 from app.services.database import get_session
 from app.services.datasource import get_datasource_identifier_from_path
 from app.services.llama_index import delete_file_llama_index
-from app.services.ollama_status import wait_for_ollama_models
+from app.services.ollama_status import is_ollama_server_reachable, wait_for_ollama_models_to_be_downloaded
 from app.database.models import File, FileStatus
 from app.settings.models import AppSettings
 
@@ -13,16 +13,22 @@ import json
 import time
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
     
-def process_queued_files(
+async def process_queued_files(
         session: Session,
         app_settings: AppSettings
     ):
     """Processing loop"""
     try:
-        # Wait for Ollama models to be ready
-        wait_for_ollama_models(app_settings)
+        # Check if the ollama server is reachable
+        if not await is_ollama_server_reachable(app_settings.ollama.llm_host):
+            # We can't process files if the ollama server is not reachable, skip this processing request
+            logger.error("Ollama server is not reachable, skipping processing")
+            return
+
+        # Wait for Ollama models to be downloaded
+        await wait_for_ollama_models_to_be_downloaded(app_settings)
         
         # Run forever
         while True:

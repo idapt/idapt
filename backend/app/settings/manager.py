@@ -6,7 +6,7 @@ import os
 from app.config import APP_DATA_DIR
 from app.settings.models import AppSettings
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 SETTINGS_FILE = Path(APP_DATA_DIR) / "app-settings.json"
 

@@ -22,7 +22,7 @@ from sqlalchemy import text
 from pathlib import Path
 import json
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
 def get_storage_components(datasource_identifier: str) -> Tuple[ChromaVectorStore, SimpleDocumentStore, SimpleIndexStore]:

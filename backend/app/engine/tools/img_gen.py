@@ -7,7 +7,7 @@ import requests  # type: ignore
 from llama_index.core.tools import FunctionTool
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
 class ImageGeneratorToolOutput(BaseModel):

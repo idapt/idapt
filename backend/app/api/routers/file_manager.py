@@ -12,7 +12,7 @@ from app.services.file_manager import upload_files, download_file, delete_file, 
 from app.services.database import get_db_session
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 file_manager_router = r = APIRouter()
 

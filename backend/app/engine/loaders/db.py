@@ -4,7 +4,7 @@ import yaml
 from typing import List
 from pydantic import BaseModel
 from app.database.connection import get_connection_string
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
 class DBLoaderConfig(BaseModel):

@@ -9,7 +9,7 @@ import logging
 from typing import List, Optional
 import re
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
     # Storage components

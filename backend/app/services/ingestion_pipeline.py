@@ -29,7 +29,7 @@ from app.settings.models import AppSettings
 
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 
 TRANSFORMATIONS_STACKS = {

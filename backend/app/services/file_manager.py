@@ -16,7 +16,7 @@ from app.database.models import FileStatus
 
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 async def upload_files(request: FileUploadRequest, session: Session) -> AsyncGenerator[dict, None]:
     try:

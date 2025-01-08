@@ -1,51 +1,64 @@
 #This file is used only in a dev environment to run migrations via the alembic CLI
 from logging.config import fileConfig
-from alembic import context
-from app.database.connection import get_connection_string
-from app.database.models import Base
 
-# Configure alembic.ini settings
+from sqlalchemy import engine_from_config
+from sqlalchemy import pool
+
+from alembic import context
+
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
 config = context.config
+
+# Interpret the config file for Python logging.
+# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Set connection string
-connection_string = get_connection_string()
-config.set_main_option('sqlalchemy.url', connection_string)
-
-# Set target metadata
+# add your model's MetaData object here
+# for 'autogenerate' support
+# from myapp import mymodel
+# target_metadata = mymodel.Base.metadata
+from app.database.models import Base
 target_metadata = Base.metadata
 
-# Ignore tables managed by llama index
-TABLES_TO_INCLUDE = ["files", "folders", "datasources"]
+# other values from the config, defined by the needs of env.py,
+# can be acquired:
+# my_important_option = config.get_main_option("my_important_option")
+# ... etc.
 
-# Ignore the data_embeddings table
-def include_object(object, name, type_, reflected, compare_to):
-    """
-    Should you include this table or not?
-    """
-    if type_ == "table" and name in TABLES_TO_INCLUDE:
-        return True
-    return False
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
+    """Run migrations in 'offline' mode.
+
+    This configures the context with just a URL
+    and not an Engine, though an Engine is acceptable
+    here as well.  By skipping the Engine creation
+    we don't even need a DBAPI to be available.
+
+    Calls to context.execute() here emit the given string to the
+    script output.
+
+    """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
-        include_object=include_object, 
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
+
     with context.begin_transaction():
         context.run_migrations()
 
-def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-    from sqlalchemy import engine_from_config
-    from sqlalchemy import pool
 
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode.
+
+    In this scenario we need to create an Engine
+    and associate a connection with the context.
+
+    """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -54,19 +67,14 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection,
-            target_metadata=target_metadata,
-            include_object=include_object, 
-            version_table="alembic_version",
-            compare_type=True,
-            compare_server_default=True
+            connection=connection, target_metadata=target_metadata
         )
 
         with context.begin_transaction():
             context.run_migrations()
 
-# Only run migrations when called via alembic CLI
-if context.is_offline_mode() and __name__ == "alembic.env":
+
+if context.is_offline_mode():
     run_migrations_offline()
-elif __name__ == "alembic.env":
+else:
     run_migrations_online()

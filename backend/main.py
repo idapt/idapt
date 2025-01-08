@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from app.api.logging import configure_app_logging
 configure_app_logging()
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 from fastapi import FastAPI
 

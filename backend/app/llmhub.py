@@ -5,7 +5,7 @@ from typing import Dict
 from llama_index.core.settings import Settings
 from llama_index.embeddings.openai import OpenAIEmbedding
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn")
 
 DEFAULT_MODEL = "gpt-3.5-turbo"
 DEFAULT_EMBEDDING_MODEL = "text-embedding-3-large"
