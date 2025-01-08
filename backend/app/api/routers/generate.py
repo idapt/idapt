@@ -65,10 +65,11 @@ async def get_generation_status_route(
 ):
     """Get the current status of the generation queue"""
     try:
+        #logger.info(f"Getting generation status")
         status = get_queue_status(session)
-        logger.info(f"Generation status: {status}")
         return status
     except Exception as e:
+        logger.error(f"Error in get_generation_status_route: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 #@r.websocket("/status/ws")

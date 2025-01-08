@@ -27,6 +27,7 @@ async def upload_files_route(
     request: FileUploadRequest,
     session: Session = Depends(get_db_session)
 ) -> EventSourceResponse:
+    logger.info(f"Uploading {len(request.items)} files")
     return EventSourceResponse(upload_files(request, session))
 
 @r.get("/file/{encoded_path}/download")
@@ -34,6 +35,7 @@ async def download_file_route(
     encoded_path: str,
     session: Session = Depends(get_db_session)
 ):
+    logger.info(f"Downloading file {encoded_path}")
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     result = await download_file(session, full_path)
@@ -52,6 +54,7 @@ async def delete_file_route(
     encoded_path: str,
     session: Session = Depends(get_db_session)
 ):
+    logger.info(f"Deleting file {encoded_path}")
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     await delete_file(session, full_path)
@@ -62,6 +65,7 @@ async def delete_folder_route(
     encoded_path: str,
     session: Session = Depends(get_db_session)
 ):
+    logger.info(f"Deleting folder {encoded_path}")
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     await delete_folder(session, full_path)
@@ -73,6 +77,7 @@ async def rename_file_route(
     new_name: str, 
     session: Session = Depends(get_db_session)
 ):
+    logger.info(f"Renaming file {encoded_path} to {new_name}")
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     await rename_file(session, full_path, new_name)
@@ -121,6 +126,7 @@ async def download_folder_route(
     encoded_path: str,
     session: Session = Depends(get_db_session)
 ):
+    logger.info(f"Downloading folder {encoded_path}")
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path)
     result = await download_folder(session, full_path)

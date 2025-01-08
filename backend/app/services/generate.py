@@ -24,7 +24,7 @@ async def process_queued_files(
         # Check if the ollama server is reachable
         if not await is_ollama_server_reachable(app_settings.ollama.llm_host):
             # We can't process files if the ollama server is not reachable, skip this processing request
-            logger.error("Ollama server is not reachable, skipping processing")
+            logger.error("Ollama server is not reachable, skipping processing request")
             return
 
         # Wait for Ollama models to be downloaded

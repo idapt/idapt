@@ -58,7 +58,7 @@ async def is_ollama_server_reachable(base_url: str) -> bool:
             response = await client.get(f"{base_url}/api/tags")
             return response.status_code == 200
     except Exception as e:
-        logger.error(f"Error checking if ollama server is reachable: {str(e)}")
+        #logger.error(f"Error checking if ollama server is reachable: {str(e)}")
         return False
 
 # If you dont want to pull the models if not available, set background_tasks to None
@@ -67,8 +67,7 @@ async def can_process(app_settings: AppSettings, background_tasks: BackgroundTas
     try:
         # Check if the ollama server is reachable
         if not await is_ollama_server_reachable(app_settings.ollama.llm_host):
-            # We can't process files if the ollama server is not reachable, skip this processing request
-            logger.error("Ollama server is not reachable, skipping processing")
+            # We can't process files if the ollama server is not reachable
             return False
 
         # Check LLM models

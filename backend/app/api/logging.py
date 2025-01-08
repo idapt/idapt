@@ -17,8 +17,13 @@ def configure_app_logging():
 
     # Configure uvicorn loggers
     uvicorn_logger = logging.getLogger("uvicorn")
+    uvicorn_logger.setLevel(logging.INFO if environment == "dev" else logging.INFO)
     uvicorn_logger.handlers = []  # Remove existing handlers
     uvicorn_logger.propagate = False  # Don't propagate to root logger
+
+    uvicorn_access_logger = logging.getLogger("uvicorn.access")
+    uvicorn_access_logger.setLevel(logging.WARNING if environment == "dev" else logging.WARNING)
+
     
     # Add handler for uvicorn
     handler = logging.StreamHandler()
@@ -34,11 +39,11 @@ def configure_app_logging():
     logging.getLogger("uvicorn.access").addFilter(
         lambda record: "/api/health" not in record.getMessage()
     )
-
-@contextmanager
-def get_logger_context(name: str):
-    yield logging.getLogger(name)
-
-def get_logger(name: str):
-    with get_logger_context(name) as logger:
-        return logger
+    # Filter out ollama status logs from uvicorn
+    logging.getLogger("uvicorn.access").addFilter(
+        lambda record: "/api/ollama-status" not in record.getMessage()
+    )
+    # Filter out generate status logs from uvicorn
+    logging.getLogger("uvicorn.access").addFilter(
+        lambda record: "/api/generate/status" not in record.getMessage()
+    )    

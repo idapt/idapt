@@ -7,6 +7,10 @@ from base64 import urlsafe_b64decode
 from app.services.database import get_db_session
 from app.database.models import Datasource
 from app.services.datasource import get_all_datasources, get_datasource, create_datasource, delete_datasource, update_datasource_description
+import logging
+
+logger = logging.getLogger("uvicorn")
+
 datasources_router = APIRouter()
 
 class DatasourceCreate(BaseModel):
@@ -29,16 +33,21 @@ class DatasourceUpdate(BaseModel):
 async def get_datasources_route(
     session: Session = Depends(get_db_session)
 ):
-    datasources = get_all_datasources(session)
-    # Convert to DatasourceResponse manually
-    return [DatasourceResponse(
-        id=datasource.id,
-        identifier=datasource.identifier,
-        name=datasource.name,
-        type=datasource.type,
-        description=datasource.description,
-        settings=datasource.settings,
-    ) for datasource in datasources]
+    try:
+        logger.info(f"Getting all datasources")
+        datasources = get_all_datasources(session)
+        # Convert to DatasourceResponse manually
+        return [DatasourceResponse(
+            id=datasource.id,
+            identifier=datasource.identifier,
+            name=datasource.name,
+            type=datasource.type,
+            description=datasource.description,
+            settings=datasource.settings,
+        ) for datasource in datasources]
+    except Exception as e:
+        logger.error(f"Error in get_datasources_route: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 @datasources_router.get("/{encoded_identifier}", response_model=DatasourceResponse)
 async def get_datasource_route(
@@ -46,6 +55,7 @@ async def get_datasource_route(
     session: Session = Depends(get_db_session)
 ):
     try:
+        logger.info(f"Getting datasource {encoded_identifier}")
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
         datasource = get_datasource(session, identifier)
         if not datasource:
@@ -62,6 +72,7 @@ async def get_datasource_route(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error in get_datasource_route: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @datasources_router.post("", response_model=DatasourceResponse)
@@ -70,6 +81,7 @@ async def create_datasource_route(
     session: Session = Depends(get_db_session)
 ):
     try:
+        logger.info(f"Creating datasource {datasource.name}")
         created = create_datasource(
             session,
             datasource.name,
@@ -86,6 +98,7 @@ async def create_datasource_route(
             settings=created.settings,
         )
     except Exception as e:
+        logger.error(f"Error in create_datasource_route: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @datasources_router.delete("/{encoded_identifier}")
@@ -94,6 +107,7 @@ async def delete_datasource_route(
     session: Session = Depends(get_db_session)
 ):
     try:
+        logger.info(f"Deleting datasource {encoded_identifier}")
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
         success = await delete_datasource(session, identifier)
         if not success:
@@ -102,6 +116,7 @@ async def delete_datasource_route(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error in delete_datasource_route: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @datasources_router.patch("/{encoded_identifier}")
@@ -111,6 +126,7 @@ async def update_datasource_route(
     session: Session = Depends(get_db_session)
 ):
     try:
+        logger.info(f"Updating datasource {encoded_identifier}")
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
         if update.description is not None:
             success = update_datasource_description(session, identifier, update.description)
@@ -120,4 +136,5 @@ async def update_datasource_route(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error in update_datasource_route: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e)) 

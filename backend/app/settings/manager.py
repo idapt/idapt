@@ -20,7 +20,7 @@ def get_app_settings() -> AppSettings:
         if settings_file.exists():
             data = json.loads(settings_file.read_text())
             settings = AppSettings.model_validate(data)
-            logger.info(f"Loaded settings from {settings_file}")
+            #logger.info(f"Loaded settings from {settings_file}")
             return settings
         # If the settings file does not exist, create a default settings, save it and return it
         else:
