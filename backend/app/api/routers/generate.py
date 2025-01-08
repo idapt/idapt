@@ -45,6 +45,7 @@ async def generate_route(
         # Start processing the files in the background
         # TODO Move the generate service to a separate api running on its own server
         if should_start_processing(session):    
+            logger.info("Starting processing of queued files")
             background_tasks.add_task(process_queued_files, session, app_settings)
 
         # Get the current status of the queue

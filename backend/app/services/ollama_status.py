@@ -33,7 +33,7 @@ async def _check_ollama_model(base_url: str, model_name: str, background_tasks: 
         
     try:
         async with httpx.AsyncClient() as client:
-            logger.info(f"Checking model: {model_name}")
+            #logger.info(f"Checking model: {model_name}")
             response = await client.get(f"{base_url}/api/tags")
             if response.status_code == 200:
                 models_data = response.json()
