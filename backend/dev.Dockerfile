@@ -7,7 +7,7 @@ WORKDIR /poetry-install
 ENV PYTHONPATH=/poetry-install
 
 # Install Poetry
-RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python && \
+RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry POETRY_VERSION=2.0.0 python3 - && \
     cd /usr/local/bin && \
     ln -s /opt/poetry/bin/poetry && \
     poetry config virtualenvs.create false
@@ -17,9 +17,10 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python
 # Not used for now
 # RUN apt update && apt install -y chromium chromium-driver 
 
-# Install dependencies
+# Install dependencies in the poetry-install directory 
 COPY ./pyproject.toml ./poetry.lock* /poetry-install/
-RUN poetry install
+
+RUN poetry install --no-interaction --no-root
 
 # Set the working directory to the backend directory.
 WORKDIR /backend
