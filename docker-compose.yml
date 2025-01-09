@@ -2,34 +2,63 @@ name: idapt
 
 services:
 
-  idapt:
-    container_name: idapt
+# Nginx to manage app access and serve static frontend.
+  idapt-nginx:
+    container_name: idapt-nginx
     build:
-      context: .
-      dockerfile: ./Dockerfile
+      context: ./
+      dockerfile: ./nginx/Dockerfile
     environment:
-      # Frontend variables
       ENVIRONMENT: prod
       # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}
       # Container variables
       CERTBOT_EMAIL: ${CERTBOT_EMAIL}
-      NEXT_TELEMETRY_DISABLED: 1 # For nextjs
-      ANONYMIZED_TELEMETRY: False # For chromadb
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
       - '80:80/tcp'
       - '443:443/tcp'
       - '443:443/udp'
+    # Nginx has access to every container exposed via their own network for routing.
+    networks:
+      idapt-nginx-backend-network: {}
+    volumes:
+      - nginx_data:/etc/letsencrypt
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 1s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    # Container security hardening
+    security_opt:
+      - no-new-privileges:true
+    #cap_drop: # TODO
+    #  - ALL
+    #cap_add:
+    #  - NET_BIND_SERVICE  # Only for nginx
+
+
+  idapt-backend:
+    container_name: idapt-backend
+    build:
+      context: ./backend
+      dockerfile: ./Dockerfile
+    environment:
+      ENVIRONMENT: prod
+      # Entrypoint script variables
+      HOST_DOMAIN: ${HOST_DOMAIN}
+      ANONYMIZED_TELEMETRY: False # For chromadb
+    networks:
+      idapt-nginx-backend-network: {}
     # Expose the host.docker.internal so that we can access ollama runnning on the localost from the container.
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - nginx_data:/etc/letsencrypt # Persist the certificates.
       - user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1/api/health && nginx -t || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 5s
       timeout: 10s
       retries: 3
@@ -46,3 +75,8 @@ services:
 volumes:
   user_data:
   nginx_data:
+
+networks:
+  idapt-nginx-backend-network:
+    name: idapt-nginx-backend-network
+    driver: bridge
