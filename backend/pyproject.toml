@@ -5,6 +5,7 @@ version = "0.0.1"
 description = ""
 authors = [ "idapt <info-backend@idapt.ai>" ]
 readme = "README.md"
+package-mode = false
 
 [tool.poetry.scripts]
 generate = "app.engine.generate:generate_datasource"
