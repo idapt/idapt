@@ -14,8 +14,7 @@ import {
   SelectValue,
 } from "../select";
 import { AppSettings, LLM_MODEL_PROVIDER_OPTIONS, EMBEDDING_PROVIDER_OPTIONS, LLM_MODEL_OPTIONS, EMBEDDING_MODEL_OPTIONS } from "@/app/types/settings";
-import { getSettings, updateSettings } from "@/app/api/settings";
-
+import { useSettings } from "@/app/hooks/use-settings";
 interface SettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,6 +30,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const { getSettings, updateSettings, isLoading } = useSettings();
 
   const isCustomModel = (provider: string, modelName: string): boolean => {
     const predefinedModels = LLM_MODEL_OPTIONS[provider] || [];
