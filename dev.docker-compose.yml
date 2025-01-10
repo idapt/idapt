@@ -27,6 +27,9 @@ services:
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - ./user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - ./certs:/certs # Used for ssl termination.
+    depends_on:
+      - idapt-nginx # We need the certs to be generated before the backend can start.
     restart: unless-stopped
     # Container security hardening
     security_opt:
@@ -85,7 +88,7 @@ services:
       idapt-frontend-network: {}
       idapt-backend-network: {}
     volumes:
-      - nginx_data:/etc/letsencrypt
+      - ./certs:/etc/letsencrypt # Needed to store, share and generate the certs
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
@@ -99,9 +102,6 @@ services:
     #  - ALL
     #cap_add:
     #  - NET_BIND_SERVICE  # Only for nginx
-
-volumes:
-  nginx_data:
 
 # One network for each service to keep them isolated.
 networks:

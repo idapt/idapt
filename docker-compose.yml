@@ -24,7 +24,7 @@ services:
     networks:
       idapt-nginx-backend-network: {}
     volumes:
-      - nginx_data:/etc/letsencrypt
+      - certs:/etc/letsencrypt
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
@@ -57,8 +57,9 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - certs:/certs # Needed to store, share and generate the certs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "https://localhost:8000/api/health"]
       interval: 5s
       timeout: 10s
       retries: 3
@@ -74,7 +75,7 @@ services:
 
 volumes:
   user_data:
-  nginx_data:
+  certs:
 
 networks:
   idapt-nginx-backend-network:

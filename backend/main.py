@@ -58,7 +58,7 @@ def configure_cors(app: FastAPI):
         app.add_middleware(
             CORSMiddleware,
             # For production we only allow requests from the same machine coming from the frontend as traffic is routed through nginx and origin is 127.0.0.1:3000
-            allow_origins=[f"http://127.0.0.1:3000"],
+            allow_origins=["*"],
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
@@ -103,7 +103,9 @@ if __name__ == "__main__":
             workers=1,
             reload_includes=['*.py'],
             reload_dirs=['app'],
-            log_level="info"
+            log_level="info",
+            ssl_keyfile="/certs/live/" + os.getenv("HOST_DOMAIN") + "/privkey.pem",
+            ssl_certfile="/certs/live/" + os.getenv("HOST_DOMAIN") + "/fullchain.pem"
         )
     else:
         logger.info("Starting in production mode")
@@ -113,5 +115,7 @@ if __name__ == "__main__":
             port=app_port,
             reload=False,
             workers=1,
-            log_level="info"
+            log_level="info",
+            ssl_keyfile="/certs/live/" + os.getenv("HOST_DOMAIN") + "/privkey.pem",
+            ssl_certfile="/certs/live/" + os.getenv("HOST_DOMAIN") + "/fullchain.pem"
         )
