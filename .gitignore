@@ -35,8 +35,8 @@ nginx/certs/*.key
 nginx/certs/*.pem
 
 # For dev
-user_data/
-certs/
+user-data/
+backend-certs/
 frontend-certs/
 
 # General

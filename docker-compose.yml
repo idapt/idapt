@@ -18,9 +18,8 @@ services:
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
-      - '80:80/tcp'
-      - '443:443/tcp'
-      - '443:443/udp'
+      - '80:80'
+      - '443:443'
     # Nginx has access to every container exposed via their own network for routing.
     networks:
       idapt-network: {}
@@ -59,8 +58,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
-      - certs:/certs # Needed to store, share and generate the certs
+      - user-data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - backend-certs:/certs # Needed to store, share and generate the certs
     healthcheck:
       test: ["CMD", "curl", "-f", "https://localhost:8000/api/health"]
       interval: 5s
@@ -77,8 +76,8 @@ services:
     #  - NET_BIND_SERVICE  # Only for nginx
 
 volumes:
-  user_data:
-  certs:
+  user-data:
+  backend-certs:
   frontend-certs:
 networks:
   idapt-network:

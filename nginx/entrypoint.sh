@@ -2,10 +2,6 @@
 # Set the script to exit on error
 set -e
 
-
-# Create temporary directory for processing
-mkdir -p /tmp/nginx-config
-
 # Process nginx.conf with environment variables
 envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /etc/nginx/nginx.conf
 
@@ -60,18 +56,16 @@ if [ -n "$(find /nginx-certs-source -type f \( -name '*.crt' -o -name '*.key' -o
             cp /nginx-certs-source/privkey.pem /etc/letsencrypt/live/$HOST_DOMAIN/
         fi
     fi
+# Else if there is no user provided ssl certificates, create a self signed certificate with infinite validity using openssl
+else
+    echo "No user provided ssl certificates found"
+    echo "Creating self signed ssl certificate with infinite validity using openssl"
+    # Create the letsencrypt folder if it doesn't exist
+    mkdir -p /etc/letsencrypt/live/$HOST_DOMAIN
+    openssl req -x509 -newkey rsa:4096 -keyout /etc/letsencrypt/live/$HOST_DOMAIN/privkey.pem -out /etc/letsencrypt/live/$HOST_DOMAIN/fullchain.pem -days 365000 -nodes -subj "/CN=$HOST_DOMAIN"
 fi
 
-# If there is user provided ssl certificates in the source folder
-if [ -n "$(find /nginx-certs-source -type f \( -name '*.crt' -o -name '*.key' -o -name '*.pem' \))" ]; then
-    echo "Starting nginx without certbot support"
-    nginx -g 'daemon off;'
-else
-    # Else if the app is running in local mode with a local domain like localhost, 127.0.0.1, or a local ip address like 192.168.*.* or the environment is dev
-    if [ "$HOST_DOMAIN" = "localhost" ] || [ "$HOST_DOMAIN" = "127.0.0.1" ] || [ "$HOST_DOMAIN" = "192.168.*.*" ] || [ "$ENVIRONMENT" = "dev" ]; then
-        echo "Setting USE_LOCAL_CA=1 to use local CA for local ip address or dev environment"
-        export USE_LOCAL_CA=1
-    fi
-    echo "Starting nginx with certbot support"
-    /scripts/start_nginx_certbot.sh
-fi
+
+# Start nginx
+echo "Starting nginx"
+nginx -g 'daemon off;'

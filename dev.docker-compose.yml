@@ -26,8 +26,8 @@ services:
       HOST_DOMAIN: ${HOST_DOMAIN}
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
-      - ./user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
-      - ./certs:/certs # Used for ssl termination.
+      - ./user-data:/data # The volume where the data is stored. Use data mount name to make it shorter.
+      - ./backend-certs:/certs # Used for ssl termination.
     restart: unless-stopped
     # Container security hardening
     security_opt:
@@ -70,16 +70,13 @@ services:
       dockerfile: ./dev.Dockerfile
     environment:
       ENVIRONMENT: dev
-      # Entrypoint script variables
+      DEPLOYMENT_TYPE: self-hosted
       HOST_DOMAIN: ${HOST_DOMAIN}
-      # Container variables
-      CERTBOT_EMAIL: ${CERTBOT_EMAIL}
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
-      - '80:80/tcp'
-      - '443:443/tcp'
-      - '443:443/udp'
+      - '80:80'
+      - '443:443'
     # Nginx has access to every container exposed via their own network for routing.
     networks:
       idapt-network: {}

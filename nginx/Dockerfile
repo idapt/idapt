@@ -9,10 +9,10 @@ RUN npm run build
 
 
 
-FROM jonasal/nginx-certbot:5.4.0-alpine
+FROM nginx:1.27.3-alpine
 
 # Install required packages for envsubst and proper SSL handling
-RUN apk add --no-cache gettext
+RUN apk add --no-cache gettext openssl
 
 # Copy nginx config
 RUN mkdir -p /nginx-config-source
