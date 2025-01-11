@@ -4,56 +4,70 @@ import { ProcessingToastItem } from '@/app/types/toast';
 import { useToastContext } from '@/app/contexts/toast-context';
 import { BaseToast } from "../file-manager/base-toast";
 
+interface ProcessingFile {
+  name: string;
+  path: string;
+}
+
+interface ProcessingStatus {
+  queued_count: number;
+  processing_count: number;
+  processed_count: number;
+  queued_files: ProcessingFile[];
+  processing_files: ProcessingFile[];
+  processed_files: ProcessingFile[];
+}
+
 export function ProcessingToast() {
   const { items, resetAll } = useToastContext();
   const [isMinimized, setIsMinimized] = useState(false);
+  const [status, setStatus] = useState<ProcessingStatus | null>(null);
   
-  const processingItems = items.filter((item): item is ProcessingToastItem => 
-    item.type === 'processing'
-  );
-  
-  const activeProcessing = processingItems.filter(item => 
-    item.status === 'processing'
-  );
-  
-  const completedProcessing = processingItems.filter(item => 
-    item.status === 'completed'
-  );
-
-  // Auto-hide and reset when all processing is complete
   useEffect(() => {
-    if (activeProcessing.length === 0 && completedProcessing.length > 0) {
-      const timer = setTimeout(() => {
-        if (processingItems.every(item => item.total === item.processed)) {
-          resetAll();
-        }
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [activeProcessing.length, completedProcessing.length, processingItems, resetAll]);
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch('/api/generate/status');
+        const data = await response.json();
+        setStatus(data);
+      } catch (error) {
+        console.error('Failed to fetch processing status:', error);
+      }
+    };
 
-  if (activeProcessing.length === 0 && completedProcessing.length === 0) {
+    const interval = setInterval(fetchStatus, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Hide toast when no files are being processed or queued
+  if (!status || (status.queued_count === 0 && status.processing_count === 0)) {
     return null;
   }
 
-  const totalProcessing = processingItems.reduce((acc, item) => acc + item.total, 0);
-  const totalProcessed = processingItems.reduce((acc, item) => acc + item.processed, 0);
-  const progress = Math.round((totalProcessed / totalProcessing) * 100);
+  const totalFiles = status.queued_count + status.processing_count + status.processed_count;
+  const progress = Math.round((status.processed_count / totalFiles) * 100);
 
   return (
     <BaseToast
       title="Processing Files"
       progress={progress}
-      total={totalProcessing}
-      completed={totalProcessed}
+      total={totalFiles}
+      completed={status.processed_count}
       isMinimized={isMinimized}
       onMinimize={() => setIsMinimized(!isMinimized)}
     >
       <div className="max-h-[240px] overflow-y-auto">
-        {activeProcessing.map((item) => (
+        {status.processing_files.map((file) => (
           <ProcessingItem
-            key={item.id}
-            item={item}
+            key={file.path}
+            name={file.name}
+            status="processing"
+          />
+        ))}
+        {status.queued_files.map((file) => (
+          <ProcessingItem
+            key={file.path}
+            name={file.name}
+            status="pending"
           />
         ))}
       </div>
@@ -61,19 +75,15 @@ export function ProcessingToast() {
   );
 }
 
-function ProcessingItem({ item }: { item: ProcessingToastItem }) {
+function ProcessingItem({ name, status }: { name: string; status: 'processing' | 'pending' }) {
   return (
     <div className="px-3 py-2 hover:bg-gray-50">
       <div className="flex justify-between items-center gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          {item.status === 'processing' && <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />}
-          {item.status === 'completed' && <CheckCircle2 className="h-3 w-3 text-green-500 flex-shrink-0" />}
-          {item.status === 'error' && <AlertCircle className="h-3 w-3 text-red-500 flex-shrink-0" />}
-          <span className="text-xs truncate">{item.name}</span>
+          {status === 'processing' && <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />}
+          {status === 'pending' && <div className="h-3 w-3 bg-gray-200 rounded-full flex-shrink-0" />}
+          <span className="text-xs truncate">{name}</span>
         </div>
-        <span className="text-xs text-gray-500">
-          {item.processed}/{item.total}
-        </span>
       </div>
     </div>
   );

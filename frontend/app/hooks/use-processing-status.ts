@@ -9,7 +9,6 @@ export function useProcessingStatus() {
   useEffect(() => {
     const controller = new AbortController();
     let isProcessing = false;
-    let currentTotal = 0;
 
     const checkStatus = async () => {
       try {
@@ -18,26 +17,22 @@ export function useProcessingStatus() {
         });
         
         const data = await response.json();
-        const totalFiles = data.queued_count + data.processing_count;
-        const processedFiles = data.processed_files?.length || 0;
+        const totalFiles = data.queued_count + data.processing_count + data.processed_count;
         
         if (totalFiles > 0) {
-          if (!isProcessing || currentTotal !== totalFiles) {
+          if (!isProcessing) {
             startProcessing('Processing files', totalFiles);
             isProcessing = true;
-            currentTotal = totalFiles;
           }
-          updateProcessing('global-processing-status', processedFiles, totalFiles);
+          updateProcessing('global-processing-status', data.processed_count, totalFiles);
         } else if (isProcessing) {
           completeProcessing('global-processing-status');
           isProcessing = false;
-          currentTotal = 0;
         }
       } catch (error) {
         if (isProcessing) {
           failProcessing('global-processing-status');
           isProcessing = false;
-          currentTotal = 0;
         }
       }
     };
