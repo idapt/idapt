@@ -252,7 +252,7 @@ def process_files(full_file_paths: List[str], datasource_identifier: str, app_se
             logger.info(f"Running processing stack {transformations_stack_name} on {full_file_paths}")
             # This will add the documents to the vector store and docstore in the expected llama index way
             # Add the embed model to the transformations stack as we always want to embed the results of the processing stacks for search
-            transformations.append(Settings.embed_model)
+            transformations.append(embed_model)
             # Set the transformations for the ingestion pipeline
             ingestion_pipeline.transformations = transformations
             nodes = ingestion_pipeline.run(
