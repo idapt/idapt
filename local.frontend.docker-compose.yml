@@ -11,10 +11,7 @@ services:
     environment:
       ENVIRONMENT: prod
       DEPLOYMENT_TYPE: hosted
-      # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}
-      # Container variables
-      CERTBOT_EMAIL: ${CERTBOT_EMAIL}
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
