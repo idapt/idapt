@@ -12,12 +12,6 @@ services:
       ENVIRONMENT: prod
       DEPLOYMENT_TYPE: hosted
       HOST_DOMAIN: ${HOST_DOMAIN}
-    ports:
-      # Expose the nginx listening ports through the host firewall.
-      # Add 127.0.0.1 to only open ports locally and not through the host firewall.
-      #- '80:80/tcp'
-      #- '443:443/tcp'
-      #- '443:443/udp'
     # Nginx has access to every container exposed via their own network for routing.
     volumes:
       - certs:/etc/letsencrypt
