@@ -34,6 +34,9 @@ WORKDIR /poetry-install
 
 ENV PYTHONPATH=/poetry-install
 
+# Install openssl
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 # Install Poetry
 RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry POETRY_VERSION=2.0.0 python3 - && \
     cd /usr/local/bin && \

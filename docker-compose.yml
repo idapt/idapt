@@ -10,6 +10,7 @@ services:
       dockerfile: ./nginx/Dockerfile
     environment:
       ENVIRONMENT: prod
+      DEPLOYMENT_TYPE: self-hosted
       # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}
       # Container variables
@@ -22,9 +23,9 @@ services:
       - '443:443/udp'
     # Nginx has access to every container exposed via their own network for routing.
     networks:
-      idapt-nginx-backend-network: {}
+      idapt-network: {}
     volumes:
-      - certs:/etc/letsencrypt
+      - frontend-certs:/etc/letsencrypt
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
@@ -45,13 +46,15 @@ services:
     build:
       context: ./backend
       dockerfile: ./Dockerfile
+    ports:
+      - "8000:8000"
     environment:
       ENVIRONMENT: prod
       # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}
       ANONYMIZED_TELEMETRY: False # For chromadb
     networks:
-      idapt-nginx-backend-network: {}
+      idapt-network: {}
     # Expose the host.docker.internal so that we can access ollama runnning on the localost from the container.
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -76,8 +79,8 @@ services:
 volumes:
   user_data:
   certs:
-
+  frontend-certs:
 networks:
-  idapt-nginx-backend-network:
-    name: idapt-nginx-backend-network
+  idapt-network:
+    name: idapt-network
     driver: bridge

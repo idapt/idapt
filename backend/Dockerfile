@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-virtualenv \
     curl \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Already exist in the nginx certbot image

@@ -2,6 +2,7 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+import time
 # Set up logging configuration
 from app.api.logging import configure_app_logging
 configure_app_logging()
@@ -92,6 +93,39 @@ if __name__ == "__main__":
     app_port = 8000
 
     environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
+    deployment_type = os.getenv("DEPLOYMENT_TYPE", "local")
+    host_domain = os.getenv("HOST_DOMAIN", "localhost")
+    ssl_keyfile = "/certs/live/" + host_domain + "/privkey.pem"
+    ssl_certfile = "/certs/live/" + host_domain + "/fullchain.pem"
+
+
+    if deployment_type == "hosted":
+        ssl_keyfile = "/etc/certs/tls.key"
+        ssl_certfile = "/etc/certs/tls.crt"
+        # Print the content of the certs folder
+        logger.info(f"Certs folder content: {os.listdir('/etc/certs')}")
+        # Wait until the certs are ready at /certs
+        while not os.path.exists(ssl_keyfile) or not os.path.exists(ssl_certfile):
+            logger.info("Waiting for certs to be ready")
+            time.sleep(1)
+        
+    else:
+        # Check if the certs are present in /certs and create them if not
+        if not os.path.exists(ssl_keyfile) or not os.path.exists(ssl_certfile):
+            # Create the backend managed tag file to indicate that the certs are managed by the backend
+            with open("/certs/backend-managed", "w") as f:
+                f.write("true")
+            # Create the certs
+            logger.info("Creating certs")
+            os.makedirs("/certs/live/" + host_domain, exist_ok=True)
+            os.system("openssl req -x509 -newkey rsa:4096 -keyout /certs/live/" + host_domain + "/privkey.pem -out /certs/live/" + host_domain + "/fullchain.pem -days 365 -nodes -subj '/CN=" + host_domain + "'")
+
+        # If they exist and are backend managed, check if the certs are valid
+        if os.path.exists("/certs/backend-managed") and os.path.exists("/certs/live/" + os.getenv("HOST_DOMAIN") + "/privkey.pem") and os.path.exists("/certs/live/" + os.getenv("HOST_DOMAIN") + "/fullchain.pem"):
+            # If the certs are not valid, regenerate new ones
+            if os.system("openssl x509 -in /certs/live/" + host_domain + "/fullchain.pem -noout -text") != 0:
+                logger.info("Certs are not valid, regenerating")
+                os.system("openssl req -x509 -newkey rsa:4096 -keyout /certs/live/" + host_domain + "/privkey.pem -out /certs/live/" + host_domain + "/fullchain.pem -days 365 -nodes -subj '/CN=" + host_domain + "'")
 
     if environment == "dev":
         logger.info("Starting in development mode with hot reload")
@@ -104,8 +138,8 @@ if __name__ == "__main__":
             reload_includes=['*.py'],
             reload_dirs=['app'],
             log_level="info",
-            ssl_keyfile="/certs/live/" + os.getenv("HOST_DOMAIN") + "/privkey.pem",
-            ssl_certfile="/certs/live/" + os.getenv("HOST_DOMAIN") + "/fullchain.pem"
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile
         )
     else:
         logger.info("Starting in production mode")
@@ -116,6 +150,6 @@ if __name__ == "__main__":
             reload=False,
             workers=1,
             log_level="info",
-            ssl_keyfile="/certs/live/" + os.getenv("HOST_DOMAIN") + "/privkey.pem",
-            ssl_certfile="/certs/live/" + os.getenv("HOST_DOMAIN") + "/fullchain.pem"
+            ssl_keyfile=ssl_keyfile,
+            ssl_certfile=ssl_certfile
         )

@@ -8,11 +8,10 @@ services:
       context: ./backend
       dockerfile: dev.Dockerfile 
     container_name: idapt-backend
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
     networks:
-      idapt-backend-external-network: {}
-      idapt-backend-network: {}
+      idapt-network: {}
     # Expose the host.docker.internal so that we can access ollama runnning on the localost from the container.
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -23,13 +22,12 @@ services:
       retries: 30
     environment:
       ENVIRONMENT: dev
+      DEPLOYMENT_TYPE: self-hosted
       HOST_DOMAIN: ${HOST_DOMAIN}
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - ./user_data:/data # The volume where the data is stored. Use data mount name to make it shorter.
       - ./certs:/certs # Used for ssl termination.
-    depends_on:
-      - idapt-nginx # We need the certs to be generated before the backend can start.
     restart: unless-stopped
     # Container security hardening
     security_opt:
@@ -45,13 +43,13 @@ services:
     expose:
       - "3000"
     networks:
-      idapt-frontend-external-network: {}
-      idapt-frontend-network: {}
+      idapt-network: {}
     #depends_on:     # Disable for dev to have a faster startup time, backend will simply not respond at frontend start.
       #idapt-backend:
       #  condition: service_healthy
     environment:
       ENVIRONMENT: dev
+      DEPLOYMENT_TYPE: self-hosted
       NEXT_TELEMETRY_DISABLED: 1 # For nextjs
       ANONYMIZED_TELEMETRY: False # For chromadb
     volumes:
@@ -84,11 +82,9 @@ services:
       - '443:443/udp'
     # Nginx has access to every container exposed via their own network for routing.
     networks:
-      idapt-nginx-external-network: {}
-      idapt-frontend-network: {}
-      idapt-backend-network: {}
+      idapt-network: {}
     volumes:
-      - ./certs:/etc/letsencrypt # Needed to store, share and generate the certs
+      - ./frontend-certs:/etc/letsencrypt # Needed to store, share and generate the certs
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 1s
@@ -106,26 +102,7 @@ services:
 # One network for each service to keep them isolated.
 networks:
   # Dedicated external networks for services that need internet access
-  idapt-nginx-external-network:
+  idapt-network:
     attachable: false
-    name: idapt-nginx-external-network
-    driver: bridge
-  idapt-frontend-external-network:
-    attachable: false
-    name: idapt-frontend-external-network
-    driver: bridge
-  idapt-backend-external-network:
-    attachable: false
-    name: idapt-backend-external-network
-    driver: bridge
-  # Internal networks for inter container communication.
-  idapt-backend-network:
-    internal: true
-    attachable: false
-    name: idapt-backend-network
-    driver: bridge
-  idapt-frontend-network:
-    internal: true
-    attachable: false
-    name: idapt-frontend-network
+    name: idapt-network
     driver: bridge

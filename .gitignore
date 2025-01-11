@@ -35,8 +35,9 @@ nginx/certs/*.key
 nginx/certs/*.pem
 
 # For dev
-ollama_data/
 user_data/
+certs/
+frontend-certs/
 
 # General
 
