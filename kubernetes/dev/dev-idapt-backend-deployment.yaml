@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idapt-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app-name: idapt-backend
+  template:
+    metadata:
+      labels:
+        app-name: idapt-backend
+    spec:
+      containers:
+        - name: idapt-backend
+          image: idapt-backend:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: "prod"
+            - name: DEPLOYMENT_TYPE
+              value: "hosted"
+            - name: HOST_DOMAIN
+              value: "localhost"
+            - name: ANONYMIZED_TELEMETRY
+              value: "False"
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "curl -k -f https://localhost:8000/api/health"
+            failureThreshold: 3
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 10
+          volumeMounts:
+            - mountPath: /data
+              name: user-data
+            - mountPath: /etc/certs
+              name: certs
+              readOnly: true
+      restartPolicy: Always
+      volumes:
+        - name: user-data
+          persistentVolumeClaim:
+            claimName: user-data
+        - name: certs
+          secret:
+            secretName: idapt-tls 
