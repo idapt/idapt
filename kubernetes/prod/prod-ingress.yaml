@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: idapt-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # Add annotation for SSL redirect except ACME challenge
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/whitelist-source-range: "0.0.0.0/0"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.idapt.ai
+    secretName: idapt-tls
+  rules:
+  - host: api.idapt.ai
+    http:
+      paths:
+      - path: /.well-known/acme-challenge/
+        pathType: Prefix
+        backend:
+          service:
+            name: cm-acme-http-solver
+            port:
+              number: 8089
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: idapt-backend
+            port:
+              number: 8000
