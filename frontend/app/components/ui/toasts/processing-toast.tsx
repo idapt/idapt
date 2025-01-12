@@ -1,73 +1,62 @@
-import { useState, useEffect } from 'react';
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
-import { ProcessingToastItem } from '@/app/types/toast';
-import { useToastContext } from '@/app/contexts/toast-context';
+import { useState, useEffect, useRef } from 'react';
+import { Loader2 } from "lucide-react";
+import { useProcessingStatus } from '@/app/hooks/use-processing-status';
+import { useProcessingToast } from '@/app/hooks/use-processing-toast';
 import { BaseToast } from "../file-manager/base-toast";
-
-interface ProcessingFile {
-  name: string;
-  path: string;
-}
-
-interface ProcessingStatus {
-  queued_count: number;
-  processing_count: number;
-  queued_files: ProcessingFile[];
-  processing_files: ProcessingFile[];
-}
+import { useToastContext } from '@/app/contexts/toast-context';
+import { ProcessingToastItem } from '@/app/types/toast';
 
 export function ProcessingToast() {
-  const { items, resetAll } = useToastContext();
+  const { items } = useToastContext();
   const [isMinimized, setIsMinimized] = useState(false);
-  const [status, setStatus] = useState<ProcessingStatus | null>(null);
-  
+  const { status } = useProcessingStatus();
+  const { startProcessing, updateProcessing } = useProcessingToast();
+  const prevTotalRef = useRef(0);
+
+  const processingItem = items.find((item): item is ProcessingToastItem => 
+    item.type === 'processing'
+  );
+
   useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const response = await fetch('/api/generate/status');
-        if (!response.ok) {
-          throw new Error('Failed to fetch status');
-        }
-        const data = await response.json();
-        setStatus(data);
-      } catch (error) {
-        console.error('Failed to fetch processing status:', error);
-        // Set status to null to handle the error state
-        setStatus(null);
+    if (!status) return;
+
+    const totalFiles = status.queued_count + status.processing_count;
+    const prevTotal = prevTotalRef.current;
+
+    if (totalFiles > 0) {
+      if (totalFiles !== prevTotal) {
+        startProcessing('Processing files', totalFiles);
+        prevTotalRef.current = totalFiles;
       }
-    };
+      
+      if (processingItem && processingItem.processed !== status.processing_count) {
+        updateProcessing('global-processing-status', status.processing_count, totalFiles);
+      }
+    }
+  }, [status?.queued_count, status?.processing_count, startProcessing, updateProcessing, processingItem]);
 
-    const interval = setInterval(fetchStatus, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Hide toast when no files are being processed or queued
-  // Also handle the case when status is null (error state)
-  if (!status || (status.queued_count === 0 && status.processing_count === 0)) {
+  if (!processingItem) {
     return null;
   }
-
-  const totalFiles = status.queued_count + status.processing_count;
-  const progress = Math.round((0 / totalFiles) * 100);
 
   return (
     <BaseToast
       title="Processing Files"
-      progress={progress}
-      total={totalFiles}
-      completed={0}
+      progress={processingItem.progress}
+      total={processingItem.total}
+      completed={processingItem.processed}
       isMinimized={isMinimized}
       onMinimize={() => setIsMinimized(!isMinimized)}
     >
       <div className="max-h-[240px] overflow-y-auto">
-        {status.processing_files?.map((file) => (
+        {status?.processing_files?.map((file) => (
           <ProcessingItem
             key={file.path}
             name={file.name}
             status="processing"
           />
         ))}
-        {status.queued_files?.map((file) => (
+        {status?.queued_files?.map((file) => (
           <ProcessingItem
             key={file.path}
             name={file.name}

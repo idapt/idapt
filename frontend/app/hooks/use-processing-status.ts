@@ -1,47 +1,49 @@
-import { useEffect } from 'react';
-import { useProcessingToast } from './use-processing-toast';
+import { useEffect, useRef, useState } from 'react';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
+
+
+
+interface ProcessingFile {
+  name: string;
+  path: string;
+}
+
+interface ProcessingStatus {
+  queued_count: number;
+  processing_count: number;
+  queued_files: ProcessingFile[];
+  processing_files: ProcessingFile[];
+}
 
 export function useProcessingStatus() {
   const { backend } = useClientConfig();
-  const { startProcessing, updateProcessing, completeProcessing, failProcessing } = useProcessingToast();
+  const [status, setStatus] = useState<ProcessingStatus | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    let isProcessing = false;
 
-    const checkStatus = async () => {
+    const fetchStatus = async () => {
       try {
         const response = await fetch(`${backend}/api/generate/status`, {
           signal: controller.signal
         });
-        
         const data = await response.json();
-        const totalFiles = data.queued_count + data.processing_count;
-        
-        if (totalFiles > 0) {
-          if (!isProcessing) {
-            startProcessing('Processing files', totalFiles);
-            isProcessing = true;
-          }
-          updateProcessing('global-processing-status', 0, totalFiles);
-        } else if (isProcessing) {
-          completeProcessing('global-processing-status');
-          isProcessing = false;
-        }
+        setStatus(data);
       } catch (error) {
-        if (isProcessing) {
-          failProcessing('global-processing-status');
-          isProcessing = false;
-        }
+        console.error('Failed to fetch processing status:', error);
+        setStatus(null);
       }
     };
 
-    const interval = setInterval(checkStatus, 1000);
+    const interval = setInterval(fetchStatus, 2000);
 
     return () => {
       controller.abort();
       clearInterval(interval);
     };
-  }, [backend, startProcessing, updateProcessing, completeProcessing, failProcessing]);
+  }, [backend]);
+
+  return { status };
 } 
+
+export default useProcessingStatus;

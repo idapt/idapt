@@ -1,8 +1,8 @@
-import { useGenerateStatusSocket } from '@/app/hooks/use-generate-status-socket';
-import { useOllamaStatusSocket } from '@/app/hooks/use-ollama-status-socket';
+import { useProcessingStatus } from '@/app/hooks/use-processing-status';
+import { useOllamaStatus } from '@/app/hooks/use-ollama-status';
 
 export function StatusHandler() {
-  useGenerateStatusSocket();
-  useOllamaStatusSocket();
+  useProcessingStatus();
+  useOllamaStatus();
   return null;
 } 

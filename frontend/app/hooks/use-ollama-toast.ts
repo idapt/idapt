@@ -1,5 +1,6 @@
 import { useToastContext } from '@/app/contexts/toast-context';
 import { OllamaToastItem } from '@/app/types/toast';
+import { useEffect } from 'react';
 
 export function useOllamaToast() {
   const { addItems, removeItem } = useToastContext();
