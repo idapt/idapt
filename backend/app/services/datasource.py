@@ -28,9 +28,34 @@ def init_default_datasources(session: Session, user_id: str):
         logger.error(f"Error initializing default datasources: {str(e)}")
         raise
 
+def validate_datasource_name(name: str) -> tuple[bool, str]:
+    """Validate datasource name according to Chroma requirements"""
+    if len(name) < 3 or len(name) > 63:
+        return False, "Name must be between 3 and 63 characters"
+    
+    if not name[0].isalnum() or not name[-1].isalnum():
+        return False, "Name must start and end with an alphanumeric character"
+        
+    if '..' in name:
+        return False, "Name cannot contain consecutive periods (..)"
+        
+    if not all(c.isalnum() or c in '_-.' for c in name):
+        return False, "Name can only contain alphanumeric characters, underscores, hyphens or single periods"
+        
+    # Check if it's not an IPv4 address
+    if all(part.isdigit() and 0 <= int(part) <= 255 for part in name.split('.')):
+        return False, "Name cannot be in IPv4 address format"
+        
+    return True, ""
+
 def create_datasource(session: Session, user_id: str, name: str, type: str, settings: dict = None) -> Datasource:
     """Create a new datasource with its root folder and all required components"""
     try:
+        # Validate name first
+        is_valid, error_message = validate_datasource_name(name)
+        if not is_valid:
+            raise ValueError(f"Invalid datasource name: {error_message}")
+
         identifier = generate_identifier(name)
         # Check if the identifier is already used
         if get_datasource(session, identifier):
