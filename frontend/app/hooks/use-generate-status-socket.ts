@@ -10,15 +10,14 @@ export function useGenerateStatusSocket() {
   const isProcessingRef = useRef(false);
 
   const handleStatus = useCallback((data: any) => {
-    const totalFiles = data.queued_count + data.processing_count + data.processed_count;
-    const processedFiles = data.processed_count;
+    const totalFiles = data.queued_count + data.processing_count;
     
     if (totalFiles > 0) {
       if (!isProcessingRef.current) {
         startProcessing('Processing files', totalFiles);
         isProcessingRef.current = true;
       }
-      updateProcessing('global-processing-status', processedFiles, totalFiles);
+      updateProcessing('global-processing-status', 0, totalFiles);
     } else {
       if (isProcessingRef.current) {
         completeProcessing('global-processing-status');

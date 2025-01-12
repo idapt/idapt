@@ -173,18 +173,12 @@ def get_queue_status(session: Session) -> dict:
             session,
             FileStatus.PROCESSING
         )
-        completed_files = get_db_files_by_status(
-            session,
-            FileStatus.COMPLETED
-        )
         
         return {
             "queued_count": len(queued_files),
             "processing_count": len(processing_files),
-            "processed_count": len(completed_files),
             "queued_files": [{"name": f.name, "path": f.path} for f in queued_files],
             "processing_files": [{"name": f.name, "path": f.path} for f in processing_files],
-            "processed_files": [{"name": f.name, "path": f.path} for f in completed_files]
         }
     except Exception as e:
         logger.error(f"Failed to get queue status: {str(e)}")

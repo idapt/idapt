@@ -17,14 +17,14 @@ export function useProcessingStatus() {
         });
         
         const data = await response.json();
-        const totalFiles = data.queued_count + data.processing_count + data.processed_count;
+        const totalFiles = data.queued_count + data.processing_count;
         
         if (totalFiles > 0) {
           if (!isProcessing) {
             startProcessing('Processing files', totalFiles);
             isProcessing = true;
           }
-          updateProcessing('global-processing-status', data.processed_count, totalFiles);
+          updateProcessing('global-processing-status', 0, totalFiles);
         } else if (isProcessing) {
           completeProcessing('global-processing-status');
           isProcessing = false;

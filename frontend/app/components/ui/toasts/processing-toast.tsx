@@ -12,10 +12,8 @@ interface ProcessingFile {
 interface ProcessingStatus {
   queued_count: number;
   processing_count: number;
-  processed_count: number;
   queued_files: ProcessingFile[];
   processing_files: ProcessingFile[];
-  processed_files: ProcessingFile[];
 }
 
 export function ProcessingToast() {
@@ -27,10 +25,15 @@ export function ProcessingToast() {
     const fetchStatus = async () => {
       try {
         const response = await fetch('/api/generate/status');
+        if (!response.ok) {
+          throw new Error('Failed to fetch status');
+        }
         const data = await response.json();
         setStatus(data);
       } catch (error) {
         console.error('Failed to fetch processing status:', error);
+        // Set status to null to handle the error state
+        setStatus(null);
       }
     };
 
@@ -39,31 +42,32 @@ export function ProcessingToast() {
   }, []);
 
   // Hide toast when no files are being processed or queued
+  // Also handle the case when status is null (error state)
   if (!status || (status.queued_count === 0 && status.processing_count === 0)) {
     return null;
   }
 
-  const totalFiles = status.queued_count + status.processing_count + status.processed_count;
-  const progress = Math.round((status.processed_count / totalFiles) * 100);
+  const totalFiles = status.queued_count + status.processing_count;
+  const progress = Math.round((0 / totalFiles) * 100);
 
   return (
     <BaseToast
       title="Processing Files"
       progress={progress}
       total={totalFiles}
-      completed={status.processed_count}
+      completed={0}
       isMinimized={isMinimized}
       onMinimize={() => setIsMinimized(!isMinimized)}
     >
       <div className="max-h-[240px] overflow-y-auto">
-        {status.processing_files.map((file) => (
+        {status.processing_files?.map((file) => (
           <ProcessingItem
             key={file.path}
             name={file.name}
             status="processing"
           />
         ))}
-        {status.queued_files.map((file) => (
+        {status.queued_files?.map((file) => (
           <ProcessingItem
             key={file.path}
             name={file.name}
