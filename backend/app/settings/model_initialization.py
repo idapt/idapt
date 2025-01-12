@@ -1,7 +1,9 @@
 from app.settings.models import *
 from app.settings.model_providers import *
+from llama_index.core.base.embeddings.base import BaseEmbedding
+from llama_index.core.base.llms.base import BaseLLM
 
-def init_llm(settings: AppSettings):
+def init_llm(settings: AppSettings) -> BaseLLM:
     """Initialize LLM based on model provider setting"""
     match settings.llm_model_provider:
         case "openai":
@@ -21,7 +23,7 @@ def init_llm(settings: AppSettings):
         case _:
             return init_ollama_llm(settings.ollama, settings.temperature, settings.system_prompt)
         
-def init_embedding_model(settings: AppSettings):
+def init_embedding_model(settings: AppSettings) -> BaseEmbedding:
     """Initialize embedding model based on embedding_model_provider setting"""
     match settings.embedding_model_provider:
         case "openai":

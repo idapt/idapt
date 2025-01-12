@@ -7,10 +7,10 @@ from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool
 #from app.engine.tools import ToolFactory
 from app.settings.models import AppSettings
-from app.settings.model_initialization import init_llm
+from app.settings.model_initialization import init_llm, init_embedding_model
 from app.services.database import get_session
 from app.services.datasource import get_all_datasources
-from app.services.llama_index import get_query_tool
+from app.services.llama_index import create_query_tool, create_vector_store, create_doc_store
 
 import logging
 logger = logging.getLogger("uvicorn")
@@ -25,18 +25,27 @@ def get_chat_engine(app_settings: AppSettings, datasource_identifier: str = None
 
         # Init the llm from the app settings
         llm = init_llm(app_settings)
+        # Init the embedding model from the app settings
+        embed_model = init_embedding_model(app_settings)
 
         # Get the datasources tools
         with get_session() as session:
             if datasource_identifier:
+                # Get the vector store and doc store from the datasource identifier
+                vector_store = create_vector_store(datasource_identifier, embed_model)
+                doc_store = create_doc_store(datasource_identifier)
                 # Get specific datasource tool
-                tool = get_query_tool(session, datasource_identifier, llm, app_settings)
+                tool = create_query_tool(session, datasource_identifier, vector_store, doc_store, embed_model, llm, app_settings)
                 tools.append(tool)
             else:
                 # Get all datasource tools
                 datasources = get_all_datasources(session)
                 for ds in datasources:
-                    tool = get_query_tool(session, ds.identifier, llm, app_settings)
+                    # Get the vector store and doc store from the datasource identifier
+                    vector_store = create_vector_store(ds.identifier, embed_model)
+                    doc_store = create_doc_store(ds.identifier)
+                    # Get specific datasource tool
+                    tool = create_query_tool(session, ds.identifier, vector_store, doc_store, embed_model, llm, app_settings)
                     tools.append(tool)
 
         # For each tool, set the callback manager to be able to display the events in the steps ui

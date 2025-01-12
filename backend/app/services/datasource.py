@@ -3,7 +3,7 @@ from app.database.models import Datasource, Folder
 from app.services.db_file import get_db_folder_id
 from app.services.file_manager import delete_folder
 from app.services.file_system import get_full_path_from_path
-from app.services.llama_index import get_storage_components, get_index, _delete_llama_index_components
+from app.services.llama_index import delete_llama_index_components
 
 import logging
 from typing import List, Optional
@@ -72,8 +72,9 @@ def create_datasource(session: Session, name: str, type: str, settings: dict = N
         session.commit()
 
         # Initialize all llama-index components using identifier
-        get_storage_components(identifier)
-        get_index(identifier)
+        #create_vector_store(identifier, app_settings)
+        #create_doc_store(identifier)
+        #create_index(identifier)
 
         return datasource
     except Exception as e:
@@ -114,7 +115,7 @@ async def delete_datasource(session: Session, identifier: str) -> bool:
         session.commit()
 
         # Delete llama-index components
-        _delete_llama_index_components(session, identifier)
+        delete_llama_index_components(session, identifier)
         return True
     except Exception as e:
         session.rollback()

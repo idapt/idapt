@@ -10,10 +10,12 @@ from llama_index.core.tools import ToolMetadata
 from llama_index.core.retrievers import VectorIndexRetriever#, AutoMergingRetriever
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.settings import Settings
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.core.llms import LLM
+from llama_index.core.base.embeddings.base import BaseEmbedding
+from llama_index.core import MockEmbedding
+
 import chromadb
 
 import logging
@@ -24,37 +26,7 @@ import json
 
 logger = logging.getLogger("uvicorn")
 
-
-def get_storage_components(datasource_identifier: str) -> Tuple[ChromaVectorStore, SimpleDocumentStore]:
-    """Get or create all storage components for a datasource"""
-    try:
-        vector_store = get_vector_store(datasource_identifier)
-        doc_store = get_doc_store(datasource_identifier)
-        return vector_store, doc_store
-    except Exception as e:
-        logger.error(f"Error getting storage components: {str(e)}")
-        raise
-
-def get_vector_store(datasource_identifier: str) -> ChromaVectorStore:
-    # TODO Add caching
-    return _create_vector_store(datasource_identifier)
-
-def get_doc_store(datasource_identifier: str) -> SimpleDocumentStore:
-    # TODO Add caching
-    return _create_doc_store(datasource_identifier)
-
-def get_index(datasource_identifier: str) -> VectorStoreIndex:
-    # TODO Add caching
-    return _create_index(datasource_identifier)
-
-def get_query_tool(session: Session, datasource_identifier: str, llm: LLM, app_settings: AppSettings) -> BaseTool:
-    # TODO Add caching
-    return _create_query_tool(session, datasource_identifier, llm, app_settings)
-
-
-
-
-def _delete_llama_index_components(session: Session, datasource_identifier: str):
+def delete_llama_index_components(session: Session, datasource_identifier: str):
     """Delete all llama-index components for a datasource"""
     try:
 
@@ -83,15 +55,21 @@ def _delete_llama_index_components(session: Session, datasource_identifier: str)
         raise
 
 # Private methods for creating components
-def _create_vector_store(datasource_identifier: str) -> ChromaVectorStore:
+def create_vector_store(datasource_identifier: str, embed_model: BaseEmbedding) -> ChromaVectorStore:
     try:
         # Create the embeddings directory if it doesn't exist
         embeddings_dir = Path("/data/.idapt/embeddings")
         embeddings_dir.mkdir(parents=True, exist_ok=True)
         embeddings_file = embeddings_dir / f"{datasource_identifier}"
-        
         # Create a Chroma persistent client
         client = chromadb.PersistentClient(path=str(embeddings_file))
+
+        #from chromadb.utils import OllamaEmbeddingFunction
+        #ollama_ef = chromadb.utils.embedding_functions.OllamaEmbeddingFunction(
+        #    url="http://localhost:11434/api/embeddings",
+        #    model_name="llama2",
+        #)
+
         # Create a Chroma collection
         chroma_collection = client.get_or_create_collection(name=datasource_identifier)
         # Create a Chroma vector store
@@ -103,7 +81,7 @@ def _create_vector_store(datasource_identifier: str) -> ChromaVectorStore:
         logger.error(f"Error creating vector store: {str(e)}")
         raise
 
-def _create_doc_store(datasource_identifier: str) -> SimpleDocumentStore:
+def create_doc_store(datasource_identifier: str) -> SimpleDocumentStore:
     try:
         # Create the docstore directory if it doesn't exist
         docstores_dir = Path("/data/.idapt/docstores")
@@ -125,10 +103,10 @@ def _create_doc_store(datasource_identifier: str) -> SimpleDocumentStore:
         logger.error(f"Error creating doc store: {str(e)}")
         raise
 
-def _create_index(datasource_identifier: str) -> VectorStoreIndex:
-    try:
-        vector_store, doc_store = get_storage_components(datasource_identifier)
 
+def create_query_tool(session: Session, datasource_identifier: str, vector_store: ChromaVectorStore, doc_store: SimpleDocumentStore, embed_model: BaseEmbedding, llm: LLM, app_settings: AppSettings) -> BaseTool:
+    try:
+    
         storage_context = StorageContext.from_defaults(
             vector_store=vector_store,
             docstore=doc_store
@@ -137,21 +115,13 @@ def _create_index(datasource_identifier: str) -> VectorStoreIndex:
         # Recreate the index from the vector store and doc store at each app restart if needed
         index = VectorStoreIndex.from_documents(
             [],  # Empty nodes as they will be loaded from storage context
-            storage_context=storage_context
+            storage_context=storage_context,
+            embed_model=embed_model
         )
-
-        return index
-    except Exception as e:
-        logger.error(f"Error creating index: {str(e)}")
-        raise
-
-def _create_query_tool(session: Session, datasource_identifier: str, llm: LLM, app_settings: AppSettings) -> BaseTool:
-    try:
-        index = get_index(datasource_identifier)
-
+    
         retriever = VectorIndexRetriever(
             index=index,
-            similarity_top_k=int(app_settings.top_k),
+            similarity_top_k=int(app_settings.top_k)
         )
         # Don't use this for now as we are not using hierarchical node parser
         #retriever = AutoMergingRetriever(
@@ -207,8 +177,8 @@ def delete_file_llama_index(session: Session, full_path: str):
         datasource_identifier = get_datasource_identifier_from_path(full_path)
 
         # Get the datasource vector store and docstore
-        vector_store = get_vector_store(datasource_identifier)
-        doc_store = get_doc_store(datasource_identifier)
+        vector_store = create_vector_store(datasource_identifier, MockEmbedding())
+        doc_store = create_doc_store(datasource_identifier)
 
         # Delete each ref_doc_id from the vector store and docstore
         # Parse the json ref_doc_ids as a list
@@ -257,8 +227,8 @@ def rename_file_llama_index(session: Session, full_old_path: str, full_new_path:
         datasource_identifier = get_datasource_identifier_from_path(full_old_path)
 
         # Get the datasource vector store and docstore
-        vector_store = get_vector_store(datasource_identifier)
-        doc_store = get_doc_store(datasource_identifier)
+        vector_store = create_vector_store(datasource_identifier)
+        doc_store = create_doc_store(datasource_identifier)
 
         # For now simply delete the old file from the vector store and docstore
         vector_store.delete(full_old_path)

@@ -23,10 +23,9 @@ from llama_index.core.extractors import (
 
 from app.services.database import get_session
 from app.services.db_file import get_db_file
-from app.services.datasource import get_storage_components
 from app.settings.model_initialization import init_embedding_model
 from app.settings.models import AppSettings
-from app.services.llama_index import get_docstore_path
+from app.services.llama_index import get_docstore_path, create_vector_store, create_doc_store
 import logging
 
 logger = logging.getLogger("uvicorn")
@@ -154,9 +153,12 @@ def process_files(full_file_paths: List[str], datasource_identifier: str, app_se
                 doc.excluded_llm_metadata_keys.append("created_at")
                 doc.excluded_llm_metadata_keys.append("modified_at")
 
+        # Init the embed model from the app settings
+        embed_model = init_embedding_model(app_settings)
 
         # Create the ingestion pipeline for the datasource
-        vector_store, doc_store = get_storage_components(datasource_identifier)
+        vector_store = create_vector_store(datasource_identifier, embed_model)
+        doc_store = create_doc_store(datasource_identifier)
 
         # Create the ingestion pipeline for the datasource
         ingestion_pipeline = IngestionPipeline(
@@ -191,12 +193,6 @@ def process_files(full_file_paths: List[str], datasource_identifier: str, app_se
             #if self.cached_embed_model_provider != app_settings.embedding_model_provider:
             # Update the llama index settings to use the new embed model so that the Settings.embed_model is updated
             # TODO Add a way to only update on each when app settings are changed, complicated as this is run in a child thread and appsettings updates are not done here.
-            # If the cached embed model is not set, set it
-            #if not self.cached_embed_model:
-
-            # Init the embed model from the app settings
-            embed_model = init_embedding_model(app_settings)
-        
 
             # Set the transformations stack name for the datasource_documents
             for doc in documents:
