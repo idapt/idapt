@@ -35,7 +35,7 @@ def create_default_db_filestructure(session: Session, user_id: str):
             session.add(data_folder)
             session.flush()
             logger.info("Created default data folder in database")
-            
+
         # Check if user folder exists
         user_folder_full_path = get_user_data_dir(user_id)
         user_folder = session.query(Folder).filter(Folder.path == user_folder_full_path).first()
@@ -43,7 +43,7 @@ def create_default_db_filestructure(session: Session, user_id: str):
             user_folder = Folder(
                 name=user_id,
                 path=user_folder_full_path,
-                parent_id=root_folder.id
+                parent_id=data_folder.id
             )
             session.add(user_folder)
             session.flush()

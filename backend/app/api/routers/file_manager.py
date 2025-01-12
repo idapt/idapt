@@ -61,7 +61,7 @@ async def delete_file_route(
     logger.info(f"Deleting file {encoded_path} for user {user_id}")
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path, user_id)
-    await delete_file(session, full_path)
+    await delete_file(session=session, user_id=user_id, full_path=full_path)
     return {"success": True}
 
 @r.delete("/folder/{encoded_path}")
@@ -73,7 +73,7 @@ async def delete_folder_route(
     logger.info(f"Deleting folder {encoded_path}")
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path, user_id)
-    await delete_folder(session, full_path)
+    await delete_folder(session=session, user_id=user_id, full_path=full_path)
     return {"success": True}
 
 @r.put("/file/{encoded_path}/rename")
@@ -86,7 +86,7 @@ async def rename_file_route(
     logger.info(f"Renaming file {encoded_path} to {new_name} for user {user_id}")
     path = decode_path_safe(encoded_path)
     full_path = get_full_path_from_path(path, user_id)
-    await rename_file(session, full_path, new_name)
+    await rename_file(session=session, user_id=user_id, full_path=full_path, new_name=new_name)
     return {"success": True}
 
 @r.get("/folder")
@@ -104,8 +104,8 @@ async def get_folder_contents_route(
         path = decode_path_safe(encoded_path)
     else:
         path = ""
-    full_path = get_full_path_from_path(path, user_id)
-    files, folders = get_db_folder_contents(session, full_path)
+    full_path = get_full_path_from_path(path=path, user_id=user_id)
+    files, folders = get_db_folder_contents(session=session, full_path=full_path)
     files = [FileResponse(
         id=file.id,
         name=file.name,

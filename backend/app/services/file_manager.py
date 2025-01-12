@@ -150,7 +150,7 @@ async def download_file(session: Session, full_path: str) -> Dict[str, str]:
         logger.error(f"Error downloading file: {str(e)}")
         raise
 
-async def delete_file(session: Session, full_path: str):
+async def delete_file(session: Session, user_id: str, full_path: str):
     try:
         file = get_db_file(session, full_path)
         if not file:
@@ -165,8 +165,8 @@ async def delete_file(session: Session, full_path: str):
 
         # Proceed with deletion
         await delete_file_filesystem(full_path)
-        delete_file_llama_index(session, full_path)
-        result = delete_db_file(session, full_path)
+        delete_file_llama_index(session=session, user_id=user_id, full_path=full_path)
+        result = delete_db_file(session=session, full_path=full_path)
         
         if not result:
             logger.warning(f"Failed to delete file from database for path: {full_path}")
@@ -175,7 +175,7 @@ async def delete_file(session: Session, full_path: str):
         logger.error(f"Error deleting file: {str(e)}")
         raise
 
-async def delete_folder(session: Session, full_path: str):
+async def delete_folder(session: Session, user_id: str, full_path: str):
     try:
         logger.info(f"Deleting folder: {full_path}")
 
@@ -198,9 +198,9 @@ async def delete_folder(session: Session, full_path: str):
                     processing_files.append(file.path)
                     continue
 
-                await delete_file(session, file.path)
-                delete_file_llama_index(session, file.path)
-                delete_db_file(session, file.path)
+                await delete_file(session=session, full_path=file.path)
+                delete_file_llama_index(session=session, user_id=user_id, full_path=file.path)
+                delete_db_file(session=session, full_path=file.path)
                 deleted_files.append(file.path)
             except Exception as e:
                 logger.warning(f"Error deleting file {file.path}: {str(e)}")
@@ -232,7 +232,7 @@ async def delete_folder(session: Session, full_path: str):
         logger.error(f"Error deleting folder: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def rename_file(session: Session, full_path: str, new_name: str):
+async def rename_file(session: Session, user_id: str, full_path: str, new_name: str):
     try:
         file = get_db_file(session, full_path)
         if not file:
@@ -244,12 +244,12 @@ async def rename_file(session: Session, full_path: str, new_name: str):
         new_full_path = file.path.replace(file.name, new_name)
         
         # Update database
-        updated_file = update_db_file(session, full_path, new_full_path)
+        updated_file = update_db_file(session=session, full_path=full_path, new_full_path=new_full_path)
         if not updated_file:
             raise HTTPException(status_code=500, detail="Failed to update file in database")
 
         # Update in LlamaIndex
-        rename_file_llama_index(full_old_path=full_path, full_new_path=new_full_path) 
+        rename_file_llama_index(session=session, user_id=user_id, full_old_path=full_path, full_new_path=new_full_path) 
 
     except Exception as e:
         logger.error(f"Error renaming file: {str(e)}")
