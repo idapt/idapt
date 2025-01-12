@@ -5,6 +5,7 @@ from fastapi import HTTPException
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
 from llama_index.core.settings import Settings
+from requests import Session
 Settings.llm = None
 Settings.embed_model = None
 
@@ -21,7 +22,6 @@ from llama_index.core.extractors import (
 
 #from app.engine.ingestion.zettlekasten_extractor import ZettlekastenExtractor
 
-from app.services.database import get_session
 from app.services.db_file import get_db_file
 from app.settings.model_initialization import init_embedding_model
 from app.settings.models import AppSettings
@@ -111,7 +111,7 @@ TRANSFORMATIONS_STACKS = {
 }
 
 # At this point the files are grouped by ingestion stack
-def process_files(full_file_paths: List[str], datasource_identifier: str, app_settings: AppSettings, transformations_stack_name_list: List[str] = ["default"]):
+def process_files(session: Session, full_file_paths: List[str], datasource_identifier: str, user_id: str, app_settings: AppSettings, transformations_stack_name_list: List[str] = ["default"]):
     """Process a list of files through the ingestion pipeline"""
     try:            
         # Use SimpleDirectoryReader from llama index as it try to use existing apropriate readers based on the file type to get the most metadata from it
@@ -139,26 +139,26 @@ def process_files(full_file_paths: List[str], datasource_identifier: str, app_se
             doc.excluded_llm_metadata_keys.append("origin")
         
         
-        with get_session() as session:
-            # Override the file creation time to the current time with the times from the database
-            for doc in documents:
-                # Get the file from the database
-                file = get_db_file(session, doc.metadata["file_path"])
-                # Set the creation and modification times
-                doc.metadata["created_at"] = file.file_created_at.isoformat()
-                doc.metadata["modified_at"] = file.file_modified_at.isoformat()
-                # Remove from embed and llm
-                doc.excluded_embed_metadata_keys.append("created_at")
-                doc.excluded_embed_metadata_keys.append("modified_at")
-                doc.excluded_llm_metadata_keys.append("created_at")
-                doc.excluded_llm_metadata_keys.append("modified_at")
+        #with session:
+        # Override the file creation time to the current time with the times from the database
+        for doc in documents:
+            # Get the file from the database
+            file = get_db_file(session, doc.metadata["file_path"])
+            # Set the creation and modification times
+            doc.metadata["created_at"] = file.file_created_at.isoformat()
+            doc.metadata["modified_at"] = file.file_modified_at.isoformat()
+            # Remove from embed and llm
+            doc.excluded_embed_metadata_keys.append("created_at")
+            doc.excluded_embed_metadata_keys.append("modified_at")
+            doc.excluded_llm_metadata_keys.append("created_at")
+            doc.excluded_llm_metadata_keys.append("modified_at")
 
         # Init the embed model from the app settings
         embed_model = init_embedding_model(app_settings)
 
         # Create the ingestion pipeline for the datasource
-        vector_store = create_vector_store(datasource_identifier, embed_model)
-        doc_store = create_doc_store(datasource_identifier)
+        vector_store = create_vector_store(datasource_identifier, user_id)
+        doc_store = create_doc_store(datasource_identifier, user_id)
 
         # Create the ingestion pipeline for the datasource
         ingestion_pipeline = IngestionPipeline(
@@ -213,16 +213,16 @@ def process_files(full_file_paths: List[str], datasource_identifier: str, app_se
 
                 # Update the file in the database with the ref_doc_ids
                 # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess
-                with get_session() as session:
-                    file = get_db_file(session, doc.metadata["file_path"])
-                    if file:
-                        # Parse the json ref_doc_ids as a list
-                        file_ref_doc_ids = json.loads(file.ref_doc_ids) if file.ref_doc_ids else []
-                        # Add the new doc id to the list
-                        file_ref_doc_ids.append(doc.doc_id)
-                        # Update the file in the database
-                        file.ref_doc_ids = json.dumps(file_ref_doc_ids)
-                        session.commit()
+                #with get_session() as session:
+                file = get_db_file(session, doc.metadata["file_path"])
+                if file:
+                    # Parse the json ref_doc_ids as a list
+                    file_ref_doc_ids = json.loads(file.ref_doc_ids) if file.ref_doc_ids else []
+                    # Add the new doc id to the list
+                    file_ref_doc_ids.append(doc.doc_id)
+                    # Update the file in the database
+                    file.ref_doc_ids = json.dumps(file_ref_doc_ids)
+                    session.commit()
 
             # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
             #if transformations_stack_name == "hierarchical":
@@ -262,10 +262,10 @@ def process_files(full_file_paths: List[str], datasource_identifier: str, app_se
         #ingestion_pipeline.persist(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
 
         # Needed for now as SimpleDocumentStore is not persistent
-        doc_store.persist(persist_path=get_docstore_path(datasource_identifier))
+        doc_store.persist(persist_path=get_docstore_path(datasource_identifier, user_id))
 
 
-        logger.info(f"Processed {full_file_paths}")
+        logger.info(f"Processed {full_file_paths} for user {user_id} with stack {transformations_stack_name_list}")
 
     except Exception as e:
         logger.error(f"Error in ingestion pipeline: {str(e)}")

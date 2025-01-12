@@ -1,8 +1,9 @@
+from app.services.user_path import get_user_db_path
 
-def get_db_path() -> str:
+def get_db_path(user_id: str) -> str:
     """Get the database path"""
-    return "/data/.idapt/db/idapt.db"
+    return get_user_db_path(user_id)
 
-def get_connection_string() -> str:
+def get_connection_string(user_id: str) -> str:
     """Get the database connection string for SQLite"""
-    return f"sqlite:///{get_db_path()}"
+    return f"sqlite:///{get_db_path(user_id)}"

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { Input } from "../input";
 import { Button } from "../button";
 import { useClientConfig } from "../chat/hooks/use-config";
+import { useApiClient } from "@/app/lib/api-client";
 
 interface CreateDatasourceDialogProps {
   open: boolean;
@@ -12,6 +13,7 @@ interface CreateDatasourceDialogProps {
 
 export function CreateDatasourceDialog({ open, onClose, onCreated }: CreateDatasourceDialogProps) {
   const { backend } = useClientConfig();
+  const { fetchWithAuth } = useApiClient();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +22,7 @@ export function CreateDatasourceDialog({ open, onClose, onCreated }: CreateDatas
 
     try {
       setLoading(true);
-      const response = await fetch(`${backend}/api/datasources`, {
+      const response = await fetchWithAuth(`${backend}/api/datasources`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

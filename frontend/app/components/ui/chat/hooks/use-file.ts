@@ -9,6 +9,7 @@ import {
   MessageAnnotationType,
 } from "..";
 import { useClientConfig } from "./use-config";
+import { useApiClient } from '@/app/lib/api-client';
 
 const docMineTypeMap: Record<string, DocumentFileType> = {
   "text/csv": "csv",
@@ -20,6 +21,7 @@ const docMineTypeMap: Record<string, DocumentFileType> = {
 
 export function useFile() {
   const { backend } = useClientConfig();
+  const { fetchWithAuth } = useApiClient();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [files, setFiles] = useState<DocumentFile[]>([]);
 
@@ -47,7 +49,7 @@ export function useFile() {
   ): Promise<DocumentFile> => {
     const base64 = await readContent({ file, asUrl: true });
     const uploadAPI = `${backend}/api/chat/upload`;
-    const response = await fetch(uploadAPI, {
+    const response = await fetchWithAuth(uploadAPI, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

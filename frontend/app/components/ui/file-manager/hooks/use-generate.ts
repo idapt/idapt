@@ -1,6 +1,6 @@
 import { useClientConfig } from "../../chat/hooks/use-config";
 import { useState } from "react";
-
+import { useApiClient } from "@/app/lib/api-client";
 export interface GenerateFile {
   path: string;
   transformations_stack_name_list?: string[];
@@ -8,12 +8,13 @@ export interface GenerateFile {
 
 export function useGenerate() {
   const { backend } = useClientConfig();
+  const { fetchWithAuth } = useApiClient();
   const [isGenerating, setIsGenerating] = useState(false);
 
   const generate = async (files: GenerateFile[]) => {
     try {
       setIsGenerating(true);
-      const response = await fetch(`${backend}/api/generate`, {
+      const response = await fetchWithAuth(`${backend}/api/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -37,4 +38,6 @@ export function useGenerate() {
   };
 
   return { generate, isGenerating };
-} 
+}
+
+export default useGenerate;

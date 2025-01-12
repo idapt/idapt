@@ -7,6 +7,7 @@ import ChatActions from "./chat-actions";
 import ChatMessage from "./chat-message";
 import { ChatHandler } from "./chat.interface";
 import { useClientConfig } from "./hooks/use-config";
+import { useApiClient } from '@/app/lib/api-client';
 
 export default function ChatMessages(
   props: Pick<
@@ -16,6 +17,7 @@ export default function ChatMessages(
 ) {
   const { backend } = useClientConfig();
   const [starterQuestions, setStarterQuestions] = useState<string[]>();
+  const { fetchWithAuth } = useApiClient();
 
   const scrollableChatContainerRef = useRef<HTMLDivElement>(null);
   const messageLength = props.messages.length;
@@ -53,7 +55,7 @@ export default function ChatMessages(
 
   useEffect(() => {
     if (!starterQuestions) {
-      fetch(`${backend}/api/chat/config`)
+      fetchWithAuth(`${backend}/api/chat/config`)
         .then((response) => response.json())
         .then((data) => {
           if (data?.starterQuestions) {
@@ -62,7 +64,7 @@ export default function ChatMessages(
         })
         .catch((error) => console.error("Error fetching config", error));
     }
-  }, [starterQuestions, backend]);
+  }, [starterQuestions, backend, fetchWithAuth]);
 
   // build a map of message id to artifact version
   const artifactVersionMap = useMemo(() => {

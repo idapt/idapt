@@ -11,20 +11,20 @@ import os
 
 logger = logging.getLogger("uvicorn")
 
-def create_session() -> Session:
+def create_session(user_id: str) -> Session:
     """Create a new database session"""
     try:
         # Check if database file exists and create empty one if not
-        if not os.path.exists(get_db_path()):
+        if not os.path.exists(get_db_path(user_id)):
             
             # Create folder for the database
-            db_dir = Path(get_db_path()).parent
+            db_dir = Path(get_db_path(user_id)).parent
             db_dir.mkdir(parents=True, exist_ok=True)
-            with open(get_db_path(), 'w') as f:
+            with open(get_db_path(user_id), 'w') as f:
                 pass
 
         engine = create_engine(
-            get_connection_string(),
+            get_connection_string(user_id),
             connect_args={
                 "check_same_thread": False,
                 "timeout": 30  # SQLite busy timeout in seconds
@@ -32,7 +32,7 @@ def create_session() -> Session:
         )
         
         # Run migrations if needed
-        run_migrations(engine)
+        run_migrations(engine, user_id)
         
         SessionLocal = sessionmaker(
             autocommit=False,
@@ -46,9 +46,9 @@ def create_session() -> Session:
         raise HTTPException(status_code=500, detail=str(e))
 
 @contextmanager
-def get_session() -> Generator[Session, None, None]:
+def get_session(user_id: str) -> Generator[Session, None, None]:
     """Context manager for database sessions"""
-    session = create_session()
+    session = create_session(user_id)
     try:
         yield session
         session.commit()
@@ -59,9 +59,9 @@ def get_session() -> Generator[Session, None, None]:
     finally:
         session.close()
 
-async def get_db() -> AsyncGenerator[Session, None]:
+async def get_db(user_id: str) -> AsyncGenerator[Session, None]:
     """FastAPI dependency for database sessions"""
-    session = create_session()
+    session = create_session(user_id)
     try:
         yield session
         session.commit()
@@ -71,7 +71,6 @@ async def get_db() -> AsyncGenerator[Session, None]:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
-
-def get_db_session():
-    with get_session() as session:
+def get_db_session(user_id: str):
+    with get_session(user_id) as session:
         yield session

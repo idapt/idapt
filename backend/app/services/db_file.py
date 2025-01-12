@@ -6,17 +6,18 @@ import mimetypes
 import logging
 from typing import List, Tuple
 from pathlib import Path
+from app.services.user_path import get_user_data_dir
 
 logger = logging.getLogger("uvicorn")
     
-def create_default_db_filestructure(session: Session):
+def create_default_db_filestructure(session: Session, user_id: str):
     """Create the default filestructure in the database"""
     try:
         # Check if root folder exists
         root_folder = session.query(Folder).filter(Folder.path == "/").first()
         if not root_folder:
             root_folder = Folder(
-                name="/",
+                name="root",
                 path="/",
                 parent_id=None
             )
@@ -27,13 +28,26 @@ def create_default_db_filestructure(session: Session):
         data_folder = session.query(Folder).filter(Folder.path == "/data").first()
         if not data_folder:
             data_folder = Folder(
-                name="/data",
+                name="data",
                 path="/data",
                 parent_id=root_folder.id
             )
             session.add(data_folder)
             session.flush()
             logger.info("Created default data folder in database")
+            
+        # Check if user folder exists
+        user_folder_full_path = get_user_data_dir(user_id)
+        user_folder = session.query(Folder).filter(Folder.path == user_folder_full_path).first()
+        if not user_folder:
+            user_folder = Folder(
+                name=user_id,
+                path=user_folder_full_path,
+                parent_id=root_folder.id
+            )
+            session.add(user_folder)
+            session.flush()
+            logger.info(f"Created default user folder in database for user {user_id}")
 
         session.commit()
         

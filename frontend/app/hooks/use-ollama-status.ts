@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
 import { useSettings } from "@/app/hooks/use-settings";
-
+import { useApiClient } from '@/app/lib/api-client';
 export function useOllamaStatus() {
   const { backend } = useClientConfig();
   const [isDownloading, setIsDownloading] = useState(false);
   const abortController = new AbortController();
   const { getSettings } = useSettings();
+  const { fetchWithAuth } = useApiClient();
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -18,12 +19,12 @@ export function useOllamaStatus() {
           return;
         }
 
-        const response = await fetch(`${backend}/api/ollama-status`, { signal: abortController.signal });
+        const response = await fetchWithAuth(`${backend}/api/ollama-status`, { signal: abortController.signal });
         const data = await response.json();
         const isDownloading = data.is_downloading;
         setIsDownloading(isDownloading);
       } catch (error) {
-        console.error('Failed to fetch ollama status:', error);
+        //console.error('Failed to fetch ollama status:', error);
         // By default, we set isDownloading to true to show the processing toast
         setIsDownloading(true);
       }

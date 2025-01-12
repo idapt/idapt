@@ -29,7 +29,7 @@ def check_current_head(engine: Engine) -> bool:
         context = MigrationContext.configure(connection)
         return set(context.get_current_heads()) == set(script.get_heads())
 
-def run_migrations(engine: Engine):
+def run_migrations(engine: Engine, user_id: str):
     """Run database migrations if needed"""
     try:
         alembic_cfg = get_alembic_config()
@@ -62,12 +62,12 @@ def run_migrations(engine: Engine):
                 
                 # Init default folders
                 from app.services.db_file import create_default_db_filestructure
-                create_default_db_filestructure(session)
+                create_default_db_filestructure(session, user_id)
                 logger.info("Default folders initialized")
 
                 # Init default datasources
                 from app.services.datasource import init_default_datasources
-                init_default_datasources(session)
+                init_default_datasources(session, user_id)
                 logger.info("Default datasources initialized")
                 
                 session.commit()

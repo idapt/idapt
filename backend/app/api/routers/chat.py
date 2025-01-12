@@ -2,6 +2,7 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status, Depends
 from llama_index.core.llms import MessageRole
+from requests import Session
 
 from app.settings.models import AppSettings
 from app.settings.manager import get_app_settings
@@ -15,6 +16,8 @@ from app.api.models.models import (
 from app.api.routers.vercel_response import VercelStreamResponse
 from app.engine.engine import get_chat_engine
 from app.engine.query_filter import generate_filters
+from app.services.database import get_db_session
+from app.api.dependencies import get_user_id
 
 chat_router = r = APIRouter()
 
@@ -28,9 +31,11 @@ async def chat_route(
     data: ChatData,
     background_tasks: BackgroundTasks,
     app_settings: AppSettings = Depends(get_app_settings),
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_db_session),
 ):
     try:
-        logger.info("Chat route called")
+        logger.info(f"Chat route called for user {user_id}")
         last_message_content = data.get_last_message_content()
         messages = data.get_history_messages()
 
@@ -43,6 +48,8 @@ async def chat_route(
         )
         event_handler = EventCallbackHandler()
         chat_engine = get_chat_engine(
+            session=session,
+            user_id=user_id,
             app_settings=app_settings,
             filters=filters,
             params=params,
@@ -67,10 +74,12 @@ async def chat_route(
 @r.post("/request")
 async def chat_request_route(
     data: ChatData,
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_db_session),
     app_settings: AppSettings = Depends(get_app_settings),
 ) -> Result:
     try:
-        logger.info("Chat request route called")
+        logger.info(f"Chat request route called for user {user_id}")
         last_message_content = data.get_last_message_content()
         messages = data.get_history_messages()
 
@@ -81,7 +90,13 @@ async def chat_request_route(
             f"Creating chat engine with filters: {str(filters)}",
         )
 
-        chat_engine = get_chat_engine(app_settings=app_settings, filters=filters, params=params)
+        chat_engine = get_chat_engine(
+            session=session,
+            app_settings=app_settings,
+            user_id=user_id,
+            filters=filters,
+            params=params
+        )
 
         response = await chat_engine.achat(last_message_content, messages)
         return Result(

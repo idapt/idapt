@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { Datasource } from "@/app/types/files";
 import { encodePathSafe } from "./utils/path-encoding";
 import { Textarea } from "../textarea";
+import { useApiClient } from "@/app/lib/api-client";
 
 interface DatasourceItemProps {
   datasource: Datasource;
@@ -25,6 +26,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
   const [description, setDescription] = useState(datasource.description || '');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { fetchWithAuth } = useApiClient();
 
   useEffect(() => {
     setDescription(datasource.description || '');
@@ -46,7 +48,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
     try {
       setError(null);
       setIsSaving(true);
-      const response = await fetch(`${backend}/api/datasources/${encodePathSafe(datasource.identifier)}`, {
+      const response = await fetchWithAuth(`${backend}/api/datasources/${encodePathSafe(datasource.identifier)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -74,7 +76,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
     if (confirm(`Are you sure you want to delete datasource "${datasource.name}"?`)) {
         try {
             const encodedIdentifier = encodePathSafe(datasource.identifier);
-            const response = await fetch(`${backend}/api/datasources/${encodedIdentifier}`, {
+            const response = await fetchWithAuth(`${backend}/api/datasources/${encodedIdentifier}`, {
                 method: 'DELETE'
             });
             

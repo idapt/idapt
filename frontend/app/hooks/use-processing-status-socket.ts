@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useProcessingToast } from './use-processing-toast';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
+import { useApiClient } from '@/app/lib/api-client';
 
 export function useGenerateStatusSocket() {
   const { backend } = useClientConfig();
@@ -8,6 +9,7 @@ export function useGenerateStatusSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const isProcessingRef = useRef(false);
+  const { fetchWithAuth } = useApiClient();
 
   const handleStatus = useCallback((data: any) => {
     const totalFiles = data.queued_count + data.processing_count;
@@ -28,7 +30,7 @@ export function useGenerateStatusSocket() {
 
   const fetchInitialStatus = useCallback(async () => {
     try {
-      const response = await fetch(`${backend}/api/generate/status`);
+      const response = await fetchWithAuth(`${backend}/api/generate/status`);
       const data = await response.json();
       handleStatus(data);
     } catch (error) {

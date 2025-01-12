@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
 import { useGenerate } from '../../file-manager/hooks/use-generate';
+import { uploadWithProgress } from '@/app/lib/upload-helpers';
+import { useUser } from '@/app/contexts/user-context';
 
 interface FileUploadItem {
   path: string;
@@ -14,6 +16,7 @@ interface FileUploadItem {
 export function useUpload() {
   const { backend } = useClientConfig();
   const { generate } = useGenerate();
+  const { userId } = useUser();
   const abortControllerRef = useRef<AbortController>();
   const shouldCancelAllRef = useRef(false);
   const [currentFile, setCurrentFile] = useState("");
@@ -44,7 +47,8 @@ export function useUpload() {
             `${backend}/api/file-manager/upload`,
             { items: [uploadItem] },
             abortControllerRef.current.signal,
-            (progress: number) => onProgress(toastId, progress)
+            (progress: number) => onProgress(toastId, progress),
+            userId
           );
 
           if (!response.ok) {
@@ -88,41 +92,3 @@ export function useUpload() {
     }
   };
 }
-
-const uploadWithProgress = (
-  url: string, 
-  data: any, 
-  signal: AbortSignal,
-  onProgress: (progress: number) => void
-): Promise<Response> => {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-
-    xhr.upload.addEventListener('progress', (event) => {
-      if (event.lengthComputable) {
-        const progress = Math.round((event.loaded / event.total) * 100);
-        onProgress(progress);
-      }
-    });
-
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(new Response(xhr.response, {
-          status: xhr.status,
-          headers: { 'Content-Type': 'application/json' }
-        }));
-      } else {
-        reject(new Error(`HTTP ${xhr.status}`));
-      }
-    });
-
-    xhr.addEventListener('error', () => reject(new Error('Network error')));
-    xhr.addEventListener('abort', () => reject(new DOMException('The user aborted a request.', 'AbortError')));
-
-    signal.addEventListener('abort', () => xhr.abort());
-
-    xhr.send(JSON.stringify(data));
-  });
-};

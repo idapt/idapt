@@ -18,7 +18,7 @@ import logging
 
 logger = logging.getLogger("uvicorn")
 
-async def upload_files(request: FileUploadRequest, session: Session) -> AsyncGenerator[dict, None]:
+async def upload_files(request: FileUploadRequest, session: Session, user_id: str) -> AsyncGenerator[dict, None]:
     try:
         total = len(request.items)
         processed = []
@@ -30,7 +30,7 @@ async def upload_files(request: FileUploadRequest, session: Session) -> AsyncGen
             try:
                 logger.info(f"Uploading file {idx}/{total}: {item.path}")
                 
-                result = await upload_file(session, item)
+                result = await upload_file(session, item, user_id)
                 if result:
                     processed.append(result)
 
@@ -86,7 +86,7 @@ async def upload_files(request: FileUploadRequest, session: Session) -> AsyncGen
             ).model_dump_json()
         }
 
-async def upload_file(session: Session, item: FileUploadItem) -> str:
+async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> str:
     """Process a single upload item (file or folder)"""
     try:
         logger.info(f"Starting upload for file: {item.name}")
@@ -96,7 +96,7 @@ async def upload_file(session: Session, item: FileUploadItem) -> str:
         
         # Use full path for managing files in the backend
         # TODO : Move this to router api ?
-        full_path = get_full_path_from_path(item.path)
+        full_path = get_full_path_from_path(item.path, user_id)
         
         # Write file to filesystem with metadata
         await write_file_filesystem(

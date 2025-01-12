@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from app.services.ollama_status import can_process
 from app.settings.models import AppSettings
 from app.settings.manager import get_app_settings
+from app.api.dependencies import get_user_id
 import logging
 
 logger = logging.getLogger("uvicorn")
@@ -11,6 +12,7 @@ ollama_status_router = r = APIRouter()
 @r.get("")
 async def get_ollama_status_route(
     background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_user_id),
     app_settings: AppSettings = Depends(get_app_settings),
 ):
     """Get the current status of Ollama model downloads"""

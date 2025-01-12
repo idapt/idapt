@@ -13,6 +13,7 @@ import { useClientConfig } from "../chat/hooks/use-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { encodePathSafe } from "@/app/components/ui/file-manager/utils/path-encoding";
 import { useDeletionToast } from "@/app/components/ui/file-manager/hooks/use-deletion-toast";
+import { useApiClient } from "@/app/lib/api-client";
 
 interface FileItemProps {
   id: number;
@@ -46,6 +47,7 @@ export function FileItem({
   const [newName, setNewName] = useState(name);
   const [showDetails, setShowDetails] = useState(false);
   const { startDeletion, completeDeletion, failDeletion } = useDeletionToast();
+  const { fetchWithAuth } = useApiClient();
 
   const handleClick = (e: React.MouseEvent) => {
     // Check if the click came from the dropdown menu or its children
@@ -61,7 +63,7 @@ export function FileItem({
 
   const handleDownload = async () => {
     const encodedPath = encodePathSafe(path);
-    const response = await fetch(`${backend}/api/file-manager/${type}/${encodedPath}/download`, {
+    const response = await fetchWithAuth(`${backend}/api/file-manager/${type}/${encodedPath}/download`, {
       method: 'GET',
     });
     
@@ -89,7 +91,7 @@ export function FileItem({
       try {
         const deletionId = startDeletion(name, path);
         const encodedPath = encodePathSafe(path);
-        const response = await fetch(`${backend}/api/file-manager/${type}/${encodedPath}`, {
+        const response = await fetchWithAuth(`${backend}/api/file-manager/${type}/${encodedPath}`, {
           method: 'DELETE'
         });
 
@@ -120,7 +122,7 @@ export function FileItem({
 
     try {
       const encodedPath = encodePathSafe(path);
-      const response = await fetch(`${backend}/api/file-manager/${type}/${encodedPath}/rename`, {
+      const response = await fetchWithAuth(`${backend}/api/file-manager/${type}/${encodedPath}/rename`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

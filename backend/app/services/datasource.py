@@ -3,7 +3,7 @@ from app.database.models import Datasource, Folder
 from app.services.db_file import get_db_folder_id
 from app.services.file_manager import delete_folder
 from app.services.file_system import get_full_path_from_path
-from app.services.llama_index import delete_llama_index_components
+from app.services.user_path import get_user_data_dir
 
 import logging
 from typing import List, Optional
@@ -11,24 +11,13 @@ import re
 
 logger = logging.getLogger("uvicorn")
 
-
-    # Storage components
-    #self._vector_stores: Dict[str, ChromaVectorStore] = {}
-    #self._doc_stores: Dict[str, SimpleDocumentStore] = {}
-    #self._index_stores: Dict[str, SimpleIndexStore] = {}
-    #self._indices: Dict[str, VectorStoreIndex] = {}
-    #self._tools: Dict[str, BaseTool] = {}
-    
-    # Init the default datasource
-    #with get_session() as session:
-    #    _init_default_datasources(session)
-
-def init_default_datasources(session: Session):
+def init_default_datasources(session: Session, user_id: str):
     """Initialize default datasources if they don't exist"""
     try:
         if not get_datasource(session, "files"):
             create_datasource(
                 session=session,
+                user_id=user_id,
                 name="Files",
                 type="files",
                 settings={}
@@ -39,7 +28,7 @@ def init_default_datasources(session: Session):
         logger.error(f"Error initializing default datasources: {str(e)}")
         raise
 
-def create_datasource(session: Session, name: str, type: str, settings: dict = None) -> Datasource:
+def create_datasource(session: Session, user_id: str, name: str, type: str, settings: dict = None) -> Datasource:
     """Create a new datasource with its root folder and all required components"""
     try:
         identifier = generate_identifier(name)
@@ -48,13 +37,14 @@ def create_datasource(session: Session, name: str, type: str, settings: dict = N
             raise ValueError(f"Datasource with identifier '{identifier}' already exists")
 
         path = identifier
-        full_path = get_full_path_from_path(path)
-        root_folder_id = get_db_folder_id(session, "/data")
+        root_folder_path = get_user_data_dir(user_id)
+        root_folder_id = get_db_folder_id(session, root_folder_path)
 
         # Create root folder for datasource
+        full_datasource_path = get_full_path_from_path(path, user_id)
         datasource_folder = Folder(
             name=name,  # Use display name for folder
-            path=full_path,
+            path=full_datasource_path,
             parent_id=root_folder_id
         )
         session.add(datasource_folder)
@@ -114,8 +104,6 @@ async def delete_datasource(session: Session, identifier: str) -> bool:
         session.delete(datasource)
         session.commit()
 
-        # Delete llama-index components
-        delete_llama_index_components(session, identifier)
         return True
     except Exception as e:
         session.rollback()
@@ -156,9 +144,9 @@ def get_datasource_identifier_from_path(path: str) -> str:
         # Extract datasource name from path (first component after /data/)
         path_parts = path.split("/")
         data_index = path_parts.index("data")
-        if data_index + 1 >= len(path_parts):
+        if data_index + 2 >= len(path_parts):
             raise ValueError(f"Invalid file path structure: {path}")
-        return path_parts[data_index + 1]
+        return path_parts[data_index + 2]
     except Exception as e:
         # Do not use logger here
         raise ValueError(f"Invalid file path structure: {path}")

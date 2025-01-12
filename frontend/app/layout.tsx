@@ -4,6 +4,7 @@ import { SettingsProvider } from "./components/ui/settings";
 import "./globals.css";
 import "./markdown.css";
 import { Providers } from './components/providers/upload-provider';
+import { UserProvider } from './contexts/user-context';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,9 +20,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <Providers>
-          <SettingsProvider>{children}</SettingsProvider>
-        </Providers>
+        <UserProvider>
+          <Providers>
+            <SettingsProvider>{children}</SettingsProvider>
+          </Providers>
+        </UserProvider>
       </body>
     </html>
   );

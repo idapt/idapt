@@ -3,19 +3,18 @@ import logging
 from pathlib import Path
 import os
 
-from app.config import APP_DATA_DIR
 from app.settings.models import AppSettings
+from app.services.user_path import get_user_app_data_dir
 
 logger = logging.getLogger("uvicorn")
 
-SETTINGS_FILE = Path(APP_DATA_DIR) / "app-settings.json"
-
-def get_app_settings() -> AppSettings:
+def get_app_settings(user_id: str) -> AppSettings:
     try:
         # Create the directory if it doesn't exist
-        os.makedirs(APP_DATA_DIR, exist_ok=True)
+        user_app_data_dir = get_user_app_data_dir(user_id)
+        os.makedirs(user_app_data_dir, exist_ok=True)
         
-        settings_file = Path(APP_DATA_DIR) / "app-settings.json"
+        settings_file = Path(user_app_data_dir) / "app-settings.json"
         # If the settings file exists, load the settings from it and return it
         if settings_file.exists():
             data = json.loads(settings_file.read_text())
@@ -32,17 +31,19 @@ def get_app_settings() -> AppSettings:
         logger.error(f"Error loading settings: {str(e)}")
         raise e
 
-def save_app_settings(settings: AppSettings) -> None:
+def save_app_settings(user_id: str, settings: AppSettings) -> None:
     try:
         # Create the directory if it doesn't exist
-        os.makedirs(APP_DATA_DIR, exist_ok=True)
+        user_app_data_dir = get_user_app_data_dir(user_id)
+        os.makedirs(user_app_data_dir, exist_ok=True)
         
         # Normalize the ollama URL
         settings.ollama.llm_host = normalize_url(settings.ollama.llm_host)
         settings.ollama.embedding_host = normalize_url(settings.ollama.embedding_host)
         
-        SETTINGS_FILE.write_text(settings.model_dump_json(indent=2))
-        logger.info(f"Saved settings to {SETTINGS_FILE}")
+        settings_file = Path(user_app_data_dir) / "app-settings.json"
+        settings_file.write_text(settings.model_dump_json(indent=2))
+        logger.info(f"Saved settings to {settings_file}")
     except Exception as e:
         logger.error(f"Error saving settings: {str(e)}")
         raise e

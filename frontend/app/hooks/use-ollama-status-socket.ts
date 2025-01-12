@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
 import { useOllamaToast } from './use-ollama-toast';
+import { useApiClient } from '@/app/lib/api-client';
 
 export function useOllamaStatusSocket() {
   const { backend } = useClientConfig();
@@ -8,6 +9,7 @@ export function useOllamaStatusSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const isDownloadingRef = useRef(false);
+  const { fetchWithAuth } = useApiClient();
 
   const handleStatus = useCallback((data: { is_downloading: boolean }) => {
     if (data.is_downloading && !isDownloadingRef.current) {
@@ -21,7 +23,7 @@ export function useOllamaStatusSocket() {
 
   const fetchInitialStatus = useCallback(async () => {
     try {
-      const response = await fetch(`${backend}/api/ollama-status`);
+      const response = await fetchWithAuth(`${backend}/api/ollama-status`);
       const data = await response.json();
       handleStatus(data);
     } catch (error) {

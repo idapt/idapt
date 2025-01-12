@@ -1,7 +1,6 @@
 import datetime
 from app.services.ingestion_pipeline import process_files
 from app.services.db_file import update_db_file_status, mark_db_stack_as_processed, get_db_files_by_status
-from app.services.database import get_session
 from app.services.datasource import get_datasource_identifier_from_path
 from app.services.llama_index import delete_file_llama_index
 from app.services.ollama_status import is_ollama_server_reachable, wait_for_ollama_models_to_be_downloaded
@@ -13,9 +12,10 @@ import json
 import logging
 
 logger = logging.getLogger("uvicorn")
-    
+
 async def process_queued_files(
         session: Session,
+        user_id: str,
         app_settings: AppSettings
     ):
     """Processing loop"""
@@ -31,86 +31,84 @@ async def process_queued_files(
    
         logger.info("Beginning processing files")
         # Process all files marked as processing that have been interrupted with unfinished processing
-        _process_files_marked_as_processing(session, app_settings)
+        _process_files_marked_as_processing(session=session, user_id=user_id, app_settings=app_settings)
 
         # Process all queued files
-        _process_all_queued_files(session, app_settings)
+        _process_all_queued_files(session=session, user_id=user_id, app_settings=app_settings)
    
 
     except Exception as e:
         logger.error(f"Processing loop error: {str(e)}")
 
-def _process_files_marked_as_processing(session, app_settings: AppSettings):
+def _process_files_marked_as_processing(session: Session, user_id: str, app_settings: AppSettings):
     """Process all files marked as processing"""
     try:
-        with get_session() as session:            
-            while True:
+        while True:
+            try:
+                # Get the files one by one so that in case of queued file changes we get the freshest database data
+                oldest_processing_file = session.query(File).filter(
+                    File.status == FileStatus.PROCESSING
+                ).order_by(
+                    File.uploaded_at.asc()
+                ).first()
+
+                # If there are no more files marked as processing, return
+                if not oldest_processing_file:
+                    return
+
+                # Move the processed stacks to the stacks_to_process column as we will delete all already processed stacks from llama index                    
+                processed_stacks = json.loads(oldest_processing_file.processed_stacks)
+                stacks_to_process = json.loads(oldest_processing_file.stacks_to_process)
+                stacks_to_process.extend(processed_stacks)
+                oldest_processing_file.stacks_to_process = json.dumps(stacks_to_process)
+                oldest_processing_file.processed_stacks = json.dumps([])
+                session.commit()
+
+                logger.info(f"Reprocessing interrupted file: {oldest_processing_file.path}")
                 try:
-                    # Get the files one by one so that in case of queued file changes we get the freshest database data
-                    oldest_processing_file = session.query(File).filter(
-                        File.status == FileStatus.PROCESSING
-                    ).order_by(
-                        File.uploaded_at.asc()
-                    ).first()
-
-                    # If there are no more files marked as processing, return
-                    if not oldest_processing_file:
-                        return
-
-                    # Move the processed stacks to the stacks_to_process column as we will delete all already processed stacks from llama index                    
-                    processed_stacks = json.loads(oldest_processing_file.processed_stacks)
-                    stacks_to_process = json.loads(oldest_processing_file.stacks_to_process)
-                    stacks_to_process.extend(processed_stacks)
-                    oldest_processing_file.stacks_to_process = json.dumps(stacks_to_process)
-                    oldest_processing_file.processed_stacks = json.dumps([])
-                    session.commit()
-
-                    logger.info(f"Reprocessing interrupted file: {oldest_processing_file.path}")
-                    try:
-                        delete_file_llama_index(session, oldest_processing_file.path)
-                    except Exception as e:
-                        logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
-                        
-                    _process_single_file(session, oldest_processing_file, app_settings)
+                    delete_file_llama_index(session=session, user_id=user_id, full_path=oldest_processing_file.path)
                 except Exception as e:
-                    logger.error(f"Failed to process interrupted file {oldest_processing_file.path}: {str(e)}, marking as error")
-                    try:
-                        update_db_file_status(session, oldest_processing_file.path, FileStatus.ERROR)
-                    except Exception as e:
-                        logger.error(f"Failed to update file status for {oldest_processing_file.path}: {str(e)}")
+                    logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
+                    
+                _process_single_file(session=session, file=oldest_processing_file, user_id=user_id, app_settings=app_settings)
+            except Exception as e:
+                logger.error(f"Failed to process interrupted file {oldest_processing_file.path}: {str(e)}, marking as error")
+                try:
+                    update_db_file_status(session=session, full_path=oldest_processing_file.path, status=FileStatus.ERROR)
+                except Exception as e:
+                    logger.error(f"Failed to update file status for {oldest_processing_file.path}: {str(e)}")
     except Exception as e:
         logger.error(f"Failed to process all queued files: {str(e)}")
         return False
         
-def _process_all_queued_files(session, app_settings: AppSettings) -> bool:
+def _process_all_queued_files(session: Session, user_id: str, app_settings: AppSettings) -> bool:
     """Process all queued files"""
     try:
-        with get_session() as session:
-            while True:
+        while True:
+            try:
+                # Get the files one by one so that in case of queued file changes we get the freshest database data
+                # Get oldest queued file
+                queued_file = session.query(File).filter(
+                    File.status == FileStatus.QUEUED
+                ).order_by(
+                    File.uploaded_at.asc()
+                ).first()
+                
+                if queued_file:
+                    _process_single_file(session=session, file=queued_file, user_id=user_id, app_settings=app_settings)
+                else:
+                    return
+            except Exception as e:
+                logger.error(f"Failed to process queued file {queued_file.path}: {str(e)}, marking as error")
                 try:
-                    # Get the files one by one so that in case of queued file changes we get the freshest database data
-                    # Get oldest queued file
-                    queued_file = session.query(File).filter(
-                        File.status == FileStatus.QUEUED
-                    ).order_by(
-                        File.uploaded_at.asc()
-                    ).first()
-                    
-                    if queued_file:
-                        _process_single_file(session, queued_file, app_settings)
-                    else:
-                        return
+                    update_db_file_status(session=session, full_path=queued_file.path, status=FileStatus.ERROR)
                 except Exception as e:
-                    logger.error(f"Failed to process queued file {queued_file.path}: {str(e)}, marking as error")
-                    try:
-                        update_db_file_status(session, queued_file.path, FileStatus.ERROR)
-                    except Exception as e:
-                        logger.error(f"Failed to update file status for {queued_file.path}: {str(e)}")
+                    logger.error(f"Failed to update file status for {queued_file.path}: {str(e)}")
     except Exception as e:
         logger.error(f"Failed to process all queued files: {str(e)}")
         return False
 
-def _process_single_file(session, file, app_settings: AppSettings):
+def _process_single_file(session: Session, file: File, user_id: str, app_settings: AppSettings):
     """Process a single file through the ingestion pipeline"""
     try:
         # Update status to processing
@@ -126,12 +124,14 @@ def _process_single_file(session, file, app_settings: AppSettings):
         stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else ["default"]
         processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
         datasource_identifier = get_datasource_identifier_from_path(file.path)
-        
+        logger.info(f"Processing file {file.path} with datasource identifier {datasource_identifier}")
         # Process each stack
         for stack_name in stacks_to_process:
             if not processed_stacks or stack_name not in processed_stacks:
                 try:
                     process_files(
+                        session=session,
+                        user_id=user_id,
                         full_file_paths=[file.path],
                         datasource_identifier=datasource_identifier,
                         app_settings=app_settings,

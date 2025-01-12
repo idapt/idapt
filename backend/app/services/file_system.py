@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import HTTPException
 import shutil
 
-from app.config import DATA_DIR
+from app.services.user_path import get_user_data_dir
 
 async def write_file_filesystem(full_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
     """Write content to a file in the filesystem and set its metadata"""
@@ -70,22 +70,16 @@ async def delete_folder_filesystem(full_path: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
 
-def get_full_path_from_path(path: str) -> str:
-    """Convert frontend path to backend full path"""
-    # Remove any leading/trailing slashes from the path
-    cleaned_path = path.strip('/')
-    # If path is empty, return DATA_DIR
-    if not cleaned_path:
-        return DATA_DIR
-    # Join the paths using os.path.join to handle slashes correctly
-    return os.path.join(DATA_DIR, cleaned_path)
+def get_full_path_from_path(path: str, user_id: str) -> str:
+    """Convert a relative path to a full path including user directory"""
+    return str(Path(get_user_data_dir(user_id), path.lstrip("/")))
 
-def get_path_from_full_path(full_path: str) -> str:
+def get_path_from_full_path(full_path: str, user_id: str) -> str:
     """Convert a full filesystem path to a database path."""
     try:
         if full_path is None or full_path == "":
             return ""
         # Remove the DATA_DIR from the full path
-        return full_path.replace(DATA_DIR, "") #str(Path(full_path).relative_to(DATA_DIR))
+        return full_path.replace(get_user_data_dir(user_id), "") #str(Path(full_path).relative_to(DATA_DIR))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get path from full path: {str(e)}")

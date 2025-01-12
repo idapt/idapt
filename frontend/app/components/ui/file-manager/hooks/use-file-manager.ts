@@ -2,9 +2,11 @@ import { File, Folder, Datasource } from '@/app/types/files';
 import { useCallback, useEffect, useState } from 'react';
 import { useClientConfig } from '../../chat/hooks/use-config';
 import { encodePathSafe } from '@/app/components/ui/file-manager/utils/path-encoding';
+import { useApiClient } from '@/app/lib/api-client';
 
 export function useFileManager() {
   const { backend } = useClientConfig();
+  const { fetchWithAuth } = useApiClient();
   const [currentPath, setCurrentPath] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
@@ -18,10 +20,9 @@ export function useFileManager() {
       setLoading(true);
       const encodedPath = path ? encodePathSafe(path) : '';
       
-      // Make requests in parallel using Promise.all
       const [folderResponse, datasourcesResponse] = await Promise.all([
-        fetch(`${backend}/api/file-manager/folder/${encodedPath}`),
-        fetch(`${backend}/api/datasources`)
+        fetchWithAuth(`${backend}/api/file-manager/folder/${encodedPath}`),
+        fetchWithAuth(`${backend}/api/datasources`)
       ]);
 
       if (!folderResponse.ok) throw new Error('Failed to fetch folder contents');
@@ -52,7 +53,7 @@ export function useFileManager() {
     } finally {
       setLoading(false);
     }
-  }, [backend]);
+  }, [backend, fetchWithAuth]);
 
   const navigateToFolder = useCallback((path: string) => {
     setCurrentPath(path);

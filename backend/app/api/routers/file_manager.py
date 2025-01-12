@@ -10,6 +10,7 @@ from app.services.file_system import get_path_from_full_path, get_full_path_from
 from app.services.db_file import get_db_folder_contents
 from app.services.file_manager import upload_files, download_file, delete_file, delete_folder, rename_file, download_folder
 from app.services.database import get_db_session
+from app.api.dependencies import get_user_id
 
 import logging
 logger = logging.getLogger("uvicorn")
@@ -25,19 +26,21 @@ def decode_path_safe(encoded_path: str) -> str:
 @r.post("/upload")
 async def upload_files_route(
     request: FileUploadRequest,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ) -> EventSourceResponse:
-    logger.info(f"Uploading {len(request.items)} files")
-    return EventSourceResponse(upload_files(request, session))
+    logger.info(f"Uploading {len(request.items)} files for user {user_id}")
+    return EventSourceResponse(upload_files(request, session, user_id))
 
 @r.get("/file/{encoded_path}/download")
 async def download_file_route(
     encoded_path: str,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
-    logger.info(f"Downloading file {encoded_path}")
+    logger.info(f"Downloading file {encoded_path} for user {user_id}")
     path = decode_path_safe(encoded_path)
-    full_path = get_full_path_from_path(path)
+    full_path = get_full_path_from_path(path, user_id)
     result = await download_file(session, full_path)
     return Response(
         content=result["content"],
@@ -52,22 +55,24 @@ async def download_file_route(
 @r.delete("/file/{encoded_path}")
 async def delete_file_route(
     encoded_path: str,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
-    logger.info(f"Deleting file {encoded_path}")
+    logger.info(f"Deleting file {encoded_path} for user {user_id}")
     path = decode_path_safe(encoded_path)
-    full_path = get_full_path_from_path(path)
+    full_path = get_full_path_from_path(path, user_id)
     await delete_file(session, full_path)
     return {"success": True}
 
 @r.delete("/folder/{encoded_path}")
 async def delete_folder_route(
     encoded_path: str,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
     logger.info(f"Deleting folder {encoded_path}")
     path = decode_path_safe(encoded_path)
-    full_path = get_full_path_from_path(path)
+    full_path = get_full_path_from_path(path, user_id)
     await delete_folder(session, full_path)
     return {"success": True}
 
@@ -75,11 +80,12 @@ async def delete_folder_route(
 async def rename_file_route(
     encoded_path: str, 
     new_name: str, 
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
-    logger.info(f"Renaming file {encoded_path} to {new_name}")
+    logger.info(f"Renaming file {encoded_path} to {new_name} for user {user_id}")
     path = decode_path_safe(encoded_path)
-    full_path = get_full_path_from_path(path)
+    full_path = get_full_path_from_path(path, user_id)
     await rename_file(session, full_path, new_name)
     return {"success": True}
 
@@ -88,22 +94,23 @@ async def rename_file_route(
 @r.get("/folder/{encoded_path}")
 async def get_folder_contents_route(
     encoded_path: str | None = None,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ) -> FolderContentsResponse:
     """Get contents of a folder"""
-    logger.info(f"Getting folder contents for path: {encoded_path}")
+    logger.info(f"Getting folder contents for path: {encoded_path} for user {user_id}")
     path = None
     if encoded_path:
         path = decode_path_safe(encoded_path)
     else:
         path = ""
-    full_path = get_full_path_from_path(path)
+    full_path = get_full_path_from_path(path, user_id)
     files, folders = get_db_folder_contents(session, full_path)
     files = [FileResponse(
         id=file.id,
         name=file.name,
         # We are leaving the api so convert the full path to path
-        path=get_path_from_full_path(file.path),
+        path=get_path_from_full_path(file.path, user_id),
         mime_type=file.mime_type,
         size=file.size,
         uploaded_at=file.uploaded_at.timestamp(),
@@ -115,7 +122,7 @@ async def get_folder_contents_route(
         id=folder.id,
         name=folder.name,
         # We are leaving the api so convert the full path to path
-        path=get_path_from_full_path(folder.path),
+        path=get_path_from_full_path(folder.path, user_id),
         uploaded_at=folder.uploaded_at.timestamp(),
         accessed_at=folder.accessed_at.timestamp()
     ) for folder in folders]
@@ -124,11 +131,12 @@ async def get_folder_contents_route(
 @r.get("/folder/{encoded_path}/download")
 async def download_folder_route(
     encoded_path: str,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
-    logger.info(f"Downloading folder {encoded_path}")
+    logger.info(f"Downloading folder {encoded_path} for user {user_id}")
     path = decode_path_safe(encoded_path)
-    full_path = get_full_path_from_path(path)
+    full_path = get_full_path_from_path(path, user_id)
     result = await download_folder(session, full_path)
     return Response(
         content=result["content"],
