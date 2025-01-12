@@ -32,8 +32,13 @@ def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVecto
         embeddings_dir.mkdir(parents=True, exist_ok=True)
         embeddings_file = embeddings_dir / f"{datasource_identifier}"
         
-        # Create a Chroma persistent client
-        client = chromadb.PersistentClient(path=str(embeddings_file))
+        # Create a Chroma persistent client with telemetry disabled
+        client = chromadb.PersistentClient(
+            path=str(embeddings_file),
+            settings=chromadb.Settings(
+                anonymized_telemetry=False
+            )
+        )
 
         # Create a Chroma collection
         chroma_collection = client.get_or_create_collection(name=datasource_identifier)
