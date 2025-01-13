@@ -114,7 +114,7 @@ async def delete_datasource_route(
     try:
         logger.info(f"Deleting datasource {encoded_identifier} for user {user_id}")
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
-        success = await delete_datasource(session, identifier)
+        success = await delete_datasource(session, user_id, identifier)
         if not success:
             raise HTTPException(status_code=404, detail="Datasource not found")
         return {"message": "Datasource deleted successfully"}

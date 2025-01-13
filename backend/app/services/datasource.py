@@ -97,7 +97,7 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
         logger.error(f"Error creating datasource: {str(e)}")
         raise
 
-async def delete_datasource(session: Session, identifier: str) -> bool:
+async def delete_datasource(session: Session, user_id: str, identifier: str) -> bool:
     """Delete a datasource and all its components"""
     try:
         datasource = get_datasource(session, identifier)
@@ -117,7 +117,7 @@ async def delete_datasource(session: Session, identifier: str) -> bool:
         
         # Then try to delete all files and folders using the stored path
         try:
-            await delete_folder(session, root_folder_path)
+            await delete_folder(session, user_id, root_folder_path)
         except Exception as e:
             logger.error(f"Failed to delete datasource files and folders: {str(e)}")
             # Restore the root_folder_id reference since deletion failed
