@@ -190,6 +190,56 @@ def delete_file_llama_index(session: Session, user_id: str, full_path: str):
         logger.error(f"Error deleting file from LlamaIndex: {str(e)}")
         raise
 
+def delete_file_processing_stack_from_llama_index(session: Session, user_id: str, full_path: str, processing_stack_identifier: str):
+    try:
+        # Get the file's ref_doc_ids from the database
+        file = get_db_file(session, full_path)
+        if not file or not file.ref_doc_ids:
+            logger.warning(f"No ref_doc_ids found for file: {full_path}")
+            return
+
+        from app.services.datasource import get_datasource_identifier_from_path
+        # Get the datasource name from the path
+        datasource_identifier = get_datasource_identifier_from_path(full_path)
+
+        # Get the datasource vector store and docstore
+        vector_store = create_vector_store(datasource_identifier, user_id)
+        doc_store = create_doc_store(datasource_identifier, user_id)
+
+        # Delete each ref_doc_id from the vector store and docstore
+        # Parse the json ref_doc_ids as a list
+        ref_doc_ids = json.loads(file.ref_doc_ids) if file.ref_doc_ids else []
+
+        # Keep only the ref_doc_ids that are with the processing stack identifier
+        ref_doc_ids = [ref_doc_id for ref_doc_id in ref_doc_ids if processing_stack_identifier in ref_doc_id]
+
+        for ref_doc_id in ref_doc_ids:
+            try:
+                # Delete the ref_doc_id from the vector store
+                vector_store.delete(ref_doc_id)
+                # Delete the ref_doc_id from the docstore
+                doc_store.delete_document(ref_doc_id)
+            except Exception as e:
+                logger.warning(f"Failed to delete {ref_doc_id} from vector store and docstore probably because it was already deleted or does not exist in them : {str(e)}")
+            # In any case delete the ref_doc_id from the file
+            finally:
+                logger.info(f"Deleting {ref_doc_id} relation from file {file.path}")
+                # Delete the ref_doc_id from the file
+                file.ref_doc_ids = [ref_doc_id for ref_doc_id in file.ref_doc_ids if ref_doc_id != ref_doc_id]
+                # Delete the processing stack identifier from the processed_stacks list after having it converted to json and reconverting it to a string
+                processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
+                processed_stacks = [stack_id for stack_id in processed_stacks if stack_id != processing_stack_identifier]
+                file.processed_stacks = json.dumps(processed_stacks)
+                # Commit the changes to the file the database
+                session.commit()
+
+        # Needed for now as SimpleDocumentStore is not persistent
+        doc_store.persist(persist_path=get_docstore_path(user_id, datasource_identifier))
+        
+    except Exception as e:
+        logger.error(f"Error deleting file processing stack from LlamaIndex: {str(e)}")
+        raise
+
 def get_docstore_path(user_id: str, datasource_identifier: str) -> str:
     return f"{get_user_app_data_dir(user_id)}/docstores/{datasource_identifier}.json"
 

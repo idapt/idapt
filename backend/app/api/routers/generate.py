@@ -2,16 +2,16 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 import logging
 from typing import List
 from pydantic import BaseModel, Field
-from app.services.generate import get_queue_status, process_queued_files, should_start_processing
-from app.services.file_system import get_full_path_from_path
-from app.services.db_file import update_db_file_status
+from sqlalchemy.orm import Session
+
+from app.services.generate import get_queue_status, process_queued_files, should_start_processing, mark_file_as_queued
 from app.settings.models import AppSettings
 from app.settings.manager import get_app_settings
-from app.database.models import FileStatus
 from app.services.database import get_db_session
 from app.api.dependencies import get_user_id
-from sqlalchemy.orm import Session
-import asyncio
+from app.services.file_system import get_full_path_from_path
+
+
 logger = logging.getLogger("uvicorn")
 
 generate_router = r = APIRouter()
@@ -36,12 +36,10 @@ async def generate_route(
 
         # Mark the file as queued in the database and add thier stacks to process with
         for file in request.files:
-            update_db_file_status(
+            mark_file_as_queued(
                 session,
-                # The given path is not a full path as the frontend is not aware of the DATA_DIR
-                get_full_path_from_path(file["path"], user_id),
-                FileStatus.QUEUED,
-                file.get("transformations_stack_name_list", ["default"])
+                get_full_path_from_path(file["path"], user_id), # The given path by the frontend is not a full path as the frontend is not aware of the DATA_DIR and the user_id
+                file.get("transformations_stack_name_list")
             )
 
         # Start processing the files in the background

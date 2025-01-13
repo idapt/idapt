@@ -141,7 +141,7 @@ def create_db_file(
             # By default mark the file for processing with the default sentence splitter stack
             status=FileStatus.QUEUED,
             processed_stacks=json.dumps([]),
-            stacks_to_process=json.dumps(["sentence-splitter-1024", "sentence-splitter-512", "sentence-splitter-128"])
+            stacks_to_process=json.dumps([])
         )
         
         session.add(file)
@@ -268,73 +268,6 @@ def get_db_folder_id(session: Session, full_path: str) -> int | None:
     """Get the ID of a folder by path"""
     folder = session.query(Folder).filter(Folder.path == full_path).first()
     return folder.id if folder else None
-
-def update_db_file_status(
-    session: Session,
-    file_path: str,
-    status: FileStatus,
-    # Json object
-    stacks_to_process: List[str] = ["default"],
-) -> File:
-    """Update file status and stacks to process"""
-    try:
-        file = get_db_file(session, file_path)
-        if not file:
-            raise ValueError(f"File not found: {file_path}")
-            
-        file.status = status
-        
-        # If the file is already queued just add the stacks to the stacks to process
-        if status == FileStatus.QUEUED:
-            # Try to load the stacks_to_process as a json list
-            existing_stacks_to_process : List[str] = []
-            if file.stacks_to_process:
-                existing_stacks_to_process = json.loads(file.stacks_to_process)
-            # Convert stacks_to_process str
-            existing_stacks_to_process.extend(stacks_to_process)
-            # Convert back to json string
-            file.stacks_to_process = json.dumps(existing_stacks_to_process)
-
-        # If we are setting the file to processing, also set the processing_started_at timestamp
-        if status == FileStatus.PROCESSING:
-            file.processing_started_at = datetime.now(timezone.utc)
-
-        # If we are setting the file to processed, also set the processing_started_at timestamp
-        if status == FileStatus.COMPLETED:
-            file.processing_started_at = None
-        
-        session.commit()
-        return file
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error updating file status: {str(e)}")
-        raise
-
-def mark_db_stack_as_processed(
-    session: Session,
-    file_path: str,
-    stack_name: str
-) -> File:
-    """Add a stack to the list of processed stacks"""
-    file = get_db_file(session, file_path)
-    if not file:
-        raise ValueError(f"File not found: {file_path}")
-    
-    # Get the processed stacks from json
-    processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
-    # If the stack is not already processed, add it
-    if stack_name not in processed_stacks:
-        processed_stacks.append(stack_name)
-        file.processed_stacks = json.dumps(processed_stacks)
-
-    # Remove the stack from the stacks to process
-    stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
-    if stack_name in stacks_to_process:
-        stacks_to_process = [stack for stack in stacks_to_process if stack != stack_name]
-        file.stacks_to_process = json.dumps(stacks_to_process)
-    
-    session.commit()
-    return file
 
 def get_db_files_by_status(
     session: Session,

@@ -7,7 +7,6 @@ class FileUploadItem(BaseModel):
     name: str  # Original file name
     file_created_at: float # Unix timestamp in milliseconds
     file_modified_at: float # Unix timestamp in milliseconds
-    transformations_stack_name: Optional[str] = "default"
 
 
 class FileUploadRequest(BaseModel):

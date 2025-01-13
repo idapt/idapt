@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status, Depends
 from llama_index.core.llms import MessageRole
-from requests import Session
+from sqlalchemy.orm import Session
 
 from app.settings.models import AppSettings
 from app.settings.manager import get_app_settings

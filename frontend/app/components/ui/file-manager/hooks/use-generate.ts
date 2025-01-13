@@ -9,12 +9,10 @@ export interface GenerateFile {
 export function useGenerate() {
   const { backend } = useClientConfig();
   const { fetchWithAuth } = useApiClient();
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const generate = async (files: GenerateFile[]) => {
     try {
-      setIsGenerating(true);
-      const response = await fetchWithAuth(`${backend}/api/generate`, {
+        const response = await fetchWithAuth(`${backend}/api/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,12 +30,10 @@ export function useGenerate() {
     } catch (error) {
       console.error('Generation error:', error);
       throw error;
-    } finally {
-      setIsGenerating(false);
     }
   };
 
-  return { generate, isGenerating };
+  return { generate };
 }
 
 export default useGenerate;

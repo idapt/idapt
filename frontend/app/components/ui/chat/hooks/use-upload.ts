@@ -59,6 +59,7 @@ export function useUpload() {
           try {
             await generate([{
               path: uploadItem.path,
+              transformations_stack_name_list: ["sentence-splitter-512"]
             }]);
           } catch (error) {
             console.error('Failed to trigger generation:', error);

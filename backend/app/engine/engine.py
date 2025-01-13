@@ -5,7 +5,7 @@ from llama_index.core.agent.react import ReActAgent, ReActChatFormatter
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool
-from requests import Session
+from sqlalchemy.orm import Session
 #from app.engine.tools import ToolFactory
 from app.settings.models import AppSettings
 from app.settings.model_initialization import init_llm, init_embedding_model

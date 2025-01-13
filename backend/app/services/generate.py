@@ -1,17 +1,240 @@
-import datetime
-from app.services.ingestion_pipeline import process_files
-from app.services.db_file import update_db_file_status, mark_db_stack_as_processed, get_db_files_by_status
+from app.services.db_file import get_db_file, get_db_files_by_status
 from app.services.datasource import get_datasource_identifier_from_path
-from app.services.llama_index import delete_file_llama_index
+from app.services.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.services.ollama_status import is_ollama_server_reachable, wait_for_ollama_models_to_be_downloaded
 from app.database.models import File, FileStatus
 from app.settings.models import AppSettings
+from app.settings.model_initialization import init_embedding_model
+from app.services.llama_index import get_docstore_path, create_vector_store, create_doc_store
 
+# Set the llama index default llm and embed model to none otherwise it will raise an error.
+# We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
+from llama_index.core.settings import Settings
+Settings.llm = None
+Settings.embed_model = None
+from llama_index.core.ingestion import IngestionPipeline, DocstoreStrategy
+from llama_index.core.readers import SimpleDirectoryReader
+from llama_index.core.node_parser import SentenceSplitter, HierarchicalNodeParser
+from llama_index.core.extractors import (
+    SummaryExtractor,
+    QuestionsAnsweredExtractor,
+    TitleExtractor,
+    KeywordExtractor,
+)
+#from llama_index.extractors.entity import EntityExtractor
+
+
+from datetime import datetime
+import mimetypes
+import os
+from typing import List
 from sqlalchemy.orm import Session
 import json
 import logging
 
 logger = logging.getLogger("uvicorn")
+
+
+TRANSFORMATIONS_STACKS = {
+# See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
+# List of avaliable transformations stacks with their name and transformations
+    "default": [
+        SentenceSplitter(
+            chunk_size=512,
+            chunk_overlap=64,
+        ),
+    ],
+    #"hierarchical": [ # TODO Fix the bug where a relation with a non existing doc id is created and creates issues when querying the index
+    #    HierarchicalNodeParser.from_defaults(
+    #        include_metadata=True,
+    #        chunk_sizes=[1024, 512, 256, 128], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum #size, we also chunk it into The smallest sentences possible to capture as much atomic meaning of the sentence as possible.
+    #        # When text chunks are too small like under 128 tokens, the embedding model may return null embeddings and we want to avoid that because it break the search as they can come out on top of the search results
+    #        chunk_overlap=0
+    #    ),
+    #    # Embedding is present at ingestion pipeline level
+    #],
+    "titles": [
+        TitleExtractor(
+            nodes=5,
+        ),
+    ],
+    "questions": [
+        QuestionsAnsweredExtractor(
+            questions=3,
+        ),
+    ],
+    "summary": [
+        SummaryExtractor(
+            summaries=["prev", "self"],
+        ),
+    ],
+    "keywords": [
+        KeywordExtractor(
+            keywords=10,
+        ),
+    ],
+    # NOTE: Current sentence splitter stacks are not linking each node like the hierarchical node parser does, so if multiple are used they are likely to generate duplicates nodes at retreival time. Only use one at a time to avoid this. # TODO Fix hierarchical node parser
+    "sentence-splitter-2048": [
+        SentenceSplitter(
+            chunk_size=2048,
+            chunk_overlap=256,
+        ),
+    ],
+    "sentence-splitter-1024": [
+        SentenceSplitter(
+            chunk_size=1024,
+            chunk_overlap=128,
+        ),
+    ],
+    "sentence-splitter-512": [
+        SentenceSplitter(
+            chunk_size=512,
+            chunk_overlap=64,
+        ),
+    ],
+    "sentence-splitter-256": [
+        SentenceSplitter(
+            chunk_size=256,
+            chunk_overlap=0,
+        ),
+    ],
+    "sentence-splitter-128": [
+        SentenceSplitter(
+            chunk_size=128,
+            chunk_overlap=0,
+        ),
+    ],
+    "image": [
+        #ImageDescriptionExtractor(
+        #    
+        #),
+        #ImageEXIFExtractor(
+        #    
+        #),
+    ],
+    "video": [
+        #VideoDescriptionExtractor(
+        #    
+        #),
+        #VideoTranscriptionExtractor(
+        #    
+        #),
+        #VideoEXIFExtractor(
+        #    
+        #),
+    ],
+    "audio": [
+        #AudioTranscriptionExtractor(
+        #    
+        #),
+        #AudioEXIFExtractor(
+        #    
+        #),
+    ],
+    "code": [
+        #CodeExtractor(
+        #    
+        #),
+    ],
+    #"entities": [
+    #    EntityExtractor(prediction_threshold=0.5),
+    #],
+    #"zettlekasten": [
+    #    ZettlekastenExtractor(
+    #        similar_notes_top_k=5
+    #    ),
+    #],
+}
+
+logger = logging.getLogger("uvicorn")
+
+
+def _get_file_type(file_path: str) -> str:
+    """Get the file type from the file path"""
+    try:
+        file_extension = os.path.splitext(file_path)[1]
+        file_type = ""
+        match file_extension:
+            # Text files
+            case ".pdf" | ".doc" | ".odt" | ".docx" | ".txt" | ".md" | ".markdown":
+                file_type = "text"
+            # Images
+            case ".jpg" | ".jpeg" | ".png" | ".gif" | ".bmp" | ".tiff" | ".ico" | ".webp":
+                file_type = "image"
+            # Videos
+            case ".mp4" | ".avi" | ".mov" | ".wmv" | ".flv" | ".mkv" | ".webm" | ".mpg" | ".mpeg" | ".m4v":
+                file_type = "video"
+            # Audio
+            case ".mp3" | ".wav" | ".aac" | ".flac" | ".m4a" | ".ogg" | ".opus":
+                file_type = "audio"
+            # Code
+            case ".py" | ".js" | ".html" | ".css" | ".java" | ".c" | ".cpp" | ".cs" | ".go" | ".rb" | ".swift" | ".kt" | ".rs" | ".php" | ".sql" | ".xml" | ".json" | ".yaml" | ".yml" | ".toml" | ".md" | ".rst" | ".sh" | ".bash" | ".zsh" | ".fish" | ".powershell" | ".ps1" | ".bat" | ".cmd" | ".psm1" | ".ps1xml" | ".psscrip" :
+                file_type = "code"
+            case _:
+                # File extension not recognized, try to use the mime type
+                mime_type = mimetypes.guess_type(file_path)
+                match mime_type:
+                    case "text/plain":
+                        file_type = "text"
+                    case "image/jpeg" | "image/png" | "image/gif" | "image/bmp" | "image/tiff" | "image/ico" | "image/webp":
+                        file_type = "image"
+                    case "video/mp4" | "video/avi" | "video/mov" | "video/wmv" | "video/flv" | "video/mkv":
+                        file_type = "video"
+                    case "audio/mp3" | "audio/wav" | "audio/aac" | "audio/flac" | "audio/m4a" | "audio/ogg" | "audio/opus":
+                        file_type = "audio"
+                    case "application/pdf":
+                        file_type = "pdf"
+                    case _:
+                        file_type = "unknown"
+            
+        return file_type
+    except Exception as e:
+        logger.error(f"Failed to get file type for {file_path}: {str(e)}")
+        return "unknown"
+    
+def _validate_stacks_to_process_for_file_type(stacks_to_process: List[str], file_type: str) -> List[str]:
+    """Validate the stacks to process for a given file type"""
+    try:
+        validated_stacks_to_process = []
+        for stack_name in stacks_to_process:
+            # Check if this transformation stack is applicable to the file type
+            # TODO Implement better generation, for now we just add all stacks
+            validated_stacks_to_process.append(stack_name)
+        return validated_stacks_to_process
+    except Exception as e:
+        logger.error(f"Failed to validate stacks to process for file type {file_type}: {str(e)}")
+        return stacks_to_process
+
+def mark_file_as_queued(session: Session, file_path: str, stacks_to_process: List[str]):
+    """Mark a file as queued"""
+    try:
+        # Get the file type
+        file_type = _get_file_type(file_path)
+        # For each transformation stack name
+        validated_stacks_to_process = _validate_stacks_to_process_for_file_type(stacks_to_process, file_type)
+
+        # Get the file
+        file = get_db_file(session, file_path)
+        if not file:
+            raise ValueError(f"File not found: {file_path}")
+            
+        file.status = FileStatus.QUEUED
+        
+        # Try to load the stacks_to_process as a json list
+        existing_stacks_to_process : List[str] = []
+        if file.stacks_to_process:
+            existing_stacks_to_process = json.loads(file.stacks_to_process)
+        # Convert stacks_to_process str
+        existing_stacks_to_process.extend(validated_stacks_to_process)
+        # Convert back to json string
+        file.stacks_to_process = json.dumps(existing_stacks_to_process)
+        
+        session.commit()
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Failed to mark file as queued: {str(e)}")
+        raise
 
 async def process_queued_files(
         session: Session,
@@ -39,12 +262,14 @@ async def process_queued_files(
 
     except Exception as e:
         logger.error(f"Processing loop error: {str(e)}")
+        raise
 
 def _process_files_marked_as_processing(session: Session, user_id: str, app_settings: AppSettings):
     """Process all files marked as processing"""
     try:
         while True:
             try:
+                logger.info("Processing files marked as processing")
                 # Get the files one by one so that in case of queued file changes we get the freshest database data
                 oldest_processing_file = session.query(File).filter(
                     File.status == FileStatus.PROCESSING
@@ -56,7 +281,7 @@ def _process_files_marked_as_processing(session: Session, user_id: str, app_sett
                 if not oldest_processing_file:
                     return
 
-                # Move the processed stacks to the stacks_to_process column as we will delete all already processed stacks from llama index                    
+                # Move the processed stacks to the stacks_to_process column as we will delete all already processed stacks from llama index and reprocess them
                 processed_stacks = json.loads(oldest_processing_file.processed_stacks)
                 stacks_to_process = json.loads(oldest_processing_file.stacks_to_process)
                 stacks_to_process.extend(processed_stacks)
@@ -70,18 +295,21 @@ def _process_files_marked_as_processing(session: Session, user_id: str, app_sett
                 except Exception as e:
                     logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
                     
-                _process_single_file(session=session, file=oldest_processing_file, user_id=user_id, app_settings=app_settings)
+                _process_single_file(session, oldest_processing_file, user_id, app_settings)
             except Exception as e:
+                session.rollback()
                 logger.error(f"Failed to process interrupted file {oldest_processing_file.path}: {str(e)}, marking as error")
                 try:
-                    update_db_file_status(session=session, full_path=oldest_processing_file.path, status=FileStatus.ERROR)
+                    oldest_processing_file.status = FileStatus.ERROR
+                    session.commit()
                 except Exception as e:
+                    session.rollback()
                     logger.error(f"Failed to update file status for {oldest_processing_file.path}: {str(e)}")
     except Exception as e:
         logger.error(f"Failed to process all queued files: {str(e)}")
-        return False
+        raise
         
-def _process_all_queued_files(session: Session, user_id: str, app_settings: AppSettings) -> bool:
+def _process_all_queued_files(session: Session, user_id: str, app_settings: AppSettings):
     """Process all queued files"""
     try:
         while True:
@@ -98,69 +326,222 @@ def _process_all_queued_files(session: Session, user_id: str, app_settings: AppS
                     _process_single_file(session=session, file=queued_file, user_id=user_id, app_settings=app_settings)
                 else:
                     return
+        
             except Exception as e:
                 logger.error(f"Failed to process queued file {queued_file.path}: {str(e)}, marking as error")
                 try:
-                    update_db_file_status(session=session, full_path=queued_file.path, status=FileStatus.ERROR)
+                    queued_file.status = FileStatus.ERROR
+                    session.commit()
                 except Exception as e:
+                    session.rollback()
                     logger.error(f"Failed to update file status for {queued_file.path}: {str(e)}")
     except Exception as e:
         logger.error(f"Failed to process all queued files: {str(e)}")
-        return False
+        raise
 
 def _process_single_file(session: Session, file: File, user_id: str, app_settings: AppSettings):
     """Process a single file through the ingestion pipeline"""
     try:
         # Update status to processing
-        update_db_file_status(
-            session,
-            file.path,
-            FileStatus.PROCESSING
-        )
+        file.status = FileStatus.PROCESSING
+        file.processing_started_at = datetime.now()
+        session.commit()
 
         logger.info(f"Processing file: {file.path}")
         
         # Properly decode JSON stacks with defaults
-        stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else ["default"]
+        stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
         processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
         datasource_identifier = get_datasource_identifier_from_path(file.path)
-        logger.info(f"Processing file {file.path} with datasource identifier {datasource_identifier}")
+        
         # Process each stack
         for stack_name in stacks_to_process:
-            if not processed_stacks or stack_name not in processed_stacks:
-                try:
-                    process_files(
-                        session=session,
-                        user_id=user_id,
-                        full_file_paths=[file.path],
-                        datasource_identifier=datasource_identifier,
-                        app_settings=app_settings,
-                        transformations_stack_name_list=[stack_name]
-                    )
-                    
-                    mark_db_stack_as_processed(
-                        session,
-                        file.path,
-                        stack_name
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to process stack {stack_name}: {str(e)}")
+            try:
+                # If the stack is not already processed, process it
+                if processed_stacks and stack_name in processed_stacks:
+                    logger.info(f"Stack {stack_name} already processed, skipping")
+                    # Remove the stack from the stacks_to_process list
+                    stacks_to_process = [stack for stack in stacks_to_process if stack != stack_name]
+                    file.stacks_to_process = json.dumps(stacks_to_process)
+                    session.commit()
                     continue
+
+                logger.info(f"Processing stack {stack_name} for file {file.path}")
+                
+                # Init the embed model from the app settings
+                embed_model = init_embedding_model(app_settings)
+
+                # Create the ingestion pipeline for the datasource
+                vector_store = create_vector_store(datasource_identifier, user_id)
+                doc_store = create_doc_store(datasource_identifier, user_id)
+
+                # Create the ingestion pipeline for the datasource
+                ingestion_pipeline = IngestionPipeline(
+                    name=f"ingestion_pipeline_{datasource_identifier}",
+                    docstore=doc_store,
+                    vector_store=vector_store,
+                    docstore_strategy=DocstoreStrategy.UPSERTS,
+                    #docstore_strategy=DocstoreStrategy.DUPLICATES_ONLY, # Otherwise it dont work with the hierarchical node parser because it always upserts all previous nodes for this document
+                    # TODO Make a hierarchical node parser that works with the ingestion pipeline
+                )
+
+                # Load/create pipeline cache
+                #try:
+                    #ingestion_pipeline.load(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
+                #except Exception as e:
+                #    logger.error(f"No existing pipeline cache found: {str(e)}")
+                    #ingestion_pipeline.persist(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
+
+
+                # Use SimpleDirectoryReader from llama index
+                # It try to use existing apropriate readers based on the file type to get the most metadata from it
+                reader = SimpleDirectoryReader(
+                    input_files=[file.path],
+                    filename_as_id=True,
+                    raise_on_error=True,
+                )
+                documents = reader.load_data()
+
+                # Remove the unwanted metadata from the documents
+                # In case multiple documents are created from the same file ?
+                for document in documents:
+                    document.metadata.pop("creation_date", None)
+                    document.metadata.pop("last_modified_date", None)
                     
-        # Update status to completed
-        update_db_file_status(
-            session,
-            file.path,
-            FileStatus.COMPLETED
-        )
+                    # Remove the metadata created by the file reader that we dont want to embed and llm
+                    document.excluded_embed_metadata_keys = ["file_path","file_name", "file_type", "file_size", "document_id", "doc_id", "ref_doc_id"]
+                    document.excluded_llm_metadata_keys = ["file_path","file_name", "file_type", "file_size", "document_id", "doc_id", "ref_doc_id"]
+
+                    # Set the origin metadata of the document
+                    document.metadata["origin"] = "upload"
+                    document.excluded_embed_metadata_keys.append("origin")
+                    document.excluded_llm_metadata_keys.append("origin")
+
+                    # Override the file creation time to the current time with the times from the database
+                    # Set the creation and modification times
+                    document.metadata["created_at"] = file.file_created_at.isoformat()
+                    document.metadata["modified_at"] = file.file_modified_at.isoformat()
+                    # Remove from embed and llm
+                    document.excluded_embed_metadata_keys.append("created_at")
+                    document.excluded_embed_metadata_keys.append("modified_at")
+                    document.excluded_llm_metadata_keys.append("created_at")
+                    document.excluded_llm_metadata_keys.append("modified_at")
+
+                    # Set the transformations stack name for the datasource_documents
+                    document.metadata["transformations_stack_name"] = stack_name
+                    document.excluded_embed_metadata_keys.append("transformations_stack_name")
+                    document.excluded_llm_metadata_keys.append("transformations_stack_name")
+
+                    original_doc_id = document.doc_id
+
+                    # Modify the doc id to append the transformation stack at the end so that they are treated as different documents by the docstore upserts and are managable independently of each other
+                    document.doc_id = f"{original_doc_id}_{stack_name}"
+
+                    # Get the transformations stack
+                    transformations = TRANSFORMATIONS_STACKS[stack_name]
+
+                    # Update the file in the database with the ref_doc_ids
+                    # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess
+                    
+                    # Parse the json ref_doc_ids as a list
+                    file_ref_doc_ids = json.loads(file.ref_doc_ids) if file.ref_doc_ids else []
+                    # Add the new doc id to the list
+                    file_ref_doc_ids.append(document.doc_id)
+                    # Update the file in the database
+                    file.ref_doc_ids = json.dumps(file_ref_doc_ids)
+                    session.commit()
+
+                    # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
+                    #if transformations_stack_name == "hierarchical":
+                    #    # Dont work with ingestion pipeline so use it directly to extract the nodes and add them manually to the index
+                    #    hierarchical_nodes = transformations[0].get_nodes_from_documents(
+                    #        documents, 
+                    #        show_progress=True
+                    #    )
+                    #    
+                    #    # Set the transformations for the ingestion pipeline
+                    #    ingestion_pipeline.transformations = [self.cached_embed_model] # Only keep the embedding as the nodes are parsed with the HierarchicalNodeParser
+                    #    
+                    #    # Run the ingestion pipeline on the resulting nodes to add the nodes to the docstore and vector store
+                    #    nodes = await ingestion_pipeline.arun(
+                    #        nodes=hierarchical_nodes,
+                    #        show_progress=True,
+                    #        #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
+                    #    )
+                    #    # No need to insert nodes into index as we use a vector store
+
+
+                    #else:
+                    # This will add the documents to the vector store and docstore in the expected llama index way
+                    # Add the embed model to the transformations stack as we always want to embed the results of the processing stacks for search
+                    transformations.append(embed_model)
+                    # Set the transformations for the ingestion pipeline
+                    ingestion_pipeline.transformations = transformations
+                    ingestion_pipeline.run(
+                        documents=documents,
+                        show_progress=True,
+                        #num_workers=None # We process in this thread as it is a child thread managed by the generate service and spawning other threads here causes issue with the uvicorn dev reload mechanism
+                    )
+                    
+                # Save the cache to storage #TODO : Add cache management to delete when too big with cache.clear()
+                #ingestion_pipeline.persist(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
+
+                # Needed for now as SimpleDocumentStore is not persistent
+                doc_store.persist(persist_path=get_docstore_path(datasource_identifier, user_id))
+
+                # Get the processed stacks from json
+                processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
+                # Add the stack to the processed stacks
+                processed_stacks.append(stack_name)
+                file.processed_stacks = json.dumps(processed_stacks)
+                # Remove the stack from the stacks to process
+                stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
+                if stack_name in stacks_to_process:
+                    stacks_to_process = [stack for stack in stacks_to_process if stack != stack_name]
+                    file.stacks_to_process = json.dumps(stacks_to_process)
+
+                session.commit()
+
+            except Exception as e:
+                session.rollback()
+                # try to delete the processing stack from llama index as it failed to try to avoid partially processed states
+                try:
+                    delete_file_processing_stack_from_llama_index(session=session, user_id=user_id, full_path=file.path, processing_stack_identifier=stack_name)
+                except Exception as e:
+                    logger.error(f"Failed to delete erroring file stack {file.path} from stores: {str(e)}")
+                # Add the stack to the stacks_to_process list as it failed to process and if we retry to process the file we want it there
+                stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
+                if stack_name not in stacks_to_process:
+                    stacks_to_process.append(stack_name)
+                    file.stacks_to_process = json.dumps(stacks_to_process)
+                session.commit()
+                logger.error(f"Failed to process stack {stack_name} for file {file.path}, marking file status as error and letting the stack in stacks_to_process: {str(e)}")
+                raise
         
+        # All stacks are processed, update status to completed
+        file.status = FileStatus.COMPLETED
+        file.processing_started_at = datetime.now()
+        session.commit()
+
+        logger.info(f"Processed file '{file.path}' for user '{user_id}'")
+
     except Exception as e:
         logger.error(f"Failed to process file {file.path}: {str(e)}")
-        update_db_file_status(
-            session,
-            file.path,
-            FileStatus.ERROR
-        )
+        try:
+            file.status = FileStatus.ERROR
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to update file status for {file.path}: {str(e)}")
+        raise
+
+
+
+
+
+
+
+
 
 def get_queue_status(session: Session) -> dict:
     """Get the current status of the generation queue"""
@@ -200,6 +581,7 @@ def should_start_processing(session: Session) -> bool:
 
         # If the file has been processing for more than 10 minutes, start start the processing because it is probably stuck/ the app has restarted and processing background task has not been restarted
         if oldest_processing_file.processing_started_at < datetime.now() - datetime.timedelta(seconds=600):
+            logger.info(f"Processing file {oldest_processing_file.path} is stuck, starting processing")
             return True
 
         # A processing is probably still running
@@ -209,3 +591,4 @@ def should_start_processing(session: Session) -> bool:
     except Exception as e:
         logger.error(f"Failed to check if processing should start: {str(e)}")
         return False
+
