@@ -4,10 +4,12 @@ from app.services.db_file import get_db_folder_id
 from app.services.file_manager import delete_folder
 from app.services.file_system import get_full_path_from_path
 from app.services.user_path import get_user_data_dir
+from app.services.llama_index import delete_datasource_llama_index_components
 
 import logging
 from typing import List, Optional
 import re
+
 
 logger = logging.getLogger("uvicorn")
 
@@ -99,6 +101,7 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
 
 async def delete_datasource(session: Session, user_id: str, identifier: str) -> bool:
     """Delete a datasource and all its components"""
+    # TODO Make more robust to avoid partial deletion
     try:
         datasource = get_datasource(session, identifier)
         if not datasource:
@@ -111,19 +114,15 @@ async def delete_datasource(session: Session, user_id: str, identifier: str) -> 
         
         root_folder_path = root_folder.path
         
-        # First remove the root_folder reference from datasource
+        # First remove the root_folder reference from datasource to allow deletion of all files and folders of this datasource
         datasource.root_folder_id = None
         session.flush()
         
         # Then try to delete all files and folders using the stored path
-        try:
-            await delete_folder(session, user_id, root_folder_path)
-        except Exception as e:
-            logger.error(f"Failed to delete datasource files and folders: {str(e)}")
-            # Restore the root_folder_id reference since deletion failed
-            datasource.root_folder_id = root_folder.id
-            session.flush()
-            raise Exception("Failed to delete datasource files. Please try again later.")
+        await delete_folder(session, user_id, root_folder_path)
+
+        # Delete the llama index components
+        delete_datasource_llama_index_components(identifier, user_id)
 
         # If file deletion succeeded, delete database entry
         session.delete(datasource)
@@ -133,8 +132,12 @@ async def delete_datasource(session: Session, user_id: str, identifier: str) -> 
     except Exception as e:
         session.rollback()
         logger.error(f"Error deleting datasource: {str(e)}")
-        raise
-
+        logger.error(f"Failed to delete datasource files and folders: {str(e)}")
+        # Restore the root_folder_id reference since deletion failed
+        datasource.root_folder_id = root_folder.id
+        session.flush()
+        raise Exception(f"Failed to delete datasource files. Please try again later : {str(e)}")
+        
 
 def get_datasource(session: Session, identifier: str) -> Optional[Datasource]:
     """Get a datasource by identifier"""

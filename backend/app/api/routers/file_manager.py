@@ -76,18 +76,18 @@ async def delete_folder_route(
     await delete_folder(session=session, user_id=user_id, full_path=full_path)
     return {"success": True}
 
-@r.put("/file/{encoded_path}/rename")
-async def rename_file_route(
-    encoded_path: str, 
-    new_name: str, 
-    user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
-):
-    logger.info(f"Renaming file {encoded_path} to {new_name} for user {user_id}")
-    path = decode_path_safe(encoded_path)
-    full_path = get_full_path_from_path(path, user_id)
-    await rename_file(session=session, user_id=user_id, full_path=full_path, new_name=new_name)
-    return {"success": True}
+#@r.put("/file/{encoded_path}/rename")
+#async def rename_file_route(
+#    encoded_path: str, 
+#    new_name: str, 
+#    user_id: str = Depends(get_user_id),
+#    session: Session = Depends(get_db_session)
+#):
+#    logger.info(f"Renaming file {encoded_path} to {new_name} for user {user_id}")
+#    path = decode_path_safe(encoded_path)
+#    full_path = get_full_path_from_path(path, user_id)
+#    await rename_file(session=session, user_id=user_id, full_path=full_path, new_name=new_name)
+#    return {"success": True}
 
 @r.get("/folder")
 @r.get("/folder/")

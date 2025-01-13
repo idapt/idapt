@@ -10,7 +10,7 @@ import os
 # The services are already initialized in the main.py file
 from app.services.db_file import create_db_file, get_db_file, delete_db_file, update_db_file, get_db_folder_files_recursive, get_db_folder, delete_db_folder
 from app.services.file_system import write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_full_path_from_path
-from app.services.llama_index import delete_file_llama_index, rename_file_llama_index
+from app.services.llama_index import delete_file_llama_index
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
 from app.database.models import FileStatus
 
@@ -176,6 +176,7 @@ async def delete_file(session: Session, user_id: str, full_path: str):
         raise
 
 async def delete_folder(session: Session, user_id: str, full_path: str):
+    # TODO Make more robust to avoid partial deletion
     try:
         logger.info(f"Deleting folder: {full_path}")
 
@@ -232,6 +233,7 @@ async def delete_folder(session: Session, user_id: str, full_path: str):
         logger.error(f"Error deleting folder: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Unused
 async def rename_file(session: Session, user_id: str, full_path: str, new_name: str):
     try:
         file = get_db_file(session, full_path)
@@ -249,7 +251,7 @@ async def rename_file(session: Session, user_id: str, full_path: str, new_name: 
             raise HTTPException(status_code=500, detail="Failed to update file in database")
 
         # Update in LlamaIndex
-        rename_file_llama_index(session=session, user_id=user_id, full_old_path=full_path, full_new_path=new_full_path) 
+        #rename_file_llama_index(session=session, user_id=user_id, full_old_path=full_path, full_new_path=new_full_path) 
 
     except Exception as e:
         logger.error(f"Error renaming file: {str(e)}")

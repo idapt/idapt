@@ -1,3 +1,5 @@
+import os
+import shutil
 from sqlalchemy.orm import Session
 from app.database.models import Datasource
 from app.services.db_file import get_db_file
@@ -28,18 +30,16 @@ logger = logging.getLogger("uvicorn")
 def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVectorStore:
     try:
         # Create the embeddings directory if it doesn't exist
-        embeddings_dir = Path(get_user_app_data_dir(user_id)) / "embeddings"
-        embeddings_dir.mkdir(parents=True, exist_ok=True)
-        embeddings_file = embeddings_dir / f"{datasource_identifier}"
+        datasource_embeddings_dir = Path(get_vector_store_folder_path(datasource_identifier, user_id))
+        datasource_embeddings_dir.parent.mkdir(parents=True, exist_ok=True)
         
         # Create a Chroma persistent client with telemetry disabled
         client = chromadb.PersistentClient(
-            path=str(embeddings_file),
+            path=str(datasource_embeddings_dir),
             settings=chromadb.Settings(
                 anonymized_telemetry=False
             )
         )
-
         # Create a Chroma collection
         chroma_collection = client.get_or_create_collection(name=datasource_identifier)
         # Create a Chroma vector store
@@ -51,12 +51,14 @@ def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVecto
         logger.error(f"Error creating vector store: {str(e)}")
         raise
 
+def get_vector_store_folder_path(datasource_identifier: str, user_id: str) -> str:
+    return f"{get_user_app_data_dir(user_id)}/embeddings/{datasource_identifier}"
+
 def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocumentStore:
     try:
         # Create the docstore directory if it doesn't exist
-        docstores_dir = Path(get_user_app_data_dir(user_id)) / "docstores"
-        docstores_dir.mkdir(parents=True, exist_ok=True)
-        docstore_file = docstores_dir / f"{datasource_identifier}.json"
+        docstore_file = Path(get_docstore_file_path(datasource_identifier, user_id))
+        docstore_file.parent.mkdir(parents=True, exist_ok=True)
 
         docstore = None
         # If the file doesn't exist, create a new docstore and persist it
@@ -73,15 +75,18 @@ def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocument
         logger.error(f"Error creating doc store: {str(e)}")
         raise
 
+def get_docstore_file_path(datasource_identifier: str, user_id: str) -> str:
+    return f"{get_user_app_data_dir(user_id)}/docstores/{datasource_identifier}.json"
 
-def create_query_tool(session: Session, 
-                      datasource_identifier: str,
-                        vector_store: ChromaVectorStore,
-                          doc_store: SimpleDocumentStore, 
-                          embed_model: BaseEmbedding, 
-                          llm: LLM, 
-                          app_settings: AppSettings
-                          ) -> BaseTool:
+def create_query_tool(
+    session: Session, 
+    datasource_identifier: str,
+    vector_store: ChromaVectorStore,
+    doc_store: SimpleDocumentStore, 
+    embed_model: BaseEmbedding, 
+    llm: LLM, 
+    app_settings: AppSettings
+) -> BaseTool:
     try:
     
         storage_context = StorageContext.from_defaults(
@@ -139,7 +144,22 @@ def create_query_tool(session: Session,
         logger.error(f"Error creating query tool: {str(e)}")
         raise
 
+def delete_datasource_llama_index_components(datasource_identifier: str, user_id: str):
+    try:
+        # Get the path to the vector store
+        vector_store_path = get_vector_store_folder_path(datasource_identifier, user_id)
+        # Delete the vector store folder and its content
+        if os.path.exists(vector_store_path):
+            shutil.rmtree(vector_store_path)
 
+        # Get the path to the doc store
+        doc_store_path = get_docstore_file_path(datasource_identifier, user_id)
+        # Delete the doc store file
+        if os.path.exists(doc_store_path):
+            os.remove(doc_store_path)
+    except Exception as e:
+        logger.error(f"Error deleting datasource llama index components: {str(e)}")
+        raise
 
 def delete_file_llama_index(session: Session, user_id: str, full_path: str):
     try:
@@ -183,7 +203,7 @@ def delete_file_llama_index(session: Session, user_id: str, full_path: str):
                 session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
-        doc_store.persist(persist_path=get_docstore_path(user_id, datasource_identifier))
+        doc_store.persist(persist_path=get_docstore_file_path(datasource_identifier, user_id))
 
 
     except Exception as e:
@@ -234,32 +254,26 @@ def delete_file_processing_stack_from_llama_index(session: Session, user_id: str
                 session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
-        doc_store.persist(persist_path=get_docstore_path(user_id, datasource_identifier))
+        doc_store.persist(persist_path=get_docstore_file_path(datasource_identifier, user_id))
         
     except Exception as e:
         logger.error(f"Error deleting file processing stack from LlamaIndex: {str(e)}")
         raise
 
-def get_docstore_path(user_id: str, datasource_identifier: str) -> str:
-    return f"{get_user_app_data_dir(user_id)}/docstores/{datasource_identifier}.json"
+#def rename_file_llama_index(session: Session, full_old_path: str, full_new_path: str):
+#    try:
 
-def get_indexstore_path(user_id: str, datasource_identifier: str) -> str:
-    return f"{get_user_app_data_dir(user_id)}/indexstores/{datasource_identifier}.json"
-
-def rename_file_llama_index(session: Session, full_old_path: str, full_new_path: str):
-    try:
-
-        from app.services.datasource import get_datasource_identifier_from_path
-        # Get the datasource name from the path 
-        datasource_identifier = get_datasource_identifier_from_path(full_old_path)
+#        from app.services.datasource import get_datasource_identifier_from_path
+#        # Get the datasource name from the path 
+#        datasource_identifier = get_datasource_identifier_from_path(full_old_path)
 
         # Get the datasource vector store and docstore
-        vector_store = create_vector_store(datasource_identifier, user_id)
-        doc_store = create_doc_store(datasource_identifier, user_id)
+        #vector_store = create_vector_store(datasource_identifier, user_id)
+        #doc_store = create_doc_store(datasource_identifier, user_id)
 
         # For now simply delete the old file from the vector store and docstore
-        vector_store.delete(full_old_path)
-        doc_store.delete_ref_doc(full_old_path)
+        #vector_store.delete(full_old_path)
+        #doc_store.delete_ref_doc(full_old_path)
 
         # And sent it to generate again to pass it through the ingestion pipeline with the default transformations # TODO VERY BAD IMPLEMENTATION
 
@@ -304,7 +318,7 @@ def rename_file_llama_index(session: Session, full_old_path: str, full_new_path:
         # Update the file in the docstore
         #doc_store.update_ref_doc(full_old_path, full_new_path)
 
-    except Exception as e:
-        logger.error(f"Error renaming file in LlamaIndex: {str(e)}")
-        raise
+#    except Exception as e:
+#        logger.error(f"Error renaming file in LlamaIndex: {str(e)}")
+#        raise
 
