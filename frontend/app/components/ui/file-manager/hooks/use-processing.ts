@@ -1,18 +1,17 @@
 import { useClientConfig } from "../../chat/hooks/use-config";
-import { useState } from "react";
 import { useApiClient } from "@/app/lib/api-client";
-export interface GenerateFile {
+export interface ProcessingFile {
   path: string;
   transformations_stack_name_list?: string[];
 }
 
-export function useGenerate() {
+export function useProcessing() {
   const { backend } = useClientConfig();
   const { fetchWithAuth } = useApiClient();
 
-  const generate = async (files: GenerateFile[]) => {
+  const process = async (files: ProcessingFile[]) => {
     try {
-        const response = await fetchWithAuth(`${backend}/api/generate`, {
+        const response = await fetchWithAuth(`${backend}/api/processing`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -23,17 +22,17 @@ export function useGenerate() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.detail || 'Failed to generate');
+        throw new Error(data.detail || 'Failed to process');
       }
       
       return data;
     } catch (error) {
-      console.error('Generation error:', error);
+      console.error('Processing error:', error);
       throw error;
     }
   };
 
-  return { generate };
+  return { process };
 }
 
-export default useGenerate;
+export default useProcessing;

@@ -3,7 +3,7 @@ import { useProcessingToast } from './use-processing-toast';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
 
-export function useGenerateStatusSocket() {
+export function useProcessingStatusSocket() {
   const { backend } = useClientConfig();
   const { startProcessing, updateProcessing, completeProcessing, failProcessing } = useProcessingToast();
   const wsRef = useRef<WebSocket | null>(null);
@@ -30,7 +30,7 @@ export function useGenerateStatusSocket() {
 
   const fetchInitialStatus = useCallback(async () => {
     try {
-      const response = await fetchWithAuth(`${backend}/api/generate/status`);
+      const response = await fetchWithAuth(`${backend}/api/processing/status`);
       const data = await response.json();
       handleStatus(data);
     } catch (error) {
@@ -54,7 +54,7 @@ export function useGenerateStatusSocket() {
     }
 
     const wsUrl = backend.replace(/^http/, 'ws');
-    const ws = new WebSocket(`${wsUrl}/api/generate/status/ws`);
+    const ws = new WebSocket(`${wsUrl}/api/processing/status/ws`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {

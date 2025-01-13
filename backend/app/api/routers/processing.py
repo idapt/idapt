@@ -4,7 +4,7 @@ from typing import List
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.services.generate import get_queue_status, process_queued_files, should_start_processing, mark_file_as_queued
+from app.services.processing import get_queue_status, process_queued_files, should_start_processing, mark_file_as_queued
 from app.settings.models import AppSettings
 from app.settings.manager import get_app_settings
 from app.services.database import get_db_session
@@ -14,17 +14,17 @@ from app.services.file_system import get_full_path_from_path
 
 logger = logging.getLogger("uvicorn")
 
-generate_router = r = APIRouter()
+processing_router = r = APIRouter()
 
-class GenerateRequest(BaseModel):
+class ProcessingRequest(BaseModel):
     files: List[dict] = Field(..., example=[{
         "path": "path/to/file.txt",
         "transformations_stack_name_list": ["default", "titles"]
     }])
 
 @r.post("")
-async def generate_route(
-    request: GenerateRequest,
+async def processing_route(
+    request: ProcessingRequest,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session),
@@ -43,7 +43,7 @@ async def generate_route(
             )
 
         # Start processing the files in the background
-        # TODO Move the generate service to a separate api running on its own server
+        # TODO Move the processing service to a separate api running on its own server
         if should_start_processing(session):    
             logger.info(f"Starting processing of queued files for user {user_id}")
             background_tasks.add_task(process_queued_files, session, user_id, app_settings)
@@ -57,11 +57,11 @@ async def generate_route(
             "queue_status": status
         }
     except Exception as e:
-        logger.error(f"Error in generate endpoint: {str(e)}")
+        logger.error(f"Error in processing endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @r.get("/status")
-async def get_generation_status_route(
+async def get_processing_status_route(
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session),
 ):
@@ -75,7 +75,7 @@ async def get_generation_status_route(
         raise HTTPException(status_code=500, detail=str(e))
 
 #@r.websocket("/status/ws")
-#async def generate_status_websocket(
+#async def processing_status_websocket(
 #    websocket: WebSocket,
 #    session: Session = Depends(get_db_session),
 #    user_id: str = Depends(get_user_id),
@@ -84,14 +84,3 @@ async def get_generation_status_route(
 #    while True:
 #        await asyncio.sleep(1)
 #        # TODO Reimplement this, either use db on update or ...
-#    #try:
-#    #    await GenerateService().connect(websocket)
-#    #    while True:
-#    #    try:
-#    #        # Keep connection alive and wait for client messages
-#    #        await websocket.receive_text()
-#    #    except Exception:
-#    #        break
-#    #finally:
-#    #    await generate_service.disconnect(websocket) 
-#

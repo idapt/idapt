@@ -26,7 +26,7 @@ export function useProcessingStatus() {
 
     const fetchStatus = async () => {
       try {
-        const response = await fetchWithAuth(`${backend}/api/generate/status`, {
+        const response = await fetchWithAuth(`${backend}/api/processing/status`, {
           signal: controller.signal
         });
         

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useClientConfig } from './use-config';
 import { ConflictResolution, FileConflict } from "@/app/types/vault";
-import { useGenerate } from '../../file-manager/hooks/use-generate';
+import { useProcessing } from '../../file-manager/hooks/use-processing';
 import { uploadWithProgress } from '@/app/lib/upload-helpers';
 import { useUser } from '@/app/contexts/user-context';
 
@@ -15,7 +15,7 @@ interface FileUploadItem {
 
 export function useUpload() {
   const { backend } = useClientConfig();
-  const { generate } = useGenerate();
+  const { process } = useProcessing();
   const { userId } = useUser();
   const abortControllerRef = useRef<AbortController>();
   const shouldCancelAllRef = useRef(false);
@@ -55,9 +55,9 @@ export function useUpload() {
             throw new Error(`Failed to upload ${uploadItem.name}`);
           }
 
-          // Trigger the file processing pipeline generate with the uploaded file
+          // Trigger the file processing pipeline process with the uploaded file
           try {
-            await generate([{
+            await process([{
               path: uploadItem.path,
               transformations_stack_name_list: ["sentence-splitter-512"]
             }]);
