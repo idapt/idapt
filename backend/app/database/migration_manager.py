@@ -2,13 +2,13 @@ from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import Engine
 import logging
 from pathlib import Path
 
 logger = logging.getLogger("uvicorn")
 
-def get_alembic_config() -> Config:
+def get_alembic_config(engine: Engine) -> Config:
     """Get Alembic config"""
     # Get the directory where alembic.ini is located (project root)
     project_root = Path(__file__).parent.parent.parent
@@ -18,11 +18,13 @@ def get_alembic_config() -> Config:
         raise RuntimeError(f"alembic.ini not found at {alembic_ini_path}")
     
     alembic_cfg = Config(str(alembic_ini_path))
+    # Set the sqlalchemy url as the one in alembic.ini is used for dev
+    alembic_cfg.set_main_option("sqlalchemy.url", str(engine.url))
     return alembic_cfg
 
 def check_current_head(engine: Engine) -> bool:
     """Check if database is at the latest revision"""
-    alembic_cfg = get_alembic_config()
+    alembic_cfg = get_alembic_config(engine)
     script = ScriptDirectory.from_config(alembic_cfg)
     
     with engine.begin() as connection:
@@ -32,8 +34,7 @@ def check_current_head(engine: Engine) -> bool:
 def run_migrations(engine: Engine, user_id: str):
     """Run database migrations if needed"""
     try:
-        alembic_cfg = get_alembic_config()
-        alembic_cfg.set_main_option("sqlalchemy.url", str(engine.url))
+        alembic_cfg = get_alembic_config(engine)
         
         # First check if we need to create/stamp initial database
         with engine.begin() as connection:

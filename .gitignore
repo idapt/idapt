@@ -38,6 +38,7 @@ nginx/certs/*.pem
 user-data/
 backend-certs/
 frontend-certs/
+dev-alembic-database.db
 
 # General
 
