@@ -43,13 +43,13 @@ export function useUpload() {
         setCurrentFile(uploadItem.name);
 
         try {
-          const response = await uploadWithProgress(
-            `${backend}/api/file-manager/upload`,
-            { items: [uploadItem] },
-            abortControllerRef.current.signal,
-            (progress: number) => onProgress(toastId, progress),
+          const response = await uploadWithProgress({
+            url: `${backend}/api/file-manager/upload`,
+            data: { items: [uploadItem] },
+            signal: abortControllerRef.current.signal,
+            onProgress: (progress: number) => onProgress(toastId, progress),
             userId
-          );
+          });
 
           if (!response.ok) {
             throw new Error(`Failed to upload ${uploadItem.name}`);

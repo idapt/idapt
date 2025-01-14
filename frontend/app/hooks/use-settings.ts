@@ -21,7 +21,7 @@ export function useSettings() {
     } finally {
       setIsLoading(false);
     }
-  }, [backend]);
+  }, [backend, fetchWithAuth]);
 
   const updateSettings = useCallback(async (settings: AppSettings): Promise<void> => {
     setIsLoading(true);
@@ -41,7 +41,7 @@ export function useSettings() {
     } finally {
       setIsLoading(false);
     }
-  }, [backend]);
+  }, [backend, fetchWithAuth]);
 
   return {
     getSettings,

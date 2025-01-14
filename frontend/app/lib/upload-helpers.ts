@@ -1,12 +1,18 @@
 import { useUser } from '../contexts/user-context';
 
-export async function uploadWithProgress(
-  url: string,
-  data: any,
-  signal: AbortSignal,
-  onProgress: (progress: number) => void,
-  userId: string
-) {
+export async function uploadWithProgress({
+  url,
+  data,
+  signal,
+  onProgress,
+  userId
+}: {
+  url: string;
+  data: any;
+  signal: AbortSignal;
+  onProgress: (progress: number) => void;
+  userId: string;
+}) {
   const urlObj = new URL(url);
   urlObj.searchParams.append('user_id', userId);
 

@@ -43,7 +43,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         .then(setSettings)
         .catch(error => setSaveError(error.message));
     }
-  }, [isOpen]);
+  }, [isOpen, getSettings]);
 
   const handleSave = async () => {
     if (!settings) return;

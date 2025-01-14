@@ -5,11 +5,11 @@ import { useApiClient } from '@/app/lib/api-client';
 export function useOllamaStatus() {
   const { backend } = useClientConfig();
   const [isDownloading, setIsDownloading] = useState(false);
-  const abortController = new AbortController();
   const { getSettings } = useSettings();
   const { fetchWithAuth } = useApiClient();
 
   useEffect(() => {
+    const abortController = new AbortController();
     const checkStatus = async () => {
       try {
         const appSettings = await getSettings();
@@ -35,7 +35,7 @@ export function useOllamaStatus() {
       clearInterval(interval);
       abortController.abort();
     };
-  }, [backend, getSettings]);
+  }, [backend, getSettings, fetchWithAuth]);
 
   return { isDownloading };
 }

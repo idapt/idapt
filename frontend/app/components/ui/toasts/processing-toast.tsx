@@ -33,7 +33,7 @@ export function ProcessingToast() {
         updateProcessing('global-processing-status', status.processing_count, totalFiles);
       }
     }
-  }, [status?.queued_count, status?.processing_count, startProcessing, updateProcessing, processingItem]);
+  }, [status, startProcessing, updateProcessing, processingItem]);
 
   if (!processingItem) {
     return null;
