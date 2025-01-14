@@ -11,22 +11,20 @@ export function useProcessing() {
   const { fetchWithAuth } = useApiClient();
 
   const processWithStack = async (files: string[], stackIdentifier: string) => {
-    const processFiles: ProcessingFile[] = files.map(path => ({
-      path,
-      transformations_stack_name_list: [stackIdentifier]
-    }));
-
-    return process(processFiles);
-  };
-
-  const process = async (files: ProcessingFile[]) => {
+    const controller = new AbortController();
     try {
+      const processFiles: ProcessingFile[] = files.map(path => ({
+        path,
+        transformations_stack_name_list: [stackIdentifier]
+      }));
+
       const response = await fetchWithAuth(`${backend}/api/processing`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ files }),
+        body: JSON.stringify({ files: processFiles }),
+        signal: controller.signal
       });
       
       const data = await response.json();
@@ -37,12 +35,18 @@ export function useProcessing() {
       
       return data;
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error('Processing error:', error);
       throw error;
+    } finally {
+      controller.abort();
     }
   };
 
   const processFolder = async (folderPath: string, stackIdentifier: string) => {
+    const controller = new AbortController();
     try {
       const response = await fetchWithAuth(`${backend}/api/processing/folder`, {
         method: 'POST',
@@ -53,6 +57,7 @@ export function useProcessing() {
           folder_path: folderPath,
           transformations_stack_name_list: [stackIdentifier]
         }),
+        signal: controller.signal
       });
       
       const data = await response.json();
@@ -63,12 +68,17 @@ export function useProcessing() {
       
       return data;
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error('Processing folder error:', error);
       throw error;
+    } finally {
+      controller.abort();
     }
   };
 
-  return { process, processWithStack, processFolder };
+  return { processWithStack, process, processFolder };
 }
 
 export default useProcessing;

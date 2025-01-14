@@ -155,9 +155,11 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
       return;
     }
 
+    const controller = new AbortController();
     try {
       const response = await fetchWithAuth(`${backend}/api/stacks/stacks/${stack.identifier}`, {
         method: 'DELETE',
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -167,25 +169,31 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
 
       onDelete();
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to delete stack:', error);
       window.alert((error as Error).message || 'Failed to delete stack');
     }
+    return () => controller.abort();
   };
 
   const handleSave = async () => {
+    const controller = new AbortController();
     try {
       const response = await fetchWithAuth(`${backend}/api/stacks/stacks/${stack.identifier}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          steps: steps.map(step => ({
-            step_identifier: step.step.identifier,
-            parameters: step.parameters,
-            order: step.order
+          steps: steps.map((step, index) => ({
+            step_identifier: step.step_identifier,
+            order: index + 1,
+            parameters: step.parameters
           }))
-        })
+        }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -195,9 +203,13 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
 
       onSave();
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error('Failed to save stack:', error);
       window.alert((error as Error).message || 'Failed to update stack');
     }
+    return () => controller.abort();
   };
 
   const handleParametersChange = (stepId: number, parameters: Record<string, any>) => {
