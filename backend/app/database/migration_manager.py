@@ -14,15 +14,14 @@ logger = logging.getLogger("uvicorn")
 
 def get_alembic_config(engine: Engine) -> Config:
     """Get Alembic config"""
-    # Get the directory where alembic.ini is located (project root)
-    project_root = Path(__file__).parent.parent.parent
-    alembic_ini_path = project_root / "alembic.ini"
+    script_location = Path(__file__).parent / "alembic"
     
-    if not alembic_ini_path.exists():
-        raise RuntimeError(f"alembic.ini not found at {alembic_ini_path}")
+    if not script_location.exists():
+        raise RuntimeError(f"migrations directory not found at {script_location}")
     
-    alembic_cfg = Config(str(alembic_ini_path))
+    alembic_cfg = Config()
     # Set the sqlalchemy url as the one in alembic.ini is used for dev
+    alembic_cfg.set_main_option('script_location', str(script_location))
     alembic_cfg.set_main_option("sqlalchemy.url", str(engine.url))
     return alembic_cfg
 
