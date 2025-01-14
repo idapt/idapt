@@ -134,7 +134,7 @@ if __name__ == "__main__":
             host=app_host,
             port=app_port,
             reload=True,
-            workers=1,
+            workers=4,
             reload_includes=['*.py'],
             reload_dirs=['app'],
             log_level="info",
@@ -148,7 +148,7 @@ if __name__ == "__main__":
             host=app_host,
             port=app_port,
             reload=False,
-            workers=1,
+            workers=4,
             log_level="info",
             ssl_keyfile=ssl_keyfile,
             ssl_certfile=ssl_certfile
