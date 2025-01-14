@@ -39,9 +39,16 @@ def run_migrations(engine: Engine, user_id: str):
     
     db_folder = Path(get_db_path(user_id)).parent
     
+    # Ensure the directory exists before creating the lock file
+    if not db_folder.exists():
+        db_folder.mkdir(parents=True, exist_ok=True)
+    
     lock_file = db_folder / "db_init.lock"
 
     try:
+        # Create the lock file if it doesn't exist
+        lock_file.touch(exist_ok=True)
+        
         with FileLock(lock_file, timeout=60):
             alembic_cfg = get_alembic_config(engine)
             
