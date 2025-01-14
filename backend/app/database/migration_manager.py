@@ -77,6 +77,11 @@ def run_migrations(engine: Engine, user_id: str):
                             init_default_datasources(session, user_id)
                             logger.info("Default datasources initialized")
                             
+                            # Init default processing stacks
+                            from app.services.processing_stacks import create_default_processing_stacks
+                            create_default_processing_stacks(session)
+                            logger.info("Default processing stacks initialized")
+                            
                             session.commit()
                         except Exception as e:
                             session.rollback()

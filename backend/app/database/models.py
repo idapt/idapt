@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, func, JSON, Enum
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, func, JSON, Enum
 from sqlalchemy.orm import relationship, declarative_base
 import enum
 
@@ -75,3 +75,36 @@ class Datasource(Base):
     # The root folder for this datasource
     root_folder_id = Column(Integer, ForeignKey('folders.id'), nullable=True)
     root_folder = relationship("Folder", backref="datasource", uselist=False)
+
+class ProcessingStep(Base):
+    __tablename__ = 'processing_steps'
+    
+    identifier = Column(String, primary_key=True)
+    display_name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    type = Column(String, nullable=False)  # 'node_parser', 'extractor', 'embedding'
+    parameters_schema = Column(JSON, nullable=False)  # JSON schema defining available parameters
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+class ProcessingStack(Base):
+    __tablename__ = 'processing_stacks'
+    
+    identifier = Column(String, primary_key=True)
+    display_name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    is_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
+
+class ProcessingStackStep(Base):
+    __tablename__ = 'processing_stack_steps'
+    
+    id = Column(Integer, primary_key=True)
+    stack_identifier = Column(String, ForeignKey('processing_stacks.identifier', ondelete='CASCADE'))
+    step_identifier = Column(String, ForeignKey('processing_steps.identifier', ondelete='CASCADE'))
+    order = Column(Integer, nullable=False)
+    parameters = Column(JSON, nullable=True)  # Actual parameters for this step in this stack
+    
+    stack = relationship("ProcessingStack", backref="steps")
+    step = relationship("ProcessingStep", backref="stack_steps")

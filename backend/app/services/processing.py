@@ -6,6 +6,7 @@ from app.database.models import File, FileStatus
 from app.settings.models import AppSettings
 from app.settings.model_initialization import init_embedding_model
 from app.services.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
+from app.services.processing_stacks import get_transformations_for_stack
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
@@ -33,7 +34,6 @@ import json
 import logging
 
 logger = logging.getLogger("uvicorn")
-
 
 TRANSFORMATIONS_STACKS = {
 # See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
@@ -217,16 +217,32 @@ def mark_file_as_queued(session: Session, file_path: str, stacks_to_process: Lis
         file = get_db_file(session, file_path)
         if not file:
             raise ValueError(f"File not found: {file_path}")
-            
-        file.status = FileStatus.QUEUED
+
+        # Try to load the stacks_to_process as a json list, set it as an empty list if it is null
+        existing_stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
+        # Try to load the processed_stacks as a json list, set it as an empty list if it is null
+        processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
+
+        stacks_to_process_not_already_processed = []
+        # Check in the processing_stacks json list and add the stacks that are not already processed
+        for stack in validated_stacks_to_process:
+            if stack not in processed_stacks:
+                stacks_to_process_not_already_processed.append(stack)
+
+        if not stacks_to_process_not_already_processed:
+            logger.info(f"All stacks for file {file_path} are already processed, skipping")
+            return
         
-        # Try to load the stacks_to_process as a json list
-        existing_stacks_to_process : List[str] = []
-        if file.stacks_to_process:
-            existing_stacks_to_process = json.loads(file.stacks_to_process)
-        # Convert stacks_to_process str
-        existing_stacks_to_process.extend(validated_stacks_to_process)
-        # Convert back to json string
+        stacks_to_process_not_already_in_stacks_to_process = []
+        for stack in stacks_to_process_not_already_processed:
+            if stack not in existing_stacks_to_process:
+                stacks_to_process_not_already_in_stacks_to_process.append(stack)
+
+        # Make sure the file is queued as there is stacks to process
+        file.status = FileStatus.QUEUED
+        # Add the stacks to process to the existing stacks to process
+        existing_stacks_to_process.extend(stacks_to_process_not_already_in_stacks_to_process)
+        # Convert back to json string and store it in the database
         file.stacks_to_process = json.dumps(existing_stacks_to_process)
         
         session.commit()
@@ -355,21 +371,21 @@ def _process_single_file(session: Session, file: File, user_id: str, app_setting
         datasource_identifier = get_datasource_identifier_from_path(file.path)
         
         # Process each stack
-        for stack_name in stacks_to_process:
+        for stack_identifier in stacks_to_process:
             try:
                 # If the stack is not already processed, process it
-                if processed_stacks and stack_name in processed_stacks:
-                    logger.info(f"Stack {stack_name} already processed, skipping")
+                if processed_stacks and stack_identifier in processed_stacks:
+                    logger.info(f"Stack {stack_identifier} already processed, skipping")
                     # Remove the stack from the stacks_to_process list
-                    stacks_to_process = [stack for stack in stacks_to_process if stack != stack_name]
+                    stacks_to_process = [stack for stack in stacks_to_process if stack != stack_identifier]
                     file.stacks_to_process = json.dumps(stacks_to_process)
                     session.commit()
                     continue
 
-                logger.info(f"Processing stack {stack_name} for file {file.path}")
+                logger.info(f"Processing stack {stack_identifier} for file {file.path}")
                 
                 # Init the embed model from the app settings
-                embed_model = init_embedding_model(app_settings)
+                #embed_model = init_embedding_model(app_settings)
 
                 # Create the ingestion pipeline for the datasource
                 vector_store = create_vector_store(datasource_identifier, user_id)
@@ -428,17 +444,17 @@ def _process_single_file(session: Session, file: File, user_id: str, app_setting
                     document.excluded_llm_metadata_keys.append("modified_at")
 
                     # Set the transformations stack name for the datasource_documents
-                    document.metadata["transformations_stack_name"] = stack_name
-                    document.excluded_embed_metadata_keys.append("transformations_stack_name")
-                    document.excluded_llm_metadata_keys.append("transformations_stack_name")
+                    document.metadata["transformations_stack_identifier"] = stack_identifier
+                    document.excluded_embed_metadata_keys.append("transformations_stack_identifier")
+                    document.excluded_llm_metadata_keys.append("transformations_stack_identifier")
 
                     original_doc_id = document.doc_id
 
                     # Modify the doc id to append the transformation stack at the end so that they are treated as different documents by the docstore upserts and are managable independently of each other
-                    document.doc_id = f"{original_doc_id}_{stack_name}"
+                    document.doc_id = f"{original_doc_id}_{stack_identifier}"
 
                     # Get the transformations stack
-                    transformations = TRANSFORMATIONS_STACKS[stack_name]
+                    transformations = get_transformations_for_stack(session, stack_identifier, app_settings)
 
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess
@@ -474,7 +490,7 @@ def _process_single_file(session: Session, file: File, user_id: str, app_setting
                     #else:
                     # This will add the documents to the vector store and docstore in the expected llama index way
                     # Add the embed model to the transformations stack as we always want to embed the results of the processing stacks for search
-                    transformations.append(embed_model)
+                    #transformations.append(embed_model)
                     # Set the transformations for the ingestion pipeline
                     ingestion_pipeline.transformations = transformations
                     ingestion_pipeline.run(
@@ -492,12 +508,12 @@ def _process_single_file(session: Session, file: File, user_id: str, app_setting
                 # Get the processed stacks from json
                 processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
                 # Add the stack to the processed stacks
-                processed_stacks.append(stack_name)
+                processed_stacks.append(stack_identifier)
                 file.processed_stacks = json.dumps(processed_stacks)
                 # Remove the stack from the stacks to process
                 stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
-                if stack_name in stacks_to_process:
-                    stacks_to_process = [stack for stack in stacks_to_process if stack != stack_name]
+                if stack_identifier in stacks_to_process:
+                    stacks_to_process = [stack for stack in stacks_to_process if stack != stack_identifier]
                     file.stacks_to_process = json.dumps(stacks_to_process)
 
                 session.commit()
@@ -506,16 +522,16 @@ def _process_single_file(session: Session, file: File, user_id: str, app_setting
                 session.rollback()
                 # try to delete the processing stack from llama index as it failed to try to avoid partially processed states
                 try:
-                    delete_file_processing_stack_from_llama_index(session=session, user_id=user_id, full_path=file.path, processing_stack_identifier=stack_name)
+                    delete_file_processing_stack_from_llama_index(session=session, user_id=user_id, full_path=file.path, processing_stack_identifier=stack_identifier)
                 except Exception as e:
                     logger.error(f"Failed to delete erroring file stack {file.path} from stores: {str(e)}")
                 # Add the stack to the stacks_to_process list as it failed to process and if we retry to process the file we want it there
                 stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
-                if stack_name not in stacks_to_process:
-                    stacks_to_process.append(stack_name)
+                if stack_identifier not in stacks_to_process:
+                    stacks_to_process.append(stack_identifier)
                     file.stacks_to_process = json.dumps(stacks_to_process)
                 session.commit()
-                logger.error(f"Failed to process stack {stack_name} for file {file.path}, marking file status as error and letting the stack in stacks_to_process: {str(e)}")
+                logger.error(f"Failed to process stack {stack_identifier} for file {file.path}, marking file status as error and letting the stack in stacks_to_process: {str(e)}")
                 raise
         
         # All stacks are processed, update status to completed

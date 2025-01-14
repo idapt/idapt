@@ -1,6 +1,6 @@
 "use client";
 
-import { File, Folder, MoreVertical, Download, Trash2, Edit, Info } from "lucide-react";
+import { File, Folder, MoreVertical, Download, Trash2, Edit, Info, Layers } from "lucide-react";
 import { Button } from "../button";
 import {
   DropdownMenu,
@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import { encodePathSafe } from "@/app/components/ui/file-manager/utils/path-encoding";
 import { useDeletionToast } from "@/app/components/ui/file-manager/hooks/use-deletion-toast";
 import { useApiClient } from "@/app/lib/api-client";
+import { useProcessingStacks } from '@/app/components/ui/processing/hooks/use-processing-stacks';
+import { useProcessing } from '@/app/components/ui/file-manager/hooks/use-processing';
 
 interface FileItemProps {
   id: number;
@@ -43,6 +45,8 @@ export function FileItem({
   viewMode = 'list'
 }: FileItemProps) {
   const { backend } = useClientConfig();
+  const { stacks } = useProcessingStacks();
+  const { processWithStack, processFolder } = useProcessing();
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(name);
   const [showDetails, setShowDetails] = useState(false);
@@ -168,6 +172,22 @@ export function FileItem({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[200px] p-0.5 bg-white rounded-md shadow-md z-50">
+            {stacks.map((stack) => (
+              <DropdownMenuItem
+                className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
+                key={stack.identifier}
+                onSelect={() => {
+                  if (type === 'folder') {
+                    processFolder(path, stack.identifier);
+                  } else {
+                    processWithStack([path], stack.identifier);
+                  }
+                }}
+              >
+                <Layers className="h-4 w-4 mr-2" />
+                <span>Process with {stack.display_name}</span>
+              </DropdownMenuItem>
+            ))}
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
               onSelect={handleDownload}

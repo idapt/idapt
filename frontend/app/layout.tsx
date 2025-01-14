@@ -5,6 +5,7 @@ import "./globals.css";
 import "./markdown.css";
 import { Providers } from './components/providers/upload-provider';
 import { UserProvider } from './contexts/user-context';
+import { ProcessingStacksProvider } from "./components/ui/processing/processing-stacks-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,7 +23,11 @@ export default function RootLayout({
       <body className={inter.className}>
         <UserProvider>
           <Providers>
-            <SettingsProvider>{children}</SettingsProvider>
+            <SettingsProvider>
+              <ProcessingStacksProvider>
+                {children}
+              </ProcessingStacksProvider>
+            </SettingsProvider>
           </Providers>
         </UserProvider>
       </body>

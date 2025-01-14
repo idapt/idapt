@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 import logging
+import os
 from typing import List
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -21,6 +22,10 @@ class ProcessingRequest(BaseModel):
         "path": "path/to/file.txt",
         "transformations_stack_name_list": ["default", "titles"]
     }])
+
+class ProcessingFolderRequest(BaseModel):
+    folder_path: str = Field(..., example="path/to/folder")
+    transformations_stack_name_list: List[str] = Field(..., example=["default", "titles"])
 
 @r.post("")
 async def processing_route(
@@ -84,3 +89,57 @@ async def get_processing_status_route(
 #    while True:
 #        await asyncio.sleep(1)
 #        # TODO Reimplement this, either use db on update or ...
+
+@r.post("/folder")
+async def process_folder_route(
+    request: ProcessingFolderRequest,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_db_session),
+    app_settings: AppSettings = Depends(get_app_settings),
+):
+    """Add all files in a folder to generation queue and start processing if needed"""
+    try:
+        full_folder_path = get_full_path_from_path(request.folder_path, user_id)
+        
+        if not os.path.exists(full_folder_path):
+            raise HTTPException(status_code=404, detail=f"Folder not found: {request.folder_path}")
+        
+        if not os.path.isdir(full_folder_path):
+            raise HTTPException(status_code=400, detail=f"Path is not a directory: {request.folder_path}")
+
+        # Get all files in the folder
+        files = []
+        for root, _, filenames in os.walk(full_folder_path):
+            for filename in filenames:
+                file_path = os.path.join(root, filename)
+                relative_path = os.path.relpath(file_path, get_full_path_from_path("", user_id))
+                files.append({
+                    "path": relative_path,
+                    "transformations_stack_name_list": request.transformations_stack_name_list
+                })
+
+        # Mark all files as queued
+        for file in files:
+            mark_file_as_queued(
+                session,
+                get_full_path_from_path(file["path"], user_id),
+                file["transformations_stack_name_list"]
+            )
+
+        # Start processing if needed
+        if should_start_processing(session):
+            background_tasks.add_task(process_queued_files, session, user_id, app_settings)
+
+        status = get_queue_status(session)
+
+        return {
+            "status": "queued",
+            "message": f"Added {len(files)} files from folder to generation queue",
+            "queue_status": status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in process_folder endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

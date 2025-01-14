@@ -138,8 +138,7 @@ def create_db_file(
             # Store timestamps in UTC datetime into the database as sqlalchemy need a datetime object
             file_created_at=datetime.fromtimestamp(file_created_at, tz=timezone.utc),
             file_modified_at=datetime.fromtimestamp(file_modified_at, tz=timezone.utc),
-            # By default mark the file for processing with the default sentence splitter stack
-            status=FileStatus.QUEUED,
+            status=FileStatus.PENDING,
             processed_stacks=json.dumps([]),
             stacks_to_process=json.dumps([])
         )

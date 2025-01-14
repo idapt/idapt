@@ -2,6 +2,7 @@ import Header from "@/app/components/header";
 import { Settings } from "../components/ui/settings";
 import { NavMenu } from "../components/ui/nav/nav-menu";
 import { FileManager } from "../components/ui/file-manager/file-manager";
+import { ProcessingStacks } from "../components/ui/processing/processing-stacks";
 
 export default function Files() {
   return (
@@ -14,6 +15,7 @@ export default function Files() {
           <FileManager />
         </div>
       </div>
+      <ProcessingStacks />
     </main>
   );
 }

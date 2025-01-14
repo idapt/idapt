@@ -56,7 +56,7 @@ export function useUpload() {
           }
 
           // Trigger the file processing pipeline process with the uploaded file
-          try {
+          /*try {
             await process([{
               path: uploadItem.path,
               transformations_stack_name_list: ["sentence-splitter-512"]
@@ -64,7 +64,7 @@ export function useUpload() {
           } catch (error) {
             console.error('Failed to trigger generation:', error);
             // We don't throw here as we don't want to fail the upload if generation fails
-          }
+          }*/
           
           // Mark file as completed after successful upload
           onComplete(toastId);

@@ -3,6 +3,7 @@
 import { FileItem } from "./file-item";
 import { File, Folder, Datasource } from "@/app/types/files";
 import { DatasourceItem } from "./datasource-item";
+import { useProcessingStacks } from '@/app/components/ui/processing/hooks/use-processing-stacks';
 
 interface FileListProps {
   files: File[];
@@ -22,7 +23,7 @@ export function FileList({
   onFolderClick,
   onDatasourceClick,
   onUploadComplete 
-}: FileListProps) {
+}: FileListProps) {  
   return (
     <div className={viewMode === 'grid' ? "grid grid-cols-4 gap-4 p-4" : "space-y-1 p-4"}>
       {datasources?.map((datasource) => (
