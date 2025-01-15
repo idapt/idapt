@@ -4,8 +4,6 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status, 
 from llama_index.core.llms import MessageRole
 from sqlalchemy.orm import Session
 
-from app.settings.models import AppSettings
-from app.settings.manager import get_app_settings
 from app.api.routers.events import EventCallbackHandler
 from app.api.models.models import (
     ChatData,
@@ -30,7 +28,6 @@ async def chat_route(
     request: Request,
     data: ChatData,
     background_tasks: BackgroundTasks,
-    app_settings: AppSettings = Depends(get_app_settings),
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session),
 ):
@@ -50,7 +47,6 @@ async def chat_route(
         chat_engine = get_chat_engine(
             session=session,
             user_id=user_id,
-            app_settings=app_settings,
             filters=filters,
             params=params,
             event_handlers=[event_handler]
@@ -76,7 +72,6 @@ async def chat_request_route(
     data: ChatData,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session),
-    app_settings: AppSettings = Depends(get_app_settings),
 ) -> Result:
     try:
         logger.info(f"Chat request route called for user {user_id}")
@@ -92,7 +87,6 @@ async def chat_request_route(
 
         chat_engine = get_chat_engine(
             session=session,
-            app_settings=app_settings,
             user_id=user_id,
             filters=filters,
             params=params

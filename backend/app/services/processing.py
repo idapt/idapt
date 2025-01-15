@@ -3,10 +3,10 @@ from app.services.datasource import get_datasource_identifier_from_path
 from app.services.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.services.ollama_status import is_ollama_server_reachable, wait_for_ollama_models_to_be_downloaded
 from app.database.models import File, FileStatus
-from app.settings.models import AppSettings
-from app.settings.model_initialization import init_embedding_model
 from app.services.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
 from app.services.processing_stacks import get_transformations_for_stack
+from app.services.settings import get_setting
+from app.settings.models import AppSettings, OllamaSettings
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
@@ -254,33 +254,35 @@ def mark_file_as_queued(session: Session, file_path: str, stacks_to_process: Lis
 
 async def process_queued_files(
         session: Session,
-        user_id: str,
-        app_settings: AppSettings
+        user_id: str
     ):
     """Processing loop"""
     try:
-        # Check if the ollama server is reachable
-        if not await is_ollama_server_reachable(app_settings.ollama.llm_host):
-            # We can't process files if the ollama server is not reachable, skip this processing request
-            logger.error("Ollama server is not reachable, skipping processing request")
-            return
+        app_settings : AppSettings = get_setting(session, "app")
+        if app_settings.llm_model_provider == "ollama" or app_settings.embedding_model_provider == "ollama":
+            ollama_settings : OllamaSettings = get_setting(session, "ollama")
+            # Check if the ollama server is reachable
+            if not await is_ollama_server_reachable(ollama_settings.llm_host):
+                # We can't process files if the ollama server is not reachable, skip this processing request
+                logger.error("Ollama server is not reachable, skipping processing request")
+                return
 
         # Wait for Ollama models to be downloaded
-        await wait_for_ollama_models_to_be_downloaded(app_settings)
+        await wait_for_ollama_models_to_be_downloaded(session)
    
         logger.info("Beginning processing files")
         # Process all files marked as processing that have been interrupted with unfinished processing
-        _process_files_marked_as_processing(session=session, user_id=user_id, app_settings=app_settings)
+        _process_files_marked_as_processing(session=session, user_id=user_id)
 
         # Process all queued files
-        _process_all_queued_files(session=session, user_id=user_id, app_settings=app_settings)
+        _process_all_queued_files(session=session, user_id=user_id)
    
 
     except Exception as e:
         logger.error(f"Processing loop error: {str(e)}")
         raise
 
-def _process_files_marked_as_processing(session: Session, user_id: str, app_settings: AppSettings):
+def _process_files_marked_as_processing(session: Session, user_id: str):
     """Process all files marked as processing"""
     try:
         while True:
@@ -310,8 +312,8 @@ def _process_files_marked_as_processing(session: Session, user_id: str, app_sett
                     delete_file_llama_index(session=session, user_id=user_id, full_path=oldest_processing_file.path)
                 except Exception as e:
                     logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
-                    
-                _process_single_file(session, oldest_processing_file, user_id, app_settings)
+                
+                _process_single_file(session, oldest_processing_file, user_id)
             except Exception as e:
                 session.rollback()
                 logger.error(f"Failed to process interrupted file {oldest_processing_file.path}: {str(e)}, marking as error")
@@ -325,7 +327,7 @@ def _process_files_marked_as_processing(session: Session, user_id: str, app_sett
         logger.error(f"Failed to process all queued files: {str(e)}")
         raise
         
-def _process_all_queued_files(session: Session, user_id: str, app_settings: AppSettings):
+def _process_all_queued_files(session: Session, user_id: str):
     """Process all queued files"""
     try:
         while True:
@@ -339,7 +341,7 @@ def _process_all_queued_files(session: Session, user_id: str, app_settings: AppS
                 ).first()
                 
                 if queued_file:
-                    _process_single_file(session=session, file=queued_file, user_id=user_id, app_settings=app_settings)
+                    _process_single_file(session=session, file=queued_file, user_id=user_id)
                 else:
                     return
         
@@ -355,7 +357,7 @@ def _process_all_queued_files(session: Session, user_id: str, app_settings: AppS
         logger.error(f"Failed to process all queued files: {str(e)}")
         raise
 
-def _process_single_file(session: Session, file: File, user_id: str, app_settings: AppSettings):
+def _process_single_file(session: Session, file: File, user_id: str):
     """Process a single file through the ingestion pipeline"""
     try:
         # Update status to processing
@@ -384,9 +386,6 @@ def _process_single_file(session: Session, file: File, user_id: str, app_setting
 
                 logger.info(f"Processing stack {stack_identifier} for file {file.path}")
                 
-                # Init the embed model from the app settings
-                #embed_model = init_embedding_model(app_settings)
-
                 # Create the ingestion pipeline for the datasource
                 vector_store = create_vector_store(datasource_identifier, user_id)
                 doc_store = create_doc_store(datasource_identifier, user_id)
@@ -454,7 +453,7 @@ def _process_single_file(session: Session, file: File, user_id: str, app_setting
                     document.doc_id = f"{original_doc_id}_{stack_identifier}"
 
                     # Get the transformations stack
-                    transformations = get_transformations_for_stack(session, stack_identifier, app_settings)
+                    transformations = get_transformations_for_stack(session, stack_identifier)
 
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess

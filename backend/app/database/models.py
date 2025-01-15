@@ -108,3 +108,11 @@ class ProcessingStackStep(Base):
     
     stack = relationship("ProcessingStack", backref="steps")
     step = relationship("ProcessingStep", backref="stack_steps")
+
+class Setting(Base):
+    __tablename__ = 'settings'
+    
+    identifier = Column(String, primary_key=True)
+    display_name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    value = Column(JSON, nullable=False)

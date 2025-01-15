@@ -3,11 +3,17 @@ from app.settings.model_providers import *
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.llms.base import BaseLLM
 
-def init_llm(settings: AppSettings) -> BaseLLM:
+from sqlalchemy.orm import Session
+from app.services.settings import get_setting
+from app.settings.models import AppSettings
+
+def init_llm(session: Session) -> BaseLLM:
     """Initialize LLM based on model provider setting"""
-    match settings.llm_model_provider:
+    app_setting : AppSettings = get_setting(session, "app")
+    match app_setting.llm_model_provider:
         case "openai":
-            return init_openai_llm(settings.openai, settings.temperature, settings.system_prompt)
+            openai_settings : OpenAISettings = get_setting(session, "openai")
+            return init_openai_llm(openai_settings, app_setting.temperature, app_setting.system_prompt)
         #case "groq":
         #    return init_groq_llm(settings.llm.groq_model, settings.system_prompt)
         #case "text-generation-inference":
@@ -21,13 +27,16 @@ def init_llm(settings: AppSettings) -> BaseLLM:
         #case "azure-openai":
         #    return init_azure_openai_llm(settings.llm.azure_openai_model, settings.system_prompt)
         case _:
-            return init_ollama_llm(settings.ollama, settings.temperature, settings.system_prompt)
+            ollama_settings : OllamaSettings = get_setting(session, "ollama")
+            return init_ollama_llm(ollama_settings, app_setting.temperature, app_setting.system_prompt)
         
-def init_embedding_model(settings: AppSettings) -> BaseEmbedding:
+def init_embedding_model(session: Session) -> BaseEmbedding:
     """Initialize embedding model based on embedding_model_provider setting"""
-    match settings.embedding_model_provider:
+    app_setting : AppSettings = get_setting(session, "app")
+    match app_setting.embedding_model_provider:
         case "openai":
-            return init_openai_embedding(settings.openai, settings.embedding_dim)
+            openai_settings : OpenAISettings = get_setting(session, "openai")
+            return init_openai_embedding(openai_settings, app_setting.embedding_dim)
         #case "azure-openai":
         #    return init_azure_openai_embedding(settings.embedding.azure_openai_embedding_model)
         #case "gemini":
@@ -39,4 +48,5 @@ def init_embedding_model(settings: AppSettings) -> BaseEmbedding:
         #case "text-embeddings-inference":
         #    return init_tei_embedding(settings.tei, settings.embedding_dim)
         case _:
-            return init_ollama_embedding(settings.ollama)
+            ollama_settings : OllamaSettings = get_setting(session, "ollama")
+            return init_ollama_embedding(ollama_settings)

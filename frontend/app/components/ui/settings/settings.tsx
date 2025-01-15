@@ -6,11 +6,18 @@ import { useSettings } from "./settings-provider";
 
 export function Settings() {
   const { isOpen, openSettings, closeSettings } = useSettings();
-
+  
+  console.log("Settings render - isOpen:", isOpen);
+  
   return (
     <>
       <SettingsButton onClick={openSettings} />
-      <SettingsDialog isOpen={isOpen} onClose={closeSettings} />
+      {isOpen && (
+        <SettingsDialog 
+          isOpen={isOpen} 
+          onClose={closeSettings} 
+        />
+      )}
     </>
   );
 } 

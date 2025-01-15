@@ -13,12 +13,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../select";
-import { AppSettings, LLM_MODEL_PROVIDER_OPTIONS, EMBEDDING_PROVIDER_OPTIONS, LLM_MODEL_OPTIONS, EMBEDDING_MODEL_OPTIONS } from "@/app/types/settings";
-import { useSettings } from "@/app/hooks/use-settings";
+import { 
+  AppSettings, 
+  OllamaSettings,
+  OpenAISettings,
+  AnthropicSettings,
+  GroqSettings,
+  GeminiSettings,
+  MistralSettings,
+  AzureOpenAISettings,
+  TGISettings,
+  FastEmbedSettings,
+  TEISettings,
+  LLM_MODEL_PROVIDER_OPTIONS, 
+  EMBEDDING_PROVIDER_OPTIONS, 
+  LLM_MODEL_OPTIONS, 
+  EMBEDDING_MODEL_OPTIONS 
+} from "@/app/types/settings";
+import { useSettings } from "./settings-provider";
+
 interface SettingsDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Helper function to check if a model is custom
+const isCustomModel = (provider: string, modelName: string): boolean => {
+  const predefinedModels = LLM_MODEL_OPTIONS[provider] || [];
+  return !predefinedModels.includes(modelName) || modelName === "custom";
+};
 
 const isCustomEmbeddingModel = (provider: string, modelName: string): boolean => {
   const predefinedModels = EMBEDDING_MODEL_OPTIONS[provider] || [];
@@ -26,60 +49,226 @@ const isCustomEmbeddingModel = (provider: string, modelName: string): boolean =>
 };
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  // Main app settings state
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  
+  // Provider-specific settings states
+  const [ollamaSettings, setOllamaSettings] = useState<OllamaSettings | null>(null);
+  const [openAISettings, setOpenAISettings] = useState<OpenAISettings | null>(null);
+  const [anthropicSettings, setAnthropicSettings] = useState<AnthropicSettings | null>(null);
+  const [groqSettings, setGroqSettings] = useState<GroqSettings | null>(null);
+  const [geminiSettings, setGeminiSettings] = useState<GeminiSettings | null>(null);
+  const [mistralSettings, setMistralSettings] = useState<MistralSettings | null>(null);
+  const [azureOpenAISettings, setAzureOpenAISettings] = useState<AzureOpenAISettings | null>(null);
+  const [tgiSettings, setTGISettings] = useState<TGISettings | null>(null);
+  const [fastEmbedSettings, setFastEmbedSettings] = useState<FastEmbedSettings | null>(null);
+  const [teiSettings, setTEISettings] = useState<TEISettings | null>(null);
+
+  // UI states
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const { getSettings, updateSettings, isLoading } = useSettings();
+  
+  const { getProviderSettings, updateProviderSettings } = useSettings();
 
-  const isCustomModel = (provider: string, modelName: string): boolean => {
-    const predefinedModels = LLM_MODEL_OPTIONS[provider] || [];
-    return !predefinedModels.includes(modelName) || modelName === "custom";
+  // Add loading state
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Function to load provider settings
+  const loadProviderSettings = async (provider: string) => {
+    try {
+      const response = await getProviderSettings(provider);
+      if (!response) {
+        console.warn(`No settings found for provider ${provider}`);
+        return null;
+      }
+
+      const settings = response;
+      console.log(" provider settings", settings);
+      console.log("provider", provider);
+      switch (provider) {
+        case "ollama":
+          setOllamaSettings(settings);
+          break;
+        case "openai":
+          setOpenAISettings(settings);
+          break;
+        case "anthropic":
+          setAnthropicSettings(settings);
+          break;
+        case "groq":
+          setGroqSettings(settings);
+          break;
+        case "gemini":
+          setGeminiSettings(settings);
+          break;
+        case "mistral":
+          setMistralSettings(settings);
+          break;
+        case "azure-openai":
+          setAzureOpenAISettings(settings);
+          break;
+        case "tgi":
+          setTGISettings(settings);
+          break;
+        case "fastembed":
+          setFastEmbedSettings(settings);
+          break;
+        case "tei":
+          setTEISettings(settings);
+          break;
+      }
+    } catch (error) {
+      console.error(`Error loading ${provider} settings:`, error);
+      setSaveError(`Failed to load ${provider} settings`);
+    }
   };
 
+  // Load settings when dialog opens
   useEffect(() => {
-    if (isOpen) {
-      getSettings()
-        .then(setSettings)
-        .catch(error => setSaveError(error.message));
+    let mounted = true;
+
+    const initializeSettings = async () => {
+      console.log("initializeSettings");
+      if (!isOpen) return;
+      setIsLoading(true);
+
+      try {
+        const appResponse = await getProviderSettings("app");
+        console.log("appResponse", appResponse);
+        if (!mounted || !appResponse) {
+          setIsLoading(false);
+          console.log("appResponse is null");
+          return;
+        }
+
+        // Convert string values to numbers where needed
+        const settings = {
+          ...appResponse,
+          embedding_dim: parseInt(appResponse.embedding_dim),
+          top_k: parseInt(appResponse.top_k),
+          max_iterations: parseInt(appResponse.max_iterations),
+          temperature: parseFloat(appResponse.temperature)
+        };
+
+        setAppSettings(settings);
+
+        console.log("settings", settings);
+
+        // Load provider settings sequentially
+        if (settings.llm_model_provider) {
+          console.log("loading llm provider settings");
+          await loadProviderSettings(settings.llm_model_provider);
+          console.log("llm provider settings", ollamaSettings);
+        }
+        
+        if (settings.embedding_model_provider && 
+            settings.embedding_model_provider !== settings.llm_model_provider) {
+          await loadProviderSettings(settings.embedding_model_provider);
+        }
+
+        if (mounted) {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error initializing settings:", error);
+        setSaveError("Failed to load settings");
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeSettings();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isOpen, getProviderSettings]);
+
+  // Handle provider change
+  const handleProviderChange = async (type: 'llm' | 'embedding', newProvider: string) => {
+    if (!appSettings) return;
+
+    try {
+      if (type === 'llm') {
+        setAppSettings({ ...appSettings, llm_model_provider: newProvider });
+        await loadProviderSettings(newProvider);
+      } else {
+        setAppSettings({ ...appSettings, embedding_model_provider: newProvider });
+        if (newProvider !== appSettings.llm_model_provider) {
+          await loadProviderSettings(newProvider);
+        }
+      }
+    } catch (error) {
+      console.error(`Error changing ${type} provider:`, error);
+      setSaveError(`Failed to load ${newProvider} settings`);
     }
-  }, [isOpen, getSettings]);
+  };
 
   const handleSave = async () => {
-    if (!settings) return;
-    
+    setIsSaving(true);
+    setSaveError(null);
+
     try {
-      setSaveError(null);
-      setIsSaving(true);
-      await updateSettings(settings);
+      // Convert the settings object to a JSON string before sending
+      if (!appSettings) return;
+
+      await updateProviderSettings("app", appSettings);
+
+      if (appSettings.llm_model_provider) {
+        const llmSettings = getProviderSettingsState(appSettings.llm_model_provider);
+        await updateProviderSettings(appSettings.llm_model_provider, llmSettings);
+      }
+      
+      if (appSettings.embedding_model_provider && 
+        appSettings.embedding_model_provider !== appSettings.llm_model_provider) {
+        const embeddingSettings = getProviderSettingsState(appSettings.embedding_model_provider);
+        await updateProviderSettings(appSettings.embedding_model_provider, embeddingSettings);
+      }
+
       onClose();
     } catch (error) {
-      // The error is now the direct response from the backend
-      if (error && typeof error === 'object' && 'detail' in error) {
-        const detail = error.detail;
-        if (typeof detail === 'object' && detail !== null && 'message' in detail && 'error' in detail) {
-          setSaveError(`${detail.message}: ${detail.error}`);
-        } else {
-          setSaveError(String(detail));
-        }
-      } else {
-        setSaveError('An unexpected error occurred');
-      }
+      console.error("Error saving settings:", error);
+      setSaveError("Failed to save settings");
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (!isOpen || !settings) return null;
+  // Helper to get provider settings state
+  const getProviderSettingsState = (provider: string) => {
+    switch (provider) {
+      case "ollama": return ollamaSettings;
+      case "openai": return openAISettings;
+      case "anthropic": return anthropicSettings;
+      case "groq": return groqSettings;
+      case "gemini": return geminiSettings;
+      case "mistral": return mistralSettings;
+      case "azure-openai": return azureOpenAISettings;
+      case "tgi": return tgiSettings;
+      case "fastembed": return fastEmbedSettings;
+      case "tei": return teiSettings;
+      default: return null;
+    }
+  };
 
+  if (!isOpen) return null;
+
+  // Show loading state
+  if (isLoading || !appSettings) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+          <p>Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Render the main dialog content only when appSettings is available
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="fixed inset-0 bg-black/50"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
       <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Settings</h2>
@@ -103,16 +292,16 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </div>
           ))}
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Model Provider</label>
+          <div className="space-y-2 relative">
+            <label className="text-sm font-medium">LLM Model Provider</label>
             <Select
-              value={settings.llm_model_provider}
-              onValueChange={(value: string) => setSettings({...settings, llm_model_provider: value})}
+              value={appSettings.llm_model_provider}
+              onValueChange={(value: string) => handleProviderChange('llm', value)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a model provider" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[200]">
                 <SelectGroup>
                   {LLM_MODEL_PROVIDER_OPTIONS.map((provider) => (
                     <SelectItem key={provider} value={provider}>
@@ -123,165 +312,114 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
               </SelectContent>
             </Select>
           </div>
-          {/* Only show the ollama host input if the model provider is ollama, add an hint to : Set the ollama host to http://host.docker.internal:11434 if ollama is running on the host machine at localhost and port 11434 */}
-          {settings.llm_model_provider === "ollama" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ollama Host</label>
-              <p className="text-xs text-gray-500">Set the ollama host to http://host.docker.internal:11434 if ollama is running on the host machine at localhost and port 11434</p>
-              <Input
-                value={settings.ollama.llm_host}
-                onChange={(e) => setSettings({...settings, ollama: {...settings.ollama, llm_host: e.target.value}})}
-              />
-            </div>
-          )}
 
-          {/* Only show the OpenAI API key input if the model provider is openai */}
-          {settings.llm_model_provider === "openai" && (  
-            <div className="space-y-2">
-              <label className="text-sm font-medium">OpenAI API Key</label>
-              <Input
-                type="password"
-                value={settings.openai.api_key}
-                onChange={(e) => setSettings({...settings, openai: {...settings.openai, api_key: e.target.value}})}
-              />
-            </div>
-          )}
-
-          {/* Only show the Text Generation Inference host input if the model provider is text-generation-inference */}
-          {settings.llm_model_provider === "text-generation-inference" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Text Generation Inference Host</label>
-              <Input
-                value={settings.tgi.llm_host}
-                onChange={(e) => setSettings({...settings, tgi: {...settings.tgi, llm_host: e.target.value}})}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Model</label>
-            <Select
-              value={
-                settings.llm_model_provider === "ollama" ? (isCustomModel(settings.llm_model_provider, settings.ollama.llm_model) ? "custom" : settings.ollama.llm_model) :
-                settings.llm_model_provider === "openai" ? (isCustomModel(settings.llm_model_provider, settings.openai.llm_model) ? "custom" : settings.openai.llm_model) :
-                settings.llm_model_provider === "anthropic" ? (isCustomModel(settings.llm_model_provider, settings.anthropic.llm_model) ? "custom" : settings.anthropic.llm_model) :
-                settings.llm_model_provider === "groq" ? (isCustomModel(settings.llm_model_provider, settings.groq.llm_model) ? "custom" : settings.groq.llm_model) :
-                settings.llm_model_provider === "gemini" ? (isCustomModel(settings.llm_model_provider, settings.gemini.llm_model) ? "custom" : settings.gemini.llm_model) :
-                settings.llm_model_provider === "mistral" ? (isCustomModel(settings.llm_model_provider, settings.mistral.llm_model) ? "custom" : settings.mistral.llm_model) :
-                settings.llm_model_provider === "azure-openai" ? (isCustomModel(settings.llm_model_provider, settings.azure_openai.llm_model) ? "custom" : settings.azure_openai.llm_model) :
-                settings.llm_model_provider === "text-generation-inference" ? (isCustomModel(settings.llm_model_provider, settings.tgi.llm_model) ? "custom" : settings.tgi.llm_model) :
-                ""
-              }
-              onValueChange={(value: string) => {
-                if (!settings) return;
-
-                const providerSettings = {
-                  ollama: settings.ollama,
-                  openai: settings.openai,
-                  anthropic: settings.anthropic,
-                  groq: settings.groq,
-                  gemini: settings.gemini,
-                  mistral: settings.mistral,
-                  azure_openai: settings.azure_openai,
-                  tgi: settings.tgi,
-                };
-
-                // If selecting "custom", don't change the actual model value yet
-                if (value === "custom") {
-                  setSettings({
-                    ...settings,
-                    [settings.llm_model_provider]: {
-                      ...providerSettings[settings.llm_model_provider as keyof typeof providerSettings],
-                      llm_model: value
-                    }
-                  });
-                } else {
-                  setSettings({
-                    ...settings,
-                    [settings.llm_model_provider]: {
-                      ...providerSettings[settings.llm_model_provider as keyof typeof providerSettings],
-                      llm_model: value
-                    }
-                  });
-                }
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {LLM_MODEL_OPTIONS[settings.llm_model_provider]?.map((model) => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-
-            {isCustomModel(settings.llm_model_provider, 
-              settings.llm_model_provider === "ollama" ? settings.ollama.llm_model :
-              settings.llm_model_provider === "openai" ? settings.openai.llm_model :
-              settings.llm_model_provider === "anthropic" ? settings.anthropic.llm_model :
-              settings.llm_model_provider === "groq" ? settings.groq.llm_model :
-              settings.llm_model_provider === "gemini" ? settings.gemini.llm_model :
-              settings.llm_model_provider === "mistral" ? settings.mistral.llm_model :
-              settings.llm_model_provider === "azure-openai" ? settings.azure_openai.llm_model :
-              settings.llm_model_provider === "text-generation-inference" ? settings.tgi.llm_model :
-              ""
-            ) && (
-              <div className="mt-2">
+          {appSettings.llm_model_provider === "ollama" && ollamaSettings && (
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ollama Host</label>
+                <p className="text-xs text-gray-500">
+                  Set to http://host.docker.internal:11434 if running locally
+                </p>
                 <Input
-                  placeholder="Enter custom model name"
-                  value={
-                    settings.llm_model_provider === "ollama" ? settings.ollama.llm_model :
-                    settings.llm_model_provider === "openai" ? settings.openai.llm_model :
-                    settings.llm_model_provider === "anthropic" ? settings.anthropic.llm_model :
-                    settings.llm_model_provider === "groq" ? settings.groq.llm_model :
-                    settings.llm_model_provider === "gemini" ? settings.gemini.llm_model :
-                    settings.llm_model_provider === "mistral" ? settings.mistral.llm_model :
-                    settings.llm_model_provider === "azure-openai" ? settings.azure_openai.llm_model :
-                    settings.llm_model_provider === "text-generation-inference" ? settings.tgi.llm_model :
-                    ""
-                  }
-                  onChange={(e) => {
-                    if (!settings) return;
-                  
-                    const providerSettings = {
-                      ollama: settings.ollama,
-                      openai: settings.openai,
-                      anthropic: settings.anthropic,
-                      groq: settings.groq,
-                      gemini: settings.gemini,
-                      mistral: settings.mistral,
-                      azure_openai: settings.azure_openai,
-                      tgi: settings.tgi,
-                    };
-                  
-                    setSettings({
-                      ...settings,
-                      [settings.llm_model_provider]: {
-                        ...providerSettings[settings.llm_model_provider as keyof typeof providerSettings],
-                        llm_model: e.target.value
-                      }
-                    });
-                  }}
+                  value={ollamaSettings.llm_host}
+                  onChange={(e) => setOllamaSettings({
+                    ...ollamaSettings,
+                    llm_host: e.target.value
+                  })}
                 />
               </div>
-            )}
-          </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Model</label>
+                <Select
+                  value={isCustomModel("ollama", ollamaSettings.llm_model) ? "custom" : ollamaSettings.llm_model}
+                  onValueChange={(value) => {
+                    if (value === "custom") return;
+                    setOllamaSettings({
+                      ...ollamaSettings,
+                      llm_model: value
+                    });
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    <SelectGroup>
+                      {LLM_MODEL_OPTIONS["ollama"].map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                {isCustomModel("ollama", ollamaSettings.llm_model) && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Enter custom model name"
+                    value={ollamaSettings.llm_model === "custom" ? "" : ollamaSettings.llm_model}
+                    onChange={(e) => setOllamaSettings({
+                      ...ollamaSettings,
+                      llm_model: e.target.value
+                    })}
+                  />
+                )}
+              </div>
+            </>
+          )}
+
+          {appSettings.llm_model_provider === "openai" && openAISettings && (
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">OpenAI API Key</label>
+                <Input
+                  type="password"
+                  value={openAISettings.api_key}
+                  onChange={(e) => setOpenAISettings({
+                    ...openAISettings,
+                    api_key: e.target.value
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Model</label>
+                <Select
+                  value={isCustomModel("openai", openAISettings.llm_model) ? "custom" : openAISettings.llm_model}
+                  onValueChange={(value) => {
+                    if (value === "custom") return;
+                    setOpenAISettings({
+                      ...openAISettings,
+                      llm_model: value
+                    });
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    <SelectGroup>
+                      {LLM_MODEL_OPTIONS["openai"].map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Embedding Model Provider</label>
             <Select
-              value={settings.embedding_model_provider}
-              onValueChange={(value: string) => setSettings({...settings, embedding_model_provider: value})}
+              value={appSettings.embedding_model_provider}
+              onValueChange={(value: string) => handleProviderChange('embedding', value)}
             >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select an embedding provider" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[200]">
                 <SelectGroup>
                   {EMBEDDING_PROVIDER_OPTIONS.map((provider) => (
                     <SelectItem key={provider} value={provider}>
@@ -294,114 +432,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Embedding Model</label>
-            <Select
-              value={
-                settings.embedding_model_provider === "ollama" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.ollama.embedding_model) ? "custom" : settings.ollama.embedding_model) :
-                settings.embedding_model_provider === "openai" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.openai.embedding_model) ? "custom" : settings.openai.embedding_model) :
-                settings.embedding_model_provider === "azure-openai" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.azure_openai.embedding_model) ? "custom" : settings.azure_openai.embedding_model) :
-                settings.embedding_model_provider === "gemini" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.gemini.embedding_model) ? "custom" : settings.gemini.embedding_model) :
-                settings.embedding_model_provider === "mistral" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.mistral.embedding_model) ? "custom" : settings.mistral.embedding_model) :
-                settings.embedding_model_provider === "fastembed" ? (isCustomEmbeddingModel(settings.embedding_model_provider, settings.fastembed.embedding_model) ? "custom" : settings.fastembed.embedding_model) :
-                ""
-              }
-              onValueChange={(value: string) => {
-                const modelKey = 
-                  settings.embedding_model_provider === "ollama" ? "ollama.embedding_model" :
-                  settings.embedding_model_provider === "openai" ? "openai.embedding_model" :
-                  settings.embedding_model_provider === "azure-openai" ? "azure_openai.embedding_model" :
-                  settings.embedding_model_provider === "gemini" ? "gemini.embedding_model" :
-                  settings.embedding_model_provider === "mistral" ? "mistral.embedding_model" :
-                  settings.embedding_model_provider === "fastembed" ? "fastembed.embedding_model" :
-                  null;
-                
-                if (modelKey) {
-                  if (value === "custom") {
-                    setSettings({
-                      ...settings,
-                      [modelKey]: value
-                    });
-                  } else {
-                    setSettings({
-                      ...settings,
-                      [modelKey]: value
-                    });
-                  }
-                }
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {EMBEDDING_MODEL_OPTIONS[settings.embedding_model_provider]?.map((model) => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-
-            {isCustomEmbeddingModel(settings.embedding_model_provider,
-              settings.embedding_model_provider === "ollama" ? settings.ollama.embedding_model :
-              settings.embedding_model_provider === "openai" ? settings.openai.embedding_model :
-              settings.embedding_model_provider === "azure-openai" ? settings.azure_openai.embedding_model :
-              settings.embedding_model_provider === "gemini" ? settings.gemini.embedding_model :
-              settings.embedding_model_provider === "mistral" ? settings.mistral.embedding_model :
-              settings.embedding_model_provider === "fastembed" ? settings.fastembed.embedding_model :
-              ""
-            ) && (
-              <div className="mt-2">
-                <Input
-                  placeholder="Enter custom embedding model name"
-                  value={
-                    settings.embedding_model_provider === "ollama" ? (settings.ollama.embedding_model === "custom" ? "" : settings.ollama.embedding_model) :
-                    settings.embedding_model_provider === "openai" ? (settings.openai.embedding_model === "custom" ? "" : settings.openai.embedding_model) :
-                    settings.embedding_model_provider === "azure-openai" ? (settings.azure_openai.embedding_model === "custom" ? "" : settings.azure_openai.embedding_model) :
-                    settings.embedding_model_provider === "gemini" ? (settings.gemini.embedding_model === "custom" ? "" : settings.gemini.embedding_model) :
-                    settings.embedding_model_provider === "mistral" ? (settings.mistral.embedding_model === "custom" ? "" : settings.mistral.embedding_model) :
-                    settings.embedding_model_provider === "fastembed" ? (settings.fastembed.embedding_model === "custom" ? "" : settings.fastembed.embedding_model) :
-                    ""
-                  }
-                  onChange={(e) => {
-                    const modelKey = 
-                      settings.embedding_model_provider === "ollama" ? "ollama_embedding_model" :
-                      settings.embedding_model_provider === "openai" ? "openai_embedding_model" :
-                      settings.embedding_model_provider === "azure-openai" ? "azure_openai_embedding_model" :
-                      settings.embedding_model_provider === "gemini" ? "gemini_embedding_model" :
-                      settings.embedding_model_provider === "mistral" ? "mistral_embedding_model" :
-                      settings.embedding_model_provider === "fastembed" ? "fastembed_embedding_model" :
-                      null;
-                    
-                    if (modelKey) {
-                      setSettings({
-                        ...settings,
-                        [modelKey]: e.target.value
-                      });
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          {settings.embedding_model_provider === "ollama" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Custom Ollama Embedding Host</label>
-              <Input
-                value={settings.ollama.embedding_host}
-                onChange={(e) => setSettings({...settings, ollama: {...settings.ollama, embedding_host: e.target.value}})}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
             <label className="text-sm font-medium">Embedding Dimensions</label>
             <Input
-              value={settings.embedding_dim}
-              onChange={(e) => setSettings({...settings, embedding_dim: e.target.value})}
+              value={appSettings.embedding_dim}
+              onChange={(e) => setAppSettings({
+                ...appSettings,
+                embedding_dim: e.target.value
+              })}
             />
           </div>
 
@@ -409,62 +446,25 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             <label className="text-sm font-medium">Top K Results</label>
             <Input
               type="number"
-              value={settings.top_k}
-              onChange={(e) => setSettings({...settings, top_k: parseInt(e.target.value)})}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Max Agent Iterations</label>
-            <Input
-              type="number"
-              value={settings.max_iterations}
-              onChange={(e) => setSettings({...settings, max_iterations: parseInt(e.target.value)})}
+              value={appSettings.top_k}
+              onChange={(e) => setAppSettings({
+                ...appSettings,
+                top_k: parseInt(e.target.value)
+              })}
             />
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">System Prompt</label>
             <Textarea
-              value={settings.system_prompt}
-              onChange={(e) => setSettings({...settings, system_prompt: e.target.value})}
+              value={appSettings.system_prompt}
+              onChange={(e) => setAppSettings({
+                ...appSettings,
+                system_prompt: e.target.value
+              })}
               rows={4}
             />
           </div>
-
-          {/* Only show the ollama request timeout input if the model provider is ollama */}
-          {settings.llm_model_provider === "ollama" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ollama Request Timeout (s)</label>
-              <Input
-                type="number"
-                value={settings.ollama.llm_request_timeout}
-                onChange={(e) => setSettings({...settings, ollama: {...settings.ollama, llm_request_timeout: parseInt(e.target.value)}})}
-              />
-            </div>
-          )}
-
-          {/* Only show the Text Generation Inference request timeout input if the model provider is text-generation-inference */}
-          {settings.llm_model_provider === "text-generation-inference" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Text Generation Inference Request Timeout (s)</label>
-              <Input
-                type="number"
-                value={settings.tgi.llm_request_timeout}
-                onChange={(e) => setSettings({...settings, tgi: {...settings.tgi, llm_request_timeout: parseInt(e.target.value)}})}
-              />
-            </div>
-          )}
-
-          {settings.embedding_model_provider === "text-embeddings-inference" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Text Embeddings Inference Host</label>
-              <Input
-                value={settings.tei.embedding_host}
-                onChange={(e) => setSettings({...settings, tei: {...settings.tei, embedding_host: e.target.value}})}
-              />
-            </div>
-          )}
 
           <div className="flex justify-end space-x-2 pt-4">
             <Button variant="outline" onClick={onClose}>

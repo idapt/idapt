@@ -1,8 +1,10 @@
 from fastapi import BackgroundTasks
 import logging
-from app.settings.models import AppSettings
+from app.settings.models import AppSettings, OllamaSettings
 import httpx
 import time
+from sqlalchemy.orm import Session
+from app.services.settings import get_setting
 
 logger = logging.getLogger("uvicorn")
 
@@ -62,26 +64,28 @@ async def is_ollama_server_reachable(base_url: str) -> bool:
         return False
 
 # If you dont want to pull the models if not available, set background_tasks to None
-async def can_process(app_settings: AppSettings, background_tasks: BackgroundTasks | None = None) -> bool:
+async def can_process(session: Session, background_tasks: BackgroundTasks | None = None) -> bool:
     """Check if Ollama models are ready for processing"""
     try:
         # Check if the ollama server is reachable
-        if not await is_ollama_server_reachable(app_settings.ollama.llm_host):
+        app_settings : AppSettings = get_setting(session, "app")
+        ollama_settings : OllamaSettings = get_setting(session, "ollama")
+        if not await is_ollama_server_reachable(ollama_settings.llm_host):
             # We can't process files if the ollama server is not reachable
             return False
 
         # Check LLM models
         if app_settings.llm_model_provider == "ollama":
-            base_url = app_settings.ollama.llm_host
-            model = app_settings.ollama.llm_model
+            base_url = ollama_settings.llm_host
+            model = ollama_settings.llm_model
             
             if not await _check_ollama_model(base_url, model, background_tasks):
                 return False
             
         # Check embedding models
         if app_settings.embedding_model_provider == "ollama":
-            base_url = app_settings.ollama.embedding_host
-            model = app_settings.ollama.embedding_model
+            base_url = ollama_settings.embedding_host
+            model = ollama_settings.embedding_model
             
             if not await _check_ollama_model(base_url, model, background_tasks):
                 return False
@@ -92,11 +96,11 @@ async def can_process(app_settings: AppSettings, background_tasks: BackgroundTas
         logger.error(f"Error checking if can process: {str(e)}")
         return False 
     
-async def wait_for_ollama_models_to_be_downloaded(app_settings: AppSettings):
+async def wait_for_ollama_models_to_be_downloaded(session: Session):
     """Wait for Ollama models to be ready"""
     while True:
         # Check if we need to wait for Ollama models without pulling them if they don't exist
-        if await can_process(app_settings, None):
+        if await can_process(session, None):
             return
         
         logger.info("Waiting for Ollama models to be ready before processing files...")

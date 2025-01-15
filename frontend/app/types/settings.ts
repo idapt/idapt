@@ -1,5 +1,21 @@
+export interface SettingBase {
+  identifier: string;
+  display_name: string;
+  description: string | null;
+}
+
+export interface AppSettings extends SettingBase {
+  llm_model_provider: string;
+  embedding_model_provider: string;
+  embedding_dim: string;
+  top_k: number;
+  max_iterations: number;
+  temperature: number;
+  system_prompt: string;
+}
+
 // Provider-specific settings types
-interface OllamaSettings {
+export interface OllamaSettings extends SettingBase {
   llm_model: string;
   llm_host: string;
   llm_request_timeout: number;
@@ -8,36 +24,36 @@ interface OllamaSettings {
   embedding_request_timeout: number;
 }
 
-interface OpenAISettings {
+export interface OpenAISettings extends SettingBase {
   llm_model: string;
   api_key: string;
   embedding_model: string;
   max_tokens?: number;
 }
 
-interface AnthropicSettings {
+export interface AnthropicSettings extends SettingBase {
   llm_model: string;
   api_key: string;
 }
 
-interface GroqSettings {
+export interface GroqSettings extends SettingBase {
   llm_model: string;
   api_key: string;
 }
 
-interface GeminiSettings {
-  llm_model: string;
-  api_key: string;
-  embedding_model: string;
-}
-
-interface MistralSettings {
+export interface GeminiSettings extends SettingBase {
   llm_model: string;
   api_key: string;
   embedding_model: string;
 }
 
-interface AzureOpenAISettings {
+export interface MistralSettings extends SettingBase {
+  llm_model: string;
+  api_key: string;
+  embedding_model: string;
+}
+
+export interface AzureOpenAISettings extends SettingBase {
   llm_model: string;
   api_key: string;
   endpoint: string;
@@ -47,43 +63,19 @@ interface AzureOpenAISettings {
   embedding_deployment_name: string;
 }
 
-interface TGISettings {
+export interface TGISettings extends SettingBase {
   llm_model: string;
   llm_host: string;
   llm_request_timeout: number;
 }
 
-interface FastEmbedSettings {
+export interface FastEmbedSettings extends SettingBase {
   embedding_model: string;
 }
 
-interface TEISettings {
+export interface TEISettings extends SettingBase {
   embedding_model: string;
   embedding_host: string;
-}
-
-export interface AppSettings {
-  llm_model_provider: string;
-  embedding_model_provider: string;
-  
-  // Provider settings
-  ollama: OllamaSettings;
-  openai: OpenAISettings;
-  anthropic: AnthropicSettings;
-  groq: GroqSettings;
-  gemini: GeminiSettings;
-  mistral: MistralSettings;
-  azure_openai: AzureOpenAISettings;
-  tgi: TGISettings;
-  fastembed: FastEmbedSettings;
-  tei: TEISettings;
-
-  // General settings
-  embedding_dim: string;
-  top_k: number;
-  max_iterations: number;
-  temperature: number;
-  system_prompt: string;
 }
 
 export const LLM_MODEL_PROVIDER_OPTIONS = [

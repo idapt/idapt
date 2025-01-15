@@ -3,11 +3,9 @@ import os
 
 from llama_index.core.agent.react import ReActAgent, ReActChatFormatter
 from llama_index.core.callbacks import CallbackManager
-from llama_index.core.settings import Settings
 from llama_index.core.tools import BaseTool
 from sqlalchemy.orm import Session
 #from app.engine.tools import ToolFactory
-from app.settings.models import AppSettings
 from app.settings.model_initialization import init_llm, init_embedding_model
 from app.services.datasource import get_all_datasources
 from app.services.llama_index import create_query_tool, create_vector_store, create_doc_store
@@ -17,7 +15,6 @@ logger = logging.getLogger("uvicorn")
 
 
 def get_chat_engine(session: Session,
-                    app_settings: AppSettings,
                     user_id: str,
                     datasource_identifier: str = None,
                     filters=None,
@@ -31,9 +28,9 @@ def get_chat_engine(session: Session,
         callback_manager = CallbackManager(handlers=event_handlers or [])
 
         # Init the llm from the app settings
-        llm = init_llm(app_settings)
+        llm = init_llm(session)
         # Init the embedding model from the app settings
-        embed_model = init_embedding_model(app_settings)
+        embed_model = init_embedding_model(session)
 
         # Get the datasources tools
         if datasource_identifier:
@@ -54,7 +51,7 @@ def get_chat_engine(session: Session,
                 # Get specific datasource tool
                 tool = create_query_tool(
                     session=session, 
-                    datasource_identifier=ds.identifier, vector_store=vector_store, doc_store=doc_store, embed_model=embed_model, llm=llm, app_settings=app_settings)
+                    datasource_identifier=ds.identifier, vector_store=vector_store, doc_store=doc_store, embed_model=embed_model, llm=llm)
                 tools.append(tool)
 
         # For each tool, set the callback manager to be able to display the events in the steps ui

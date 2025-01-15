@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.database.models import Datasource
 from app.services.db_file import get_db_file
 from app.settings.models import AppSettings
+from app.services.settings import get_setting
 
 from llama_index.core.storage import StorageContext
 from llama_index.core.indices import VectorStoreIndex
@@ -84,8 +85,7 @@ def create_query_tool(
     vector_store: ChromaVectorStore,
     doc_store: SimpleDocumentStore, 
     embed_model: BaseEmbedding, 
-    llm: LLM, 
-    app_settings: AppSettings
+    llm: LLM
 ) -> BaseTool:
     try:
     
@@ -100,6 +100,9 @@ def create_query_tool(
             storage_context=storage_context,
             embed_model=embed_model
         )
+
+        # Get the app settings
+        app_settings : AppSettings = get_setting(session, "app")
     
         retriever = VectorIndexRetriever(
             index=index,

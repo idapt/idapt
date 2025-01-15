@@ -10,42 +10,35 @@ export function useSettings() {
   const [isLoading, setIsLoading] = useState(false);
   const { fetchWithAuth } = useApiClient();
 
-  const getSettings = useCallback(async (): Promise<AppSettings> => {
-    setIsLoading(true);
+  const getProviderSettings = useCallback(async (provider: string) => {
     try {
-      const response = await fetchWithAuth(`${backend}/api/settings`);
+      const response = await fetchWithAuth(`${backend}/api/settings/${provider}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch settings");
+        throw new Error(`Failed to fetch ${provider} settings`);
       }
-      return response.json();
-    } finally {
-      setIsLoading(false);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(`Error fetching ${provider} settings:`, error);
+      return null;
     }
   }, [backend, fetchWithAuth]);
 
-  const updateSettings = useCallback(async (settings: AppSettings): Promise<void> => {
+  const updateProviderSettings = useCallback(async (provider: string, settings: any) => {
     setIsLoading(true);
     try {
-      const response = await fetchWithAuth(`${backend}/api/settings`, {
+      const response = await fetchWithAuth(`${backend}/api/settings/${provider}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(settings),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json_setting_object_str: JSON.stringify(settings) }),
       });
-      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw errorData;
+        throw await response.json();
       }
     } finally {
       setIsLoading(false);
     }
   }, [backend, fetchWithAuth]);
 
-  return {
-    getSettings,
-    updateSettings,
-    isLoading
-  };
+  return { getProviderSettings, updateProviderSettings, isLoading };
 } 

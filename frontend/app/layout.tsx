@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { SettingsProvider } from "./components/ui/settings";
+import { SettingsProvider } from "./components/ui/settings/settings-provider";
 import "./globals.css";
 import "./markdown.css";
 import { Providers } from './components/providers/upload-provider';

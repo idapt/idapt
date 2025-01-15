@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from app.services.ollama_status import can_process
-from app.settings.models import AppSettings
-from app.settings.manager import get_app_settings
 from app.api.dependencies import get_user_id
+from sqlalchemy.orm import Session
+from app.services.database import get_db_session
 import logging
 
 logger = logging.getLogger("uvicorn")
@@ -13,12 +13,12 @@ ollama_status_router = r = APIRouter()
 async def get_ollama_status_route(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
-    app_settings: AppSettings = Depends(get_app_settings),
+    session: Session = Depends(get_db_session),
 ):
     """Get the current status of Ollama model downloads"""
     try:
         #logger.info(f"Getting Ollama status")
-        if not await can_process(app_settings, background_tasks):
+        if not await can_process(session, background_tasks):
             return {"is_downloading": True}
         else:
             return {"is_downloading": False}

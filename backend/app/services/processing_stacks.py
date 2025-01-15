@@ -13,7 +13,6 @@ import logging
 import re
 
 from app.settings.model_initialization import init_embedding_model
-from app.settings.models import AppSettings
 
 logger = logging.getLogger("uvicorn")
 
@@ -160,14 +159,14 @@ def change_processing_stack_step_order(session: Session, stack_identifier: str, 
         logger.error(f"Error changing processing stack step order: {e}")
         raise e
 
-def get_transformer_for_step(step: ProcessingStep, parameters: dict, app_settings: AppSettings):
+def get_transformer_for_step(session: Session, step: ProcessingStep, parameters: dict):
     """Convert a ProcessingStep and parameters into a LlamaIndex transformer"""
     try:
         match step.identifier:
             case "sentence_splitter":
                 return SentenceSplitter(**parameters)
             case "embedding":
-                return init_embedding_model(settings=app_settings)
+                return init_embedding_model(session)
             case "title_extractor":
                 return TitleExtractor(**parameters)
             case "questions_extractor":
@@ -182,7 +181,7 @@ def get_transformer_for_step(step: ProcessingStep, parameters: dict, app_setting
         logger.error(f"Error getting transformer for step: {e}")
         raise e
 
-def get_transformations_for_stack(session: Session, stack_identifier: str, app_settings: AppSettings):
+def get_transformations_for_stack(session: Session, stack_identifier: str):
     """Get all transformations for a processing stack"""
     try:
         stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
@@ -196,7 +195,7 @@ def get_transformations_for_stack(session: Session, stack_identifier: str, app_s
                       .all())
                       
         for stack_step in stack_steps:
-            transformer = get_transformer_for_step(stack_step.step, stack_step.parameters or {}, app_settings)
+            transformer = get_transformer_for_step(session, stack_step.step, stack_step.parameters or {})
             transformations.append(transformer)
             
         return transformations

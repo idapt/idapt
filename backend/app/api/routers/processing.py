@@ -6,8 +6,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.services.processing import get_queue_status, process_queued_files, should_start_processing, mark_file_as_queued
-from app.settings.models import AppSettings
-from app.settings.manager import get_app_settings
 from app.services.database import get_db_session
 from app.api.dependencies import get_user_id
 from app.services.file_system import get_full_path_from_path
@@ -33,7 +31,6 @@ async def processing_route(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session),
-    app_settings: AppSettings = Depends(get_app_settings),
 ):
     """Add files to generation queue and start processing if needed"""
     try:
@@ -51,7 +48,7 @@ async def processing_route(
         # TODO Move the processing service to a separate api running on its own server
         if should_start_processing(session):    
             logger.info(f"Starting processing of queued files for user {user_id}")
-            background_tasks.add_task(process_queued_files, session, user_id, app_settings)
+            background_tasks.add_task(process_queued_files, session, user_id)
 
         # Get the current status of the queue
         status = get_queue_status(session)
@@ -95,8 +92,7 @@ async def process_folder_route(
     request: ProcessingFolderRequest,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
-    app_settings: AppSettings = Depends(get_app_settings),
+    session: Session = Depends(get_db_session)
 ):
     """Add all files in a folder to generation queue and start processing if needed"""
     try:
@@ -129,7 +125,7 @@ async def process_folder_route(
 
         # Start processing if needed
         if should_start_processing(session):
-            background_tasks.add_task(process_queued_files, session, user_id, app_settings)
+            background_tasks.add_task(process_queued_files, session, user_id)
 
         status = get_queue_status(session)
 
