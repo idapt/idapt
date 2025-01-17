@@ -112,44 +112,39 @@ def create_db_file(
     session: Session,
     name: str,
     path: str,
-    file_created_at: float,
-    file_modified_at: float,
-    size: int
+    original_path: str,
+    size: int | None = None,
+    mime_type: str | None = None,
+    file_created_at: float | None = None,
+    file_modified_at: float | None = None
 ) -> File:
-    """Create a file record in the database without content"""
+    """Create a new file entry in the database"""
     try:
-        # Guess the file mime type
-        mime_type, _ = mimetypes.guess_type(name)
-
-        # If there is a parent folder, create it, else get its id
-        folder_id = None
-        if path.count('/') >= 1:
-            parent_path = str(Path(path).parent)
-            folder_id = create_db_folder_path(session, parent_path).id
-        else:
-            folder_id = None # Root folder
-
+        # Get folder path
+        folder_path = str(Path(path).parent)
+        
+        # Get or create folder
+        folder = create_db_folder_path(session, folder_path)
+        
+        # Create file
         file = File(
             name=name,
             path=path,
-            mime_type=mime_type,
+            original_path=original_path,
             size=size,
-            folder_id=folder_id,
-            # Store timestamps in UTC datetime into the database as sqlalchemy need a datetime object
-            file_created_at=datetime.fromtimestamp(file_created_at, tz=timezone.utc),
-            file_modified_at=datetime.fromtimestamp(file_modified_at, tz=timezone.utc),
-            status=FileStatus.PENDING,
-            processed_stacks=json.dumps([]),
-            stacks_to_process=json.dumps([])
+            mime_type=mime_type,
+            folder_id=folder.id,
+            file_created_at=datetime.fromtimestamp(file_created_at) if file_created_at else datetime.now(),
+            file_modified_at=datetime.fromtimestamp(file_modified_at) if file_modified_at else datetime.now()
         )
         
         session.add(file)
         session.commit()
+        return file
+        
     except Exception as e:
         session.rollback()
-        logger.error(f"Error creating file: {str(e)}")
-        raise
-    return file
+        raise e
 
 def get_db_folder_contents(session: Session, full_path: str) -> Tuple[List[File], List[Folder]]:
 

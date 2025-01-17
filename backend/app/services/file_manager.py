@@ -6,13 +6,14 @@ from io import BytesIO
 import asyncio
 import base64
 import os
+import time
 
 # The services are already initialized in the main.py file
 from app.services.db_file import create_db_file, get_db_file, delete_db_file, update_db_file, get_db_folder_files_recursive, get_db_folder, delete_db_folder
-from app.services.file_system import write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_full_path_from_path
+from app.services.file_system import write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_full_path_from_path, validate_path, sanitize_path
 from app.services.llama_index import delete_file_llama_index
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
-from app.database.models import FileStatus
+from app.database.models import FileStatus, File
 
 import logging
 
@@ -87,62 +88,73 @@ async def upload_files(request: FileUploadRequest, session: Session, user_id: st
         }
 
 async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> str:
-    """Process a single upload item (file or folder)"""
     try:
-        logger.info(f"Starting upload for file: {item.name}")
-
-        # Decode the base64 file content into text
+        # Validate input parameters
+        if not item.name or not item.base64_content or not item.relative_path_from_home:
+            raise HTTPException(status_code=400, detail="Missing required fields")
+            
+        # Get sanitized paths
         try:
-            decoded_file_data, _ = preprocess_base64_file(item.base64_content)
-        except Exception as e:
-            logger.error(f"Error preprocessing base64 file: {str(e)}")
+            sanitized_path, full_sanitized_path = sanitize_path(
+                item.relative_path_from_home, 
+                user_id, 
+                session
+            )
+        except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+            
+        # Check if original path exists (handle overwrite)
+        existing_file = session.query(File).filter(
+            File.original_path == item.relative_path_from_home
+        ).first()
         
-        # Use full path for managing files in the backend
-        # TODO : Move this to router api ?
+        if existing_file:
+            # Delete existing file
+            await delete_file(session, user_id, existing_file.path)
+            
+        # Process file content and write to filesystem
         try:
-            full_path = get_full_path_from_path(item.relative_path_from_home, user_id)
-        except Exception as e:
-            logger.error(f"Error getting full path from relative path: {str(e)}")
-            raise HTTPException(status_code=400, detail=str(e))
-        
-        try:
-            # Write file to filesystem with metadata
+            decoded_file_data, mime_type = preprocess_base64_file(item.base64_content)
             await write_file_filesystem(
-                full_path,
+                full_sanitized_path,
                 content=decoded_file_data,
                 created_at_unix_timestamp=item.file_created_at,
                 modified_at_unix_timestamp=item.file_modified_at
             )
         except Exception as e:
-            logger.error(f"Error writing file to filesystem: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.error(f"Error writing file: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to write file")
 
-        # Calculate the file size
-        file_size = len(decoded_file_data)
-
-        # Create file in database with full path
+        # Create database entry
         try:
             file = create_db_file(
                 session=session,
                 name=item.name,
-                path=full_path,
-                size=file_size,
+                path=full_sanitized_path,
+                original_path=item.relative_path_from_home,
+                size=len(decoded_file_data),
+                mime_type=mime_type,
                 file_created_at=item.file_created_at,
                 file_modified_at=item.file_modified_at
             )
         except Exception as e:
-            logger.error(f"Error creating file in database: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
-        
-        logger.info(f"File created with ID: {file.id}")
-        # Return OK 200 status with file path as content
+            # Clean up filesystem file if database insert fails
+            await delete_file_filesystem(full_sanitized_path)
+            logger.error(f"Error creating database entry: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to create database entry")
+
         return {
-            "path": item.relative_path_from_home
+            "path": item.relative_path_from_home,
+            "sanitized_path": sanitized_path,
+            "id": file.id,
+            "mime_type": mime_type
         }
-    except HTTPException as e:
-        logger.error(f"Error during file upload: {str(e)}")
-        raise e
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during file upload: {str(e)}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
 
 async def download_file(session: Session, full_path: str) -> Dict[str, str]:
     try:
@@ -345,8 +357,8 @@ def preprocess_base64_file(base64_content: str) -> Tuple[bytes, str | None]:
         except Exception:
             raise ValueError("Invalid base64 data encoding")
 
-        return decoded_data, None #extension
-        
+        return decoded_data, mime_type
+
     except ValueError as e:
         logger.error(f"Error preprocessing base64 file: {str(e)}")
         raise HTTPException(

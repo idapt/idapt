@@ -32,6 +32,7 @@ class File(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     path = Column(String, nullable=False, unique=True)
+    original_path = Column(String, nullable=False, unique=True)
     mime_type = Column(String, nullable=True)
     size = Column(Integer, nullable=True)
     

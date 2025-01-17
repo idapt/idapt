@@ -30,7 +30,11 @@ export function useFolderUpload() {
       const uploadItems = await Promise.all(files.map(async (file, index) => {
         const base64_content = await new Promise<string>((resolve) => {
           const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
+          reader.onload = () => {
+            const content = reader.result as string;
+            const mimeType = file.type || 'application/octet-stream';
+            resolve(`data:${mimeType};base64,${content.split(',')[1]}`);
+          };
           reader.readAsDataURL(file);
         });
 

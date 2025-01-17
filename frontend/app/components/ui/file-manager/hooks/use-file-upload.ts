@@ -17,10 +17,16 @@ export function useFileUpload() {
       // Start upload toast
       toastId = startUpload(file.name, folderId ? `${folderId}/${file.name}` : file.name);
 
-      // Read file content
+      // Read file content and create proper base64 with mime type
       const base64_content = await new Promise<string>((resolve) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = () => {
+          const content = reader.result as string;
+          // Get mime type from file
+          const mimeType = file.type || 'application/octet-stream';
+          // Format with proper mime type prefix
+          resolve(`data:${mimeType};base64,${content.split(',')[1]}`);
+        };
         reader.readAsDataURL(file);
       });
 
@@ -48,7 +54,7 @@ export function useFileUpload() {
   };
 
   return {
-    uploadFile : uploadFileItem,
+    uploadFile: uploadFileItem,
     currentFile,
     isUploading,
     cancelUpload
