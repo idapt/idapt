@@ -16,7 +16,7 @@ datasources_router = APIRouter()
 class DatasourceCreate(BaseModel):
     name: str
     type: str
-    settings: dict = None
+    settings: dict = {}
 
 class DatasourceResponse(BaseModel):
     id: int
@@ -24,7 +24,10 @@ class DatasourceResponse(BaseModel):
     name: str
     type: str
     description: Optional[str] = None
-    settings: dict = None
+    settings: dict = {}
+
+    class Config:
+        from_attributes = True
 
 class DatasourceUpdate(BaseModel):
     description: Optional[str] = None

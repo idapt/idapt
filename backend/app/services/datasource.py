@@ -63,6 +63,12 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
         if get_datasource(session, identifier):
             raise ValueError(f"Datasource with identifier '{identifier}' already exists")
 
+        # Ensure settings is a dict
+        if settings is None:
+            settings = {}
+        elif not isinstance(settings, dict):
+            raise ValueError("Settings must be a dictionary")
+
         path = identifier
         root_folder_path = get_user_data_dir(user_id)
         root_folder_id = get_db_folder_id(session, root_folder_path)
@@ -70,7 +76,7 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
         # Create root folder for datasource
         full_datasource_path = get_full_path_from_path(path, user_id)
         datasource_folder = Folder(
-            name=name,  # Use display name for folder
+            name=name,
             path=full_datasource_path,
             parent_id=root_folder_id
         )
@@ -79,19 +85,14 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
 
         # Create datasource
         datasource = Datasource(
-            identifier=identifier,  # Add identifier
+            identifier=identifier,
             name=name,
             type=type,
-            settings=settings,
+            settings=settings,  # Now guaranteed to be a dict
             root_folder_id=datasource_folder.id
         )
         session.add(datasource)
         session.commit()
-
-        # Initialize all llama-index components using identifier
-        #create_vector_store(identifier, app_settings)
-        #create_doc_store(identifier)
-        #create_index(identifier)
 
         return datasource
     except Exception as e:
