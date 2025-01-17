@@ -57,7 +57,7 @@ export function FileManager() {
   };
 
   const handleDatasourceClick = (datasource: Datasource) => {
-    navigateToFolder(`/${datasource.identifier}`);
+    navigateToFolder(`${datasource.identifier}`);
   };
 
   const displayItems = currentPath === '' ? {

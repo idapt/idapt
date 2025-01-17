@@ -10,7 +10,7 @@ import time
 
 # The services are already initialized in the main.py file
 from app.services.db_file import create_db_file, get_db_file, delete_db_file, update_db_file, get_db_folder_files_recursive, get_db_folder, delete_db_folder
-from app.services.file_system import write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_full_path_from_path, validate_path, sanitize_path
+from app.services.file_system import write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_full_path_from_path, sanitize_path
 from app.services.llama_index import delete_file_llama_index
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
 from app.database.models import FileStatus, File
@@ -87,12 +87,35 @@ async def upload_files(request: FileUploadRequest, session: Session, user_id: st
             ).model_dump_json()
         }
 
-async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> str:
+async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> Dict[str, Any]:
     try:
-        # Validate input parameters
-        if not item.name or not item.base64_content or not item.relative_path_from_home:
-            raise HTTPException(status_code=400, detail="Missing required fields")
+        # Validate basic input parameters
+        if not item:
+            raise HTTPException(status_code=400, detail="Upload item cannot be empty")
             
+        # Validate file content
+        if not item.base64_content:
+            raise HTTPException(status_code=400, detail="File content cannot be empty")
+            
+        try:
+            # Validate base64 format
+            if not item.base64_content.startswith('data:'):
+                raise HTTPException(status_code=400, detail="Invalid base64 content format")
+                
+            # Extract content type and base64 data
+            content_parts = item.base64_content.split(',', 1)
+            if len(content_parts) != 2:
+                raise HTTPException(status_code=400, detail="Invalid base64 content format")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid base64 content: {str(e)}")
+            
+        # Validate file metadata
+        if item.file_created_at and item.file_created_at < 0:
+            raise HTTPException(status_code=400, detail="Invalid file creation timestamp")
+            
+        if item.file_modified_at and item.file_modified_at < 0:
+            raise HTTPException(status_code=400, detail="Invalid file modification timestamp")
+        
         # Get sanitized paths
         try:
             sanitized_path, full_sanitized_path = sanitize_path(
@@ -109,23 +132,39 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> s
         ).first()
         
         if existing_file:
+            # Check if file is being processed before allowing overwrite
+            if existing_file.status == FileStatus.PROCESSING:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot overwrite file that is currently being processed"
+                )
             # Delete existing file
             await delete_file(session, user_id, existing_file.path)
             
         # Process file content and write to filesystem
         try:
             decoded_file_data, mime_type = preprocess_base64_file(item.base64_content)
+            
+            # Validate file size (example: 100MB limit)
+            #if len(decoded_file_data) > 100 * 1024 * 1024:
+            #    raise HTTPException(
+            #        status_code=400,
+            #        detail="File size exceeds maximum limit of 100MB"
+            #    )
+                
             await write_file_filesystem(
                 full_sanitized_path,
                 content=decoded_file_data,
-                created_at_unix_timestamp=item.file_created_at,
-                modified_at_unix_timestamp=item.file_modified_at
+                created_at_unix_timestamp=item.file_created_at or time.time(),
+                modified_at_unix_timestamp=item.file_modified_at or time.time()
             )
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"Error writing file: {str(e)}")
-            raise HTTPException(status_code=500, detail="Failed to write file")
+            raise HTTPException(status_code=500, detail="Failed to write file to filesystem")
 
-        # Create database entry
+        # Create database entry with error handling
         try:
             file = create_db_file(
                 session=session,
@@ -141,20 +180,27 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> s
             # Clean up filesystem file if database insert fails
             await delete_file_filesystem(full_sanitized_path)
             logger.error(f"Error creating database entry: {str(e)}")
-            raise HTTPException(status_code=500, detail="Failed to create database entry")
+            raise HTTPException(
+                status_code=500, 
+                detail="Failed to create database entry for file"
+            )
 
         return {
             "path": item.relative_path_from_home,
             "sanitized_path": sanitized_path,
             "id": file.id,
-            "mime_type": mime_type
+            "mime_type": mime_type,
+            "size": len(decoded_file_data)
         }
         
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Unexpected error during file upload: {str(e)}")
-        raise HTTPException(status_code=500, detail="An unexpected error occurred")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during file upload"
+        )
 
 async def download_file(session: Session, full_path: str) -> Dict[str, str]:
     try:

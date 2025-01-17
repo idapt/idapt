@@ -8,7 +8,10 @@ from typing import Tuple
 from sqlalchemy.orm import Session
 
 from app.services.user_path import get_user_data_dir
-from app.database.models import File
+from app.database.models import File, Datasource
+
+import logging
+logger = logging.getLogger('uvicorn')
 
 async def write_file_filesystem(full_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
     """Write content to a file in the filesystem and set its metadata"""
@@ -89,41 +92,60 @@ def get_path_from_full_path(full_path: str, user_id: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get path from full path: {str(e)}")
 
-def validate_path(path: str, user_id: str) -> None:
+def validate_path(relative_path_from_home: str, session: Session) -> None:
     """Validate path format and security"""
-    if not path:
-        raise HTTPException(
-            status_code=400,
-            detail="Path cannot be empty"
-        )
+    try:
+        if not relative_path_from_home:
+            raise HTTPException(status_code=400, detail="File path cannot be empty")
         
-    # Check if path starts with datasource identifier
-    if not path.startswith(user_id):
-        raise HTTPException(
-            status_code=400,
-            detail="Path must start with datasource identifier"
-        )
+        if len(relative_path_from_home) > 255:
+            raise HTTPException(status_code=400, detail="File name exceeds maximum length of 255 characters")
+
+        # Check for invalid characters in filename
+        invalid_chars = '<>:"|?*\\'
+        if any(char in relative_path_from_home for char in invalid_chars):
+            raise HTTPException(
+                status_code=400,
+                detail=f"File path contains invalid characters. The following characters are not allowed: {invalid_chars}"
+            )
         
-    # Check for path traversal attempts
-    if '..' in path or '//' in path:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid path: potential path traversal detected"
-        )
+        # Check if the path is relative and doesn't start with a /
+        if relative_path_from_home.startswith('/'):
+            raise HTTPException(status_code=400, detail="Path must be relative to the user's home directory")
         
-    # Check for invalid characters
-    invalid_chars = '<>:"|?*'
-    if any(char in path for char in invalid_chars):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path contains invalid characters. The following characters are not allowed: {invalid_chars}"
-        )
+        # Split path and validate datasource identifier
+        path_parts = relative_path_from_home.split('/')
+        if len(path_parts) < 1:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid path format. Path must include datasource identifier (e.g., 'files/your-file.txt')"
+            )
+            
+        datasource_identifier = path_parts[0]  # Changed from [1] to [0]
+        logger.info(f"Datasource identifier: {datasource_identifier}")
         
-    # Check path length
-    if len(path) > 255:
+        # Check if datasource exists
+        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
+        if datasource_identifier == '.idapt' or not datasource:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid datasource identifier '{datasource_identifier}'. Create a datasource first or use a valid datasource identifier"
+            )
+        
+        # Check for path traversal attempts
+        if '..' in relative_path_from_home or '//' in relative_path_from_home:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid path: potential path traversal detected"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Path validation error: {str(e)}")
         raise HTTPException(
             status_code=400,
-            detail="Path exceeds maximum length of 255 characters"
+            detail=f"Invalid path format: {str(e)}"
         )
 
 def sanitize_path(original_path: str, user_id: str, session: Session) -> Tuple[str, str]:
@@ -131,48 +153,51 @@ def sanitize_path(original_path: str, user_id: str, session: Session) -> Tuple[s
     Sanitizes a path and ensures uniqueness for both original and sanitized paths.
     Returns (sanitized_path, full_sanitized_path)
     """
-    # Convert Windows path to Posix path if needed
-    if '\\' in original_path:
-        original_path = str(PureWindowsPath(original_path).as_posix())
-    
-    # Remove leading/trailing slashes and spaces
-    clean_path = original_path.strip().strip('/')
-    
-    # Basic path sanitization
-    # Replace invalid chars with underscore, preserve extensions
-    path_parts = clean_path.split('/')
-    sanitized_parts = []
-    
-    for part in path_parts:
-        if part:
-            # Preserve the file extension if it's the last part
-            if part == path_parts[-1] and '.' in part:
-                name, ext = os.path.splitext(part)
-                sanitized_name = re.sub(r'[^a-zA-Z0-9-_.]', '_', name)
-                sanitized_parts.append(f"{sanitized_name}{ext}")
-            else:
-                sanitized_parts.append(re.sub(r'[^a-zA-Z0-9-_.]', '_', part))
-    
-    sanitized_path = '/'.join(sanitized_parts)
-    
-    # Check if original path exists
-    existing_file = session.query(File).filter(File.original_path == original_path).first()
-    if existing_file:
-        # Return the existing sanitized path if we're overwriting
-        return get_path_from_full_path(existing_file.path, user_id), existing_file.path
-    
-    # If not overwriting, check for path conflicts
-    base_full_path = get_full_path_from_path(sanitized_path, user_id)
-    full_path = base_full_path
-    
-    # If sanitized path exists (but not the original), append UUID until we find a unique path
-    counter = 1
-    while session.query(File).filter(File.path == full_path).first():
-        # Split path into name and extension
-        base_name, ext = os.path.splitext(base_full_path)
-        full_path = f"{base_name}_{str(uuid.uuid4())[:8]}{ext}"
-        counter += 1
-        if counter > 100:  # Safeguard against infinite loops
-            raise ValueError("Could not generate unique path after 100 attempts")
-    
-    return sanitized_path, full_path
+    try:
+        # Convert Windows path to Posix path if needed
+        if '\\' in original_path:
+            original_path = str(PureWindowsPath(original_path).as_posix())
+        
+        # Remove leading/trailing slashes and spaces
+        clean_path = original_path.strip().strip('/')
+        
+        # Basic path sanitization
+        # Replace invalid chars with underscore, preserve extensions
+        path_parts = clean_path.split('/')
+        sanitized_parts = []
+        
+        for part in path_parts:
+            if part:
+                # Preserve the file extension if it's the last part
+                if part == path_parts[-1] and '.' in part:
+                    name, ext = os.path.splitext(part)
+                    sanitized_name = re.sub(r'[^a-zA-Z0-9-_.]', '_', name)
+                    sanitized_parts.append(f"{sanitized_name}{ext}")
+                else:
+                    sanitized_parts.append(re.sub(r'[^a-zA-Z0-9-_.]', '_', part))
+        
+        sanitized_path = '/'.join(sanitized_parts)
+        
+        # Check if original path exists
+        existing_file = session.query(File).filter(File.original_path == original_path).first()
+        if existing_file:
+            # Return the existing sanitized path if we're overwriting
+            return get_path_from_full_path(existing_file.path, user_id), existing_file.path
+        
+        # If not overwriting, check for path conflicts
+        base_full_path = get_full_path_from_path(sanitized_path, user_id)
+        full_path = base_full_path
+        
+        # If sanitized path exists (but not the original), append UUID until we find a unique path
+        counter = 1
+        while session.query(File).filter(File.path == full_path).first():
+            # Split path into name and extension
+            base_name, ext = os.path.splitext(base_full_path)
+            full_path = f"{base_name}_{str(uuid.uuid4())[:8]}{ext}"
+            counter += 1
+            if counter > 100:  # Safeguard against infinite loops
+                raise ValueError("Could not generate unique path after 100 attempts")
+        
+        return sanitized_path, full_path
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to sanitize path: {str(e)}")
