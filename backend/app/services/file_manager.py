@@ -28,7 +28,7 @@ async def upload_files(request: FileUploadRequest, session: Session, user_id: st
         
         for idx, item in enumerate(request.items, 1):
             try:
-                logger.info(f"Uploading file {idx}/{total}: {item.path}")
+                logger.info(f"Uploading file {idx}/{total}: {item.relative_path_from_home}")
                 
                 result = await upload_file(session, item, user_id)
                 if result:
@@ -47,7 +47,7 @@ async def upload_files(request: FileUploadRequest, session: Session, user_id: st
                 await asyncio.sleep(0.1)
                 
             except Exception as e:
-                logger.error(f"Error uploading file {item.path}: {str(e)}")
+                logger.error(f"Error uploading file {item.relative_path_from_home}: {str(e)}")
                 error_message = str(e)
                 yield {
                     "event": "message",
@@ -56,7 +56,7 @@ async def upload_files(request: FileUploadRequest, session: Session, user_id: st
                         current=idx,
                         processed_items=processed + skipped,
                         status="error",
-                        error=f"Error uploading {item.path}: {error_message}"
+                        error=f"Error uploading {item.relative_path_from_home}: {error_message}"
                     ).model_dump_json()
                 }
                 return
@@ -92,40 +92,57 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> s
         logger.info(f"Starting upload for file: {item.name}")
 
         # Decode the base64 file content into text
-        decoded_file_data, _ = preprocess_base64_file(item.content)
+        try:
+            decoded_file_data, _ = preprocess_base64_file(item.base64_content)
+        except Exception as e:
+            logger.error(f"Error preprocessing base64 file: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
         
         # Use full path for managing files in the backend
         # TODO : Move this to router api ?
-        full_path = get_full_path_from_path(item.path, user_id)
+        try:
+            full_path = get_full_path_from_path(item.relative_path_from_home, user_id)
+        except Exception as e:
+            logger.error(f"Error getting full path from relative path: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
         
-        # Write file to filesystem with metadata
-        await write_file_filesystem(
-            full_path,
-            content=decoded_file_data,
-            created_at_unix_timestamp=item.file_created_at,
-            modified_at_unix_timestamp=item.file_modified_at
-        )
+        try:
+            # Write file to filesystem with metadata
+            await write_file_filesystem(
+                full_path,
+                content=decoded_file_data,
+                created_at_unix_timestamp=item.file_created_at,
+                modified_at_unix_timestamp=item.file_modified_at
+            )
+        except Exception as e:
+            logger.error(f"Error writing file to filesystem: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
 
         # Calculate the file size
         file_size = len(decoded_file_data)
 
         # Create file in database with full path
-        file = create_db_file(
-            session=session,
-            name=item.name,
-            path=full_path,
-            size=file_size,
-            file_created_at=item.file_created_at,
-            file_modified_at=item.file_modified_at
-        )
+        try:
+            file = create_db_file(
+                session=session,
+                name=item.name,
+                path=full_path,
+                size=file_size,
+                file_created_at=item.file_created_at,
+                file_modified_at=item.file_modified_at
+            )
+        except Exception as e:
+            logger.error(f"Error creating file in database: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
         
         logger.info(f"File created with ID: {file.id}")
-        
-        return f"Uploaded file: {full_path}"
-            
-    except Exception as e:
+        # Return OK 200 status with file path as content
+        return {
+            "path": item.relative_path_from_home
+        }
+    except HTTPException as e:
         logger.error(f"Error during file upload: {str(e)}")
-        raise
+        raise e
 
 async def download_file(session: Session, full_path: str) -> Dict[str, str]:
     try:
@@ -303,11 +320,42 @@ async def download_folder(session: Session, full_path: str) -> Dict[str, Any]:
 def preprocess_base64_file(base64_content: str) -> Tuple[bytes, str | None]:
     """ Decode base64 file content and return the file data and extension """
     try:
+        # Validate base64 content format
+        if ',' not in base64_content:
+            raise ValueError(
+                "Invalid base64 format. Expected format: 'data:<mediatype>;base64,<data>'"
+            )
+            
         header, data = base64_content.split(",", 1)
-        mime_type = header.split(";")[0].split(":", 1)[1]
-        #extension = mimetypes.guess_extension(mime_type).lstrip(".")
-        # File data as bytes
-        return base64.b64decode(data), None #extension
-    except Exception as e:
+        
+        # Validate header format
+        if not header.startswith('data:') or ';base64' not in header:
+            raise ValueError(
+                "Invalid base64 header format. Expected format: 'data:<mediatype>;base64'"
+            )
+            
+        try:
+            mime_type = header.split(";")[0].split(":", 1)[1]
+        except IndexError:
+            raise ValueError("Could not extract mime type from base64 header")
+
+        # Decode base64 data
+        try:
+            decoded_data = base64.b64decode(data)
+        except Exception:
+            raise ValueError("Invalid base64 data encoding")
+
+        return decoded_data, None #extension
+        
+    except ValueError as e:
         logger.error(f"Error preprocessing base64 file: {str(e)}")
-        raise
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error preprocessing base64 file: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while processing file upload"
+        )

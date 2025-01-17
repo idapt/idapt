@@ -8,32 +8,32 @@ interface FileUploadOptions {
 }
 
 export function useFileUpload() {
-  const { upload, currentFile, isUploading, cancelUpload } = useUpload();
+  const { uploadFile, currentFile, isUploading, cancelUpload } = useUpload();
   const { startUpload, updateUpload, completeUpload, failUpload } = useUploadToast();
 
-  const uploadFile = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
+  const uploadFileItem = async (file: File, folderId: string = "", options?: FileUploadOptions) => {
     let toastId: string | undefined;
     try {
       // Start upload toast
       toastId = startUpload(file.name, folderId ? `${folderId}/${file.name}` : file.name);
 
       // Read file content
-      const content = await new Promise<string>((resolve) => {
+      const base64_content = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.readAsDataURL(file);
       });
 
       // Upload file
-      await upload(
-        [{
-          path: folderId ? `${folderId}/${file.name}` : file.name,
-          content,
+      await uploadFile(
+        {
+          relative_path_from_home: folderId ? `${folderId}/${file.name}` : file.name,
+          base64_content: base64_content,
           name: file.name,
           file_created_at: file.lastModified / 1000,
           file_modified_at: file.lastModified / 1000,
-        }], 
-        [toastId],
+        },
+        toastId,
         (id, progress) => updateUpload(id, progress),
         (id) => completeUpload(id)
       );
@@ -48,7 +48,7 @@ export function useFileUpload() {
   };
 
   return {
-    uploadFile,
+    uploadFile : uploadFileItem,
     currentFile,
     isUploading,
     cancelUpload

@@ -8,7 +8,7 @@ interface FolderUploadOptions {
 }
 
 export function useFolderUpload() {
-  const { upload, currentFile, isUploading, cancelUpload } = useUpload();
+  const { uploadFiles, currentFile, isUploading, cancelUpload } = useUpload();
   const { startUpload, updateUpload, completeUpload, failUpload } = useUploadToast();
 
   const uploadFolder = async (folderInput: HTMLInputElement, targetPath: string = "", options?: FolderUploadOptions) => {
@@ -28,15 +28,15 @@ export function useFolderUpload() {
 
       // Prepare upload items
       const uploadItems = await Promise.all(files.map(async (file, index) => {
-        const content = await new Promise<string>((resolve) => {
+        const base64_content = await new Promise<string>((resolve) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
           reader.readAsDataURL(file);
         });
 
         return {
-          path: targetPath ? `${targetPath}/${file.webkitRelativePath}` : file.webkitRelativePath,
-          content,
+          relative_path_from_home: targetPath ? `${targetPath}/${file.webkitRelativePath}` : file.webkitRelativePath,
+          base64_content: base64_content,
           name: file.name,
           file_created_at: file.lastModified / 1000,
           file_modified_at: file.lastModified / 1000,
@@ -44,7 +44,7 @@ export function useFolderUpload() {
       }));
 
       // Upload files
-        await upload(uploadItems,
+        await uploadFiles(uploadItems,
         toastIds,
         (id, progress) => updateUpload(id, progress),
         (id) => completeUpload(id)

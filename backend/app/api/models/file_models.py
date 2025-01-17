@@ -2,8 +2,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 class FileUploadItem(BaseModel):
-    path: str  # Relative path in the file system
-    content: str  # Base64 content
+    relative_path_from_home: str  # Relative path from the user home directory
+    base64_content: str  # Base64 content
     name: str  # Original file name
     file_created_at: float # Unix timestamp in milliseconds
     file_modified_at: float # Unix timestamp in milliseconds

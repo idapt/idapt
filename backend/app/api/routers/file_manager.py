@@ -5,10 +5,10 @@ from sse_starlette.sse import EventSourceResponse
 from base64 import urlsafe_b64decode
 
 from app.api.models.models import FolderContentsResponse, FileResponse, FolderResponse
-from app.api.models.file_models import FileUploadRequest
+from app.api.models.file_models import FileUploadRequest, FileUploadItem
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path
 from app.services.db_file import get_db_folder_contents
-from app.services.file_manager import upload_files, download_file, delete_file, delete_folder, rename_file, download_folder
+from app.services.file_manager import upload_file, upload_files, download_file, delete_file, delete_folder, rename_file, download_folder
 from app.services.database import get_db_session
 from app.api.dependencies import get_user_id
 
@@ -23,14 +23,32 @@ def decode_path_safe(encoded_path: str) -> str:
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid path encoding")
 
-@r.post("/upload")
+@r.post("/upload-files")
 async def upload_files_route(
     request: FileUploadRequest,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ) -> EventSourceResponse:
-    logger.info(f"Uploading {len(request.items)} files for user {user_id}")
-    return EventSourceResponse(upload_files(request, session, user_id))
+    try:
+        logger.info(f"Uploading {len(request.items)} files for user {user_id}")
+        return EventSourceResponse(upload_files(request, session, user_id))
+    except HTTPException as e:
+        logger.error(f"Error during files upload: {str(e)}")
+        raise e
+
+@r.post("/upload-file")
+async def upload_file_route(
+    item: FileUploadItem,
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_db_session)
+):
+    try:
+        logger.info(f"Uploading file {item.name} for user {user_id}")
+        return await upload_file(item=item, session=session, user_id=user_id)
+    except HTTPException as e:
+        logger.error(f"Error during file upload: {str(e)}")
+        raise e
+    
 
 @r.get("/file/{encoded_path}/download")
 async def download_file_route(
