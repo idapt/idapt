@@ -2,7 +2,7 @@ from app.services.db_file import get_db_file, get_db_files_by_status
 from app.services.datasource import get_datasource_identifier_from_path
 from app.services.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.services.ollama_status import is_ollama_server_reachable, wait_for_ollama_models_to_be_downloaded
-from app.database.models import File, FileStatus
+from app.database.models import File, FileStatus, ProcessingStackStep, ProcessingStack
 from app.services.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
 from app.database.models import Datasource
 from app.services.processing_stacks import get_transformations_for_stack
@@ -149,7 +149,7 @@ TRANSFORMATIONS_STACKS = {
 
 logger = logging.getLogger("uvicorn")
 
-
+# Not used for now do not use it
 def _get_file_type(file_path: str) -> str:
     """Get the file type from the file path"""
     try:
@@ -183,8 +183,6 @@ def _get_file_type(file_path: str) -> str:
                         file_type = "video"
                     case "audio/mp3" | "audio/wav" | "audio/aac" | "audio/flac" | "audio/m4a" | "audio/ogg" | "audio/opus":
                         file_type = "audio"
-                    case "application/pdf":
-                        file_type = "pdf"
                     case _:
                         file_type = "unknown"
             
@@ -193,27 +191,37 @@ def _get_file_type(file_path: str) -> str:
         logger.error(f"Failed to get file type for {file_path}: {str(e)}")
         return "unknown"
     
-def _validate_stacks_to_process_for_file_type(stacks_to_process: List[str], file_type: str) -> List[str]:
-    """Validate the stacks to process for a given file type"""
+# Not used for now do not use it
+def _validate_stacks_to_process_for_file_extension(session: Session, stacks_to_process: List[str], file_extension: str) -> List[str]:
+    """Validate the stacks to process for a given file extension"""
     try:
         validated_stacks_to_process = []
         for stack_name in stacks_to_process:
+            # Get the stack from the database
+            stack = session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_name).first()
+            if not stack:
+                logger.error(f"Stack {stack_name} not found, skipping")
+                continue
+                
             # Check if this transformation stack is applicable to the file type
-            # TODO Implement better generation, for now we just add all stacks
-            validated_stacks_to_process.append(stack_name)
+            if stack.supported_extensions and file_extension in stack.supported_extensions:
+                validated_stacks_to_process.append(stack_name)
+            else:
+                logger.warning(f"Stack {stack_name} does not support file extension {file_extension}, skipping")
+                
         return validated_stacks_to_process
     except Exception as e:
-        logger.error(f"Failed to validate stacks to process for file type {file_type}: {str(e)}")
+        logger.error(f"Failed to validate stacks to process for file extension {file_extension}: {str(e)}")
         return stacks_to_process
 
 def mark_file_as_queued(session: Session, file_path: str, stacks_to_process: List[str]):
     """Mark a file as queued"""
     try:
-        # Get the file type
-        file_type = _get_file_type(file_path)
+        # Get the file extension
+        file_extension = os.path.splitext(file_path)[1]
         # For each transformation stack name
-        validated_stacks_to_process = _validate_stacks_to_process_for_file_type(stacks_to_process, file_type)
-
+        validated_stacks_to_process = _validate_stacks_to_process_for_file_extension(session, stacks_to_process, file_extension)
+        
         # Get the file
         file = get_db_file(session, file_path)
         if not file:

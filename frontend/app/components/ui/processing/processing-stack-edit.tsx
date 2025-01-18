@@ -101,8 +101,50 @@ function SortableStep({
 
 export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }: ProcessingStackEditProps) {
   const [steps, setSteps] = useState<ProcessingStackStep[]>(stack.steps);
+  const [extensions, setExtensions] = useState(stack.supported_extensions?.join(', ') || '');
   const { backend } = useClientConfig();
   const { fetchWithAuth } = useApiClient();
+
+  const handleSave = async () => {
+    const controller = new AbortController();
+    try {
+      const extensionList = extensions
+        .split(',')
+        .map(ext => ext.trim())
+        .filter(ext => ext)
+        .map(ext => ext.startsWith('.') ? ext : `.${ext}`);
+
+      const response = await fetchWithAuth(`${backend}/api/stacks/stacks/${stack.identifier}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          steps: steps.map((step, index) => ({
+            step_identifier: step.step_identifier,
+            order: index + 1,
+            parameters: step.parameters
+          })),
+          supported_extensions: extensionList
+        }),
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to update stack');
+      }
+
+      onSave();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      console.error('Failed to save stack:', error);
+      window.alert((error as Error).message || 'Failed to update stack');
+    }
+    return () => controller.abort();
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -178,40 +220,6 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
     return () => controller.abort();
   };
 
-  const handleSave = async () => {
-    const controller = new AbortController();
-    try {
-      const response = await fetchWithAuth(`${backend}/api/stacks/stacks/${stack.identifier}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          steps: steps.map((step, index) => ({
-            step_identifier: step.step_identifier,
-            order: index + 1,
-            parameters: step.parameters
-          }))
-        }),
-        signal: controller.signal
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to update stack');
-      }
-
-      onSave();
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return;
-      }
-      console.error('Failed to save stack:', error);
-      window.alert((error as Error).message || 'Failed to update stack');
-    }
-    return () => controller.abort();
-  };
-
   const handleParametersChange = (stepId: number, parameters: Record<string, any>) => {
     setSteps(prevSteps => 
       prevSteps.map(step => 
@@ -261,6 +269,18 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
           <Save className="h-4 w-4 mr-2" />
           Save Changes
         </Button>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Supported File Extensions</label>
+        <Input
+          value={extensions}
+          onChange={(e) => setExtensions(e.target.value)}
+          placeholder="e.g. .pdf, .txt, .md"
+        />
+        <p className="text-sm text-muted-foreground mt-1">
+          Separate extensions with commas
+        </p>
       </div>
     </div>
   );

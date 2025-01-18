@@ -26,5 +26,6 @@ export interface ProcessingStack {
   display_name: string;
   description?: string;
   is_enabled: boolean;
+  supported_extensions?: string[];
   steps: ProcessingStackStep[];
 }

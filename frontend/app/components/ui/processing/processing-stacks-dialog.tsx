@@ -68,7 +68,14 @@ function ProcessingStackCard({ stack, steps, onUpdate }: {
   return (
     <div className="border rounded-lg p-4">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">{stack.display_name}</h3>
+        <div>
+          <h3 className="text-lg font-medium">{stack.display_name}</h3>
+          {stack.supported_extensions && stack.supported_extensions.length > 0 && (
+            <div className="text-sm text-muted-foreground mt-1">
+              Supports: {stack.supported_extensions.join(', ')}
+            </div>
+          )}
+        </div>
         <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
           <Settings2 className="h-4 w-4" />
         </Button>

@@ -15,6 +15,7 @@ interface ProcessingStackCreateProps {
 export function ProcessingStackCreate({ isOpen, onClose, onCreated }: ProcessingStackCreateProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [extensions, setExtensions] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { backend } = useClientConfig();
   const { fetchWithAuth } = useApiClient();
@@ -22,6 +23,12 @@ export function ProcessingStackCreate({ isOpen, onClose, onCreated }: Processing
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
+      const extensionList = extensions
+        .split(',')
+        .map(ext => ext.trim())
+        .filter(ext => ext)
+        .map(ext => ext.startsWith('.') ? ext : `.${ext}`);
+
       const response = await fetchWithAuth(`${backend}/api/stacks/stacks`, {
         method: 'POST',
         headers: {
@@ -30,6 +37,7 @@ export function ProcessingStackCreate({ isOpen, onClose, onCreated }: Processing
         body: JSON.stringify({
           display_name: name,
           description,
+          supported_extensions: extensionList,
           steps: []
         })
       });
@@ -49,6 +57,7 @@ export function ProcessingStackCreate({ isOpen, onClose, onCreated }: Processing
       setIsSubmitting(false);
       setName('');
       setDescription('');
+      setExtensions('');
     }
   };
 
@@ -74,6 +83,17 @@ export function ProcessingStackCreate({ isOpen, onClose, onCreated }: Processing
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Enter stack description"
             />
+          </div>
+          <div>
+            <label className="text-sm font-medium">Supported File Extensions</label>
+            <Input
+              value={extensions}
+              onChange={(e) => setExtensions(e.target.value)}
+              placeholder="e.g. .pdf, .txt, .md"
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              Separate extensions with commas
+            </p>
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>

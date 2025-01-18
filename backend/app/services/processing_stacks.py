@@ -13,36 +13,43 @@ import logging
 import re
 
 from app.settings.model_initialization import init_embedding_model
+from app.constants.file_extensions import TEXT_FILE_EXTENSIONS
 
 logger = logging.getLogger("uvicorn")
 
 def create_default_processing_stacks(session: Session):
     """Create default processing stacks in the database"""
     try:
+        # Create processing steps
+        # Sentence splitter step
+        create_processing_step(session=session, type="node_parser", identifier="sentence_splitter", display_name="Sentence Splitter", description="Splits text into sentences with configurable chunk size and overlap", parameters_schema=SentenceSplitterParameters.model_json_schema())
+        # Embedding step
+        create_processing_step(session=session, type="embedding", identifier="embedding", display_name="Embedding", description="Converts text into vector embeddings for semantic search", parameters_schema={})
+
+
         # Text Processing
         # Try to get the stack from the database
         text_processing_stack = session.query(ProcessingStack).filter(ProcessingStack.identifier == "text_processing").first()
         if text_processing_stack:
             logger.info(f"Text processing stack already exists: {text_processing_stack.display_name}")
             return
-        
-        create_empty_processing_stack(session=session, stack_identifier="text_processing", display_name="Text Processing", description="Processing stack for text data")
-    
-        # Create sentence splitter step
-        create_processing_step(session=session, type="node_parser", identifier="sentence_splitter", display_name="Sentence Splitter", description="Splits text into sentences with configurable chunk size and overlap", parameters_schema=SentenceSplitterParameters.model_json_schema())
-
-        # Create embedding step
-        create_processing_step(session=session, type="embedding", identifier="embedding", display_name="Embedding", description="Converts text into vector embeddings for semantic search", parameters_schema={})
-
+        # Text Processing
+        create_empty_processing_stack(
+            session=session,
+            stack_identifier="text_processing",
+            display_name="Text Processing",
+            description="Processing stack for text data",
+            supported_extensions=list(TEXT_FILE_EXTENSIONS)
+        )
         # Add processing stack steps to it 
         sentence_splitter_parameters = SentenceSplitterParameters(
             chunk_size=512,
             chunk_overlap=128
         )
         add_processing_stack_step(session=session, stack_identifier="text_processing", step_identifier="sentence_splitter", order=1, parameters=sentence_splitter_parameters.model_dump())
-
-        # Embedding
         add_processing_stack_step(session=session, stack_identifier="text_processing", step_identifier="embedding", order=2, parameters={})
+
+        # TODO Add image, video, audio, code processing stacks
 
         session.commit()
     except Exception as e:
@@ -69,15 +76,25 @@ def create_processing_step(session: Session, type: str, identifier: str, display
         logger.error(f"Error creating processing step: {e}")
         raise e
 
-def create_empty_processing_stack(session: Session, stack_identifier: str, display_name: str, description: str):
+def create_empty_processing_stack(
+    session: Session, 
+    stack_identifier: str, 
+    display_name: str, 
+    description: str,
+    supported_extensions: list[str] | None = None
+):
     """Create an empty processing stack in the database"""
     try:
-        # Check if the processing stack already exists
         existing_stack = session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_identifier).first()
         if existing_stack:
             raise ValueError(f"Processing stack with identifier '{stack_identifier}' already exists")
 
-        session.add(ProcessingStack(identifier=stack_identifier, display_name=display_name, description=description))
+        session.add(ProcessingStack(
+            identifier=stack_identifier, 
+            display_name=display_name, 
+            description=description,
+            supported_extensions=supported_extensions
+        ))
         session.commit()
     except Exception as e:
         session.rollback()

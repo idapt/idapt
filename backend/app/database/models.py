@@ -96,6 +96,7 @@ class ProcessingStack(Base):
     display_name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     is_enabled = Column(Boolean, default=True)
+    supported_extensions = Column(JSON, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())
 

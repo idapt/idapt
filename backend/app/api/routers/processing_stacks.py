@@ -35,10 +35,12 @@ class ProcessingStackStepUpdate(BaseModel):
 
 class ProcessingStackUpdate(BaseModel):
     steps: List[ProcessingStackStepUpdate]
+    supported_extensions: Optional[List[str]] = None
 
 class ProcessingStackCreate(BaseModel):
     display_name: str
     description: Optional[str] = None
+    supported_extensions: Optional[List[str]] = None
     steps: List[ProcessingStackStepUpdate]
 
 @r.get("/steps")
@@ -112,7 +114,8 @@ async def create_processing_stack_route(
             session=session,
             stack_identifier=stack_identifier,
             display_name=stack.display_name,
-            description=stack.description
+            description=stack.description,
+            supported_extensions=stack.supported_extensions
         )
         
         # Add steps
@@ -147,6 +150,10 @@ async def update_processing_stack_route(
         db_stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
         if not db_stack:
             raise HTTPException(status_code=404, detail="Stack not found")
+        
+        # Update supported extensions if provided
+        if stack_update.supported_extensions is not None:
+            db_stack.supported_extensions = stack_update.supported_extensions
         
         # Delete existing steps
         session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier).delete()
