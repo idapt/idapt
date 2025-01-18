@@ -6,6 +6,7 @@ from base64 import urlsafe_b64decode
 
 from app.api.models.models import FolderContentsResponse, FileResponse, FolderResponse
 from app.api.models.file_models import FileUploadRequest, FileUploadItem
+from app.database.models import File, Folder
 from app.services.file_system import get_path_from_full_path, get_full_path_from_path, validate_path, get_existing_sanitized_path
 from app.services.db_file import get_db_folder_contents, get_db_file
 from app.services.file_manager import upload_file, upload_files, download_file, delete_file, delete_folder, rename_file, download_folder
@@ -13,6 +14,7 @@ from app.services.database import get_db_session
 from app.api.dependencies import get_user_id
 
 import logging
+
 logger = logging.getLogger("uvicorn")
 
 file_manager_router = r = APIRouter()
@@ -95,45 +97,41 @@ async def download_file_route(
         logger.error(f"Error downloading file: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to download file")
 
-@r.delete("/file/{encoded_original_path}")
-async def delete_file_route(
-    encoded_original_path: str,
-    user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
-):
-    try:
-        logger.info(f"Deleting file {encoded_original_path} for user {user_id}")
-        original_path = decode_path_safe(encoded_original_path)
-        validate_path(original_path, session)
-        # Convert it to the sanitized path used by the backend
-        full_path = get_existing_sanitized_path(session=session, original_path=original_path)
-        await delete_file(session=session, user_id=user_id, full_path=full_path)
-        return {"success": True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deleting file: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to delete file")
 
-@r.delete("/folder/{encoded_original_path}")
-async def delete_folder_route(
+@r.delete("/{encoded_original_path}")
+async def delete_route(
     encoded_original_path: str,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
     try:
-        logger.info(f"Deleting folder {encoded_original_path}")
+        logger.info(f"Deleting item {encoded_original_path} for user {user_id}")
         original_path = decode_path_safe(encoded_original_path)
         validate_path(original_path, session)
+        
         # Convert it to the sanitized path used by the backend
         full_path = get_existing_sanitized_path(session=session, original_path=original_path)
-        await delete_folder(session=session, user_id=user_id, full_path=full_path)
-        return {"success": True}
+        
+        # Check if it's a file first
+        file = session.query(File).filter(File.path == full_path).first()
+        if file:
+            await delete_file(session=session, user_id=user_id, full_path=full_path)
+            return {"success": True}
+            
+        # If not a file, check if it's a folder
+        folder = session.query(Folder).filter(Folder.path == full_path).first()
+        if folder:
+            await delete_folder(session=session, user_id=user_id, full_path=full_path)
+            return {"success": True}
+            
+        # If neither found, return 404
+        raise HTTPException(status_code=404, detail="Item not found")
+        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting folder: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to delete folder")
+        logger.error(f"Error deleting item: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete item")
 
 #@r.put("/file/{encoded_original_path}/rename")
 #async def rename_file_route(
