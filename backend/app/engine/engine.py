@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.settings.model_initialization import init_llm, init_embedding_model
 from app.services.datasource import get_all_datasources
 from app.services.llama_index import create_query_tool, create_vector_store, create_doc_store
+from app.settings.models import AppSettings
+from app.services.settings import get_setting
 
 import logging
 logger = logging.getLogger("uvicorn")
@@ -38,7 +40,7 @@ def get_chat_engine(session: Session,
             vector_store = create_vector_store(datasource_identifier, user_id)
             doc_store = create_doc_store(datasource_identifier, user_id)
             # Get specific datasource tool
-            tool = create_query_tool(session, datasource_identifier, vector_store, doc_store, embed_model, llm, app_settings)
+            tool = create_query_tool(session, datasource_identifier, vector_store, doc_store, embed_model, llm)
             tools.append(tool)
         else:
             # Get all datasource tools
@@ -77,6 +79,9 @@ def get_chat_engine(session: Session,
         current_dir = os.path.dirname(os.path.abspath(__file__))
         prompt_file_path = os.path.join(current_dir, "react_agent_system_prompt.md")
         react_agent_and_system_prompt = open(prompt_file_path, "r").read()
+        # Get the app settings
+        app_settings : AppSettings = get_setting(session, "app")
+    
         react_agent_and_system_prompt = app_settings.system_prompt + "\n\n" + react_agent_and_system_prompt
 
         return ReActAgent.from_llm(
