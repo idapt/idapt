@@ -1,3 +1,5 @@
+from datetime import datetime
+from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from typing import Dict, Any, AsyncGenerator, Tuple
@@ -9,11 +11,11 @@ import os
 import time
 
 # The services are already initialized in the main.py file
-from app.services.db_file import create_db_file, get_db_file, delete_db_file, update_db_file, get_db_folder_files_recursive, get_db_folder, delete_db_folder
-from app.services.file_system import write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_full_path_from_path, sanitize_path
+from app.services.db_file import get_db_file, delete_db_file, update_db_file, get_db_folder_files_recursive, get_db_folder, delete_db_folder
+from app.services.file_system import get_existing_sanitized_path, validate_path, write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_new_sanitized_path
 from app.services.llama_index import delete_file_llama_index
 from app.api.models.file_models import FileUploadItem, FileUploadRequest, FileUploadProgress
-from app.database.models import FileStatus, File
+from app.database.models import FileStatus, File, Folder
 
 import logging
 
@@ -33,7 +35,7 @@ async def upload_files(request: FileUploadRequest, session: Session, user_id: st
                 
                 result = await upload_file(session, item, user_id)
                 if result:
-                    processed.append(result)
+                    processed.append(result["path"])
 
                 yield {
                     "event": "message",
@@ -89,6 +91,9 @@ async def upload_files(request: FileUploadRequest, session: Session, user_id: st
 
 async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> Dict[str, Any]:
     try:
+        # Validate path
+        validate_path(item.relative_path_from_home, session)
+
         # Validate basic input parameters
         if not item:
             raise HTTPException(status_code=400, detail="Upload item cannot be empty")
@@ -116,16 +121,26 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> D
         if item.file_modified_at and item.file_modified_at < 0:
             raise HTTPException(status_code=400, detail="Invalid file modification timestamp")
         
+        full_path = None
         # Get sanitized paths
         try:
-            sanitized_path, full_sanitized_path = sanitize_path(
+            #This will create or get the folders if they already exist by original path and if not it will create them minding existing ones
+            full_path = get_new_sanitized_path(
                 item.relative_path_from_home, 
                 user_id, 
                 session
             )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-            
+            logger.debug(f"Full path: {full_path}")
+        # If the path already exists and an http error 400 error is raised, get the full path with get_existing_sanitized_path instead
+        except HTTPException as e:
+            if e.status_code == 400 and e.detail == f"File already exists":
+                # TODO Implement conflict resolution, for now overwrite
+                full_path = get_existing_sanitized_path(session=session, original_path=item.relative_path_from_home)
+            else:
+                raise e
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Unexpected error during file upload: {str(e)}")
+        
         # Check if original path exists (handle overwrite)
         existing_file = session.query(File).filter(
             File.original_path == item.relative_path_from_home
@@ -143,6 +158,7 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> D
             
         # Process file content and write to filesystem
         try:
+
             decoded_file_data, mime_type = preprocess_base64_file(item.base64_content)
             
             # Validate file size (example: 100MB limit)
@@ -151,9 +167,10 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> D
             #        status_code=400,
             #        detail="File size exceeds maximum limit of 100MB"
             #    )
+            
                 
             await write_file_filesystem(
-                full_sanitized_path,
+                full_path=full_path,
                 content=decoded_file_data,
                 created_at_unix_timestamp=item.file_created_at or time.time(),
                 modified_at_unix_timestamp=item.file_modified_at or time.time()
@@ -166,19 +183,29 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> D
 
         # Create database entry with error handling
         try:
-            file = create_db_file(
-                session=session,
+            # Get parent folder id
+            parent_folder_path = str(Path(full_path).parent)
+            parent_folder = session.query(Folder).filter(Folder.path == parent_folder_path).first()
+            if not parent_folder:
+                raise ValueError(f"Parent folder {parent_folder_path} not found")
+            
+            # Create file
+            file = File(
                 name=item.name,
-                path=full_sanitized_path,
+                path=full_path,
                 original_path=item.relative_path_from_home,
                 size=len(decoded_file_data),
                 mime_type=mime_type,
-                file_created_at=item.file_created_at,
-                file_modified_at=item.file_modified_at
+                folder_id=parent_folder.id,
+                file_created_at=datetime.fromtimestamp(item.file_created_at) if item.file_created_at else datetime.now(),
+                file_modified_at=datetime.fromtimestamp(item.file_modified_at) if item.file_modified_at else datetime.now()
             )
+            session.add(file)
+            session.commit()
         except Exception as e:
             # Clean up filesystem file if database insert fails
-            await delete_file_filesystem(full_sanitized_path)
+            await delete_file_filesystem(full_path)
+            session.rollback()
             logger.error(f"Error creating database entry: {str(e)}")
             raise HTTPException(
                 status_code=500, 
@@ -187,7 +214,7 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> D
 
         return {
             "path": item.relative_path_from_home,
-            "sanitized_path": sanitized_path,
+            "relative_path": full_path,
             "id": file.id,
             "mime_type": mime_type,
             "size": len(decoded_file_data)
@@ -227,6 +254,7 @@ async def download_file(session: Session, full_path: str) -> Dict[str, str]:
 
 async def delete_file(session: Session, user_id: str, full_path: str):
     try:
+        logger.info(f"Deleting file {full_path} for user {user_id}")
         file = get_db_file(session, full_path)
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
@@ -274,7 +302,7 @@ async def delete_folder(session: Session, user_id: str, full_path: str):
                     processing_files.append(file.path)
                     continue
 
-                await delete_file(session=session, full_path=file.path)
+                await delete_file(session=session, user_id=user_id, full_path=file.path)
                 delete_file_llama_index(session=session, user_id=user_id, full_path=file.path)
                 delete_db_file(session=session, full_path=file.path)
                 deleted_files.append(file.path)
@@ -350,6 +378,7 @@ async def download_folder(session: Session, full_path: str) -> Dict[str, Any]:
             
             # Iterate over all retrieved files
             for file in files:
+                # TODO Make it work with original paths
                 # Calculate relative path within the zip
                 relative_path = os.path.relpath(file.path, folder.path)
                 

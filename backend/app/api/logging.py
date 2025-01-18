@@ -17,19 +17,17 @@ def configure_app_logging():
 
     # Configure uvicorn loggers
     uvicorn_logger = logging.getLogger("uvicorn")
-    uvicorn_logger.setLevel(logging.INFO if environment == "dev" else logging.INFO)
     uvicorn_logger.handlers = []  # Remove existing handlers
     uvicorn_logger.propagate = False  # Don't propagate to root logger
 
     uvicorn_access_logger = logging.getLogger("uvicorn.access")
     uvicorn_access_logger.setLevel(logging.WARNING if environment == "dev" else logging.WARNING)
-
     
     # Add handler for uvicorn
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     uvicorn_logger.addHandler(handler)
-    uvicorn_logger.setLevel(logging.INFO if environment == "dev" else logging.INFO)
+    uvicorn_logger.setLevel(logging.DEBUG if environment == "dev" else logging.INFO)
 
     # Set other loggers
     logging.getLogger('sqlalchemy').setLevel(logging.WARNING)

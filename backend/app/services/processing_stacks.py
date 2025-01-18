@@ -20,8 +20,14 @@ def create_default_processing_stacks(session: Session):
     """Create default processing stacks in the database"""
     try:
         # Text Processing
-        create_empty_processing_stack(session=session, stack_identifier="text_processing", display_name="Text Processing", description="Processing stack for text data")
+        # Try to get the stack from the database
+        text_processing_stack = session.query(ProcessingStack).filter(ProcessingStack.identifier == "text_processing").first()
+        if text_processing_stack:
+            logger.info(f"Text processing stack already exists: {text_processing_stack.display_name}")
+            return
         
+        create_empty_processing_stack(session=session, stack_identifier="text_processing", display_name="Text Processing", description="Processing stack for text data")
+    
         # Create sentence splitter step
         create_processing_step(session=session, type="node_parser", identifier="sentence_splitter", display_name="Sentence Splitter", description="Splits text into sentences with configurable chunk size and overlap", parameters_schema=SentenceSplitterParameters.model_json_schema())
 

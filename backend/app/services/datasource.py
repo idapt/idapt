@@ -1,8 +1,9 @@
+from pathlib import Path
 from sqlalchemy.orm import Session
 from app.database.models import Datasource, Folder
 from app.services.db_file import get_db_folder_id
 from app.services.file_manager import delete_folder
-from app.services.file_system import get_full_path_from_path
+from app.services.file_system import get_full_path_from_path, get_new_sanitized_path
 from app.services.user_path import get_user_data_dir
 from app.services.llama_index import delete_datasource_llama_index_components
 
@@ -16,7 +17,7 @@ logger = logging.getLogger("uvicorn")
 def init_default_datasources(session: Session, user_id: str):
     """Initialize default datasources if they don't exist"""
     try:
-        if not get_datasource(session, "files"):
+        if not get_datasource(session, "Files"):
             create_datasource(
                 session=session,
                 user_id=user_id,
@@ -53,15 +54,16 @@ def validate_datasource_name(name: str) -> tuple[bool, str]:
 def create_datasource(session: Session, user_id: str, name: str, type: str, settings: dict = None) -> Datasource:
     """Create a new datasource with its root folder and all required components"""
     try:
-        # Validate name first
-        is_valid, error_message = validate_datasource_name(name)
-        if not is_valid:
-            raise ValueError(f"Invalid datasource name: {error_message}")
-
-        identifier = generate_identifier(name)
+        logger.debug(f"Creating datasource with name: {name}")
+        # If the path already exists, the get_new_sanitized_path will append an uuid and get an unique path for it
+        full_path = get_new_sanitized_path(name, user_id, session, False) # Last path part is a folder and we want it created
+        # Extract the sanitized datasource name as identifier from the full path last component
+        logger.debug(f"Full path: {full_path}")
+        identifier = Path(full_path).name
+        logger.debug(f"Creating datasource with identifier: {identifier}")
         # Check if the identifier is already used
         if get_datasource(session, identifier):
-            raise ValueError(f"Datasource with identifier '{identifier}' already exists")
+            raise ValueError(f"Datasource with name '{name}' already exists")
 
         # Ensure settings is a dict
         if settings is None:
@@ -69,19 +71,26 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
         elif not isinstance(settings, dict):
             raise ValueError("Settings must be a dictionary")
 
-        path = identifier
         root_folder_path = get_user_data_dir(user_id)
         root_folder_id = get_db_folder_id(session, root_folder_path)
 
         # Create root folder for datasource
-        full_datasource_path = get_full_path_from_path(path, user_id)
-        datasource_folder = Folder(
-            name=name,
-            path=full_datasource_path,
-            parent_id=root_folder_id
-        )
-        session.add(datasource_folder)
-        session.flush()
+        full_datasource_path = get_full_path_from_path(identifier, user_id)
+        logger.debug(f"Full datasource path: {full_datasource_path}")
+        # Try to get the folder from the database
+        datasource_folder = session.query(Folder).filter(Folder.path == full_datasource_path).first()
+        if not datasource_folder:
+            # Create the folder in the database if it doesn't exist
+            datasource_folder = Folder(
+                name=name,
+                path=full_datasource_path,
+                original_path=name,
+                parent_id=root_folder_id
+            )
+            session.add(datasource_folder)
+            session.flush()
+        else:
+            logger.info(f"Datasource folder already exists: {datasource_folder.path}")
 
         # Create datasource
         datasource = Datasource(

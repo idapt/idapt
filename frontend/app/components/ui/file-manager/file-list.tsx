@@ -40,10 +40,10 @@ export function FileList({
           id={folder.id}
           name={folder.name}
           type="folder"
-          path={folder.path}
+          path={folder.original_path}
           modified={folder.uploaded_at.toString()}
           accessed={folder.uploaded_at.toString()}
-          onClick={() => onFolderClick(folder.path)}
+          onClick={() => onFolderClick(folder.original_path)}
           onRefresh={onUploadComplete}
           viewMode={viewMode}
         />
@@ -57,7 +57,7 @@ export function FileList({
           size={file.size}
           modified={file.uploaded_at.toString()}
           accessed={file.uploaded_at.toString()}
-          path={file.path}
+          path={file.original_path}
           mimeType={file.mime_type}
           onRefresh={onUploadComplete}
           viewMode={viewMode}

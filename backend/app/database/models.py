@@ -10,6 +10,7 @@ class Folder(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     path = Column(String, nullable=False, unique=True)
+    original_path = Column(String, nullable=False, unique=True)
     parent_id = Column(Integer, ForeignKey('folders.id'), nullable=True)
     
     # System tracking

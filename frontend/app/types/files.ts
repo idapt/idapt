@@ -13,6 +13,7 @@ export interface File {
   id: number;
   name: string;
   path: string;
+  original_path: string;
   mime_type?: string;
   size?: string;
   uploaded_at: number;
@@ -25,6 +26,7 @@ export interface Folder {
   id: number;
   name: string;
   path: string;
+  original_path: string;
   uploaded_at: number;
   accessed_at: number;
 }

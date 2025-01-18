@@ -336,6 +336,7 @@ class FileResponse(BaseModel):
     id: int
     name: str
     path: str
+    original_path: str
     mime_type: str | None = None
     size: int | None = None
     uploaded_at: float
@@ -348,6 +349,7 @@ class FolderResponse(BaseModel):
     id: int
     name: str
     path: str
+    original_path: str
     uploaded_at: float
     accessed_at: float
 
