@@ -57,6 +57,11 @@ class SentenceSplitterParameters(BaseModel):
 def create_processing_step(session: Session, type: str, identifier: str, display_name: str, description: str, parameters_schema: dict):
     """Create a processing step in the database"""
     try:
+        # Check if the processing step already exists
+        existing_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == identifier).first()
+        if existing_step:
+            raise ValueError(f"Processing step with identifier '{identifier}' already exists")
+        
         session.add(ProcessingStep(type=type, identifier=identifier, display_name=display_name, description=description, parameters_schema=parameters_schema))
         session.commit()
     except Exception as e:
@@ -67,6 +72,11 @@ def create_processing_step(session: Session, type: str, identifier: str, display
 def create_empty_processing_stack(session: Session, stack_identifier: str, display_name: str, description: str):
     """Create an empty processing stack in the database"""
     try:
+        # Check if the processing stack already exists
+        existing_stack = session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_identifier).first()
+        if existing_stack:
+            raise ValueError(f"Processing stack with identifier '{stack_identifier}' already exists")
+
         session.add(ProcessingStack(identifier=stack_identifier, display_name=display_name, description=description))
         session.commit()
     except Exception as e:
@@ -209,31 +219,10 @@ def get_transformations_for_stack(session: Session, stack_identifier: str):
         logger.error(f"Error getting transformations for stack: {e}")
         raise e
 
-def validate_stack_name(session: Session, name: str) -> tuple[bool, str]:
-    """Validate processing stack name and check for duplicates"""
-    if len(name) < 3 or len(name) > 63:
-        return False, "Name must be between 3 and 63 characters"
-    
-    if not name[0].isalnum() or not name[-1].isalnum():
-        return False, "Name must start and end with an alphanumeric character"
-        
-    if '..' in name:
-        return False, "Name cannot contain consecutive periods (..)"
-        
-    if not all(c.isalnum() or c in '_-.' for c in name):
-        return False, "Name can only contain alphanumeric characters, underscores, hyphens or single periods"
-    
-    # Generate identifier and check for duplicates
-    identifier = generate_stack_identifier(name)
-    existing_stack = session.query(ProcessingStack).filter_by(identifier=identifier).first()
-    if existing_stack:
-        return False, f"A stack with the name '{name}' already exists"
-        
-    return True, ""
-
 def generate_stack_identifier(name: str) -> str:
     """Generate a safe identifier from a stack name"""
     try:
+        # TODO Add duplicate check and maybe uuid generation
         identifier = re.sub(r'[^a-zA-Z0-9]', '_', name.lower())
         identifier = re.sub(r'_+', '_', identifier)
         identifier = identifier.strip('_')

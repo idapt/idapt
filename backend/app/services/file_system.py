@@ -137,15 +137,15 @@ def validate_path(relative_path_from_home: str, session: Session) -> None:
                 detail="Invalid path format. Path must include datasource identifier (e.g., 'files/your-file.txt')"
             )
             
-        datasource_identifier = path_parts[0]  # Changed from [1] to [0]
-        logger.info(f"Datasource identifier: {datasource_identifier}")
+        original_datasource_name = path_parts[0]
+        logger.info(f"Datasource name: {original_datasource_name}")
         
         # Check if datasource exists
-        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
-        if datasource_identifier == '.idapt' or not datasource:
+        datasource = session.query(Datasource).filter(Datasource.name == original_datasource_name).first()
+        if original_datasource_name == '.idapt' or not datasource:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_identifier}'. Create a datasource first or use a valid datasource identifier"
+                detail=f"Invalid datasource identifier '{original_datasource_name}'. Create a datasource first or use a valid datasource identifier"
             )
         
         # Check for path traversal attempts

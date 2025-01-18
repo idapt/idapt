@@ -18,33 +18,8 @@ export function CreateDatasourceDialog({ open, onClose, onCreated }: CreateDatas
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const validateName = (name: string): string | null => {
-    if (name.length < 3 || name.length > 63) {
-      return "Name must be between 3 and 63 characters";
-    }
-    if (!name[0].match(/[a-zA-Z0-9]/) || !name[name.length-1].match(/[a-zA-Z0-9]/)) {
-      return "Name must start and end with an alphanumeric character";
-    }
-    if (name.includes('..')) {
-      return "Name cannot contain consecutive periods (..)";
-    }
-    if (!name.match(/^[a-zA-Z0-9._-]+$/)) {
-      return "Name can only contain alphanumeric characters, underscores, hyphens or single periods";
-    }
-    if (name.split('.').every(part => !isNaN(Number(part)) && Number(part) >= 0 && Number(part) <= 255)) {
-      return "Name cannot be in IPv4 address format";
-    }
-    return null;
-  };
-
   const handleCreate = async () => {
     if (!name.trim()) return;
-
-    const validationError = validateName(name.trim());
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
 
     try {
       setLoading(true);

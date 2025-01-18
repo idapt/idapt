@@ -28,10 +28,10 @@ from app.services.user_path import get_user_app_data_dir
 logger = logging.getLogger("uvicorn")
 
 # Private methods for creating components
-def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVectorStore:
+def create_vector_store(datasource_id: int, user_id: str) -> ChromaVectorStore:
     try:
         # Create the embeddings directory if it doesn't exist
-        datasource_embeddings_dir = Path(get_vector_store_folder_path(datasource_identifier, user_id))
+        datasource_embeddings_dir = Path(get_vector_store_folder_path(datasource_id, user_id))
         datasource_embeddings_dir.parent.mkdir(parents=True, exist_ok=True)
         
         # Create a Chroma persistent client with telemetry disabled
@@ -41,8 +41,9 @@ def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVecto
                 anonymized_telemetry=False
             )
         )
-        # Create a Chroma collection
-        chroma_collection = client.get_or_create_collection(name=datasource_identifier)
+        # Create a Chroma collection using the database ID
+        collection_name = f"datasource_{datasource_id}"
+        chroma_collection = client.get_or_create_collection(name=collection_name)
         # Create a Chroma vector store
         vector_store = ChromaVectorStore.from_collection(
             chroma_collection
@@ -52,8 +53,8 @@ def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVecto
         logger.error(f"Error creating vector store: {str(e)}")
         raise
 
-def get_vector_store_folder_path(datasource_identifier: str, user_id: str) -> str:
-    return f"{get_user_app_data_dir(user_id)}/embeddings/{datasource_identifier}"
+def get_vector_store_folder_path(datasource_id: int, user_id: str) -> str:
+    return f"{get_user_app_data_dir(user_id)}/embeddings/datasource_{datasource_id}"
 
 def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocumentStore:
     try:
@@ -77,7 +78,7 @@ def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocument
         raise
 
 def get_docstore_file_path(datasource_identifier: str, user_id: str) -> str:
-    return f"{get_user_app_data_dir(user_id)}/docstores/{datasource_identifier}.json"
+    return f"{get_user_app_data_dir(user_id)}/docstores/datasource_{datasource_identifier}.json"
 
 def create_query_tool(
     session: Session, 
@@ -175,9 +176,10 @@ def delete_file_llama_index(session: Session, user_id: str, full_path: str):
         from app.services.datasource import get_datasource_identifier_from_path
         # Get the datasource name from the path
         datasource_identifier = get_datasource_identifier_from_path(full_path)
+        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
 
         # Get the datasource vector store and docstore
-        vector_store = create_vector_store(datasource_identifier, user_id)
+        vector_store = create_vector_store(datasource.id, user_id)
         doc_store = create_doc_store(datasource_identifier, user_id)
 
         # Delete each ref_doc_id from the vector store and docstore
@@ -224,9 +226,10 @@ def delete_file_processing_stack_from_llama_index(session: Session, user_id: str
         from app.services.datasource import get_datasource_identifier_from_path
         # Get the datasource name from the path
         datasource_identifier = get_datasource_identifier_from_path(full_path)
+        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
 
         # Get the datasource vector store and docstore
-        vector_store = create_vector_store(datasource_identifier, user_id)
+        vector_store = create_vector_store(datasource.id, user_id)
         doc_store = create_doc_store(datasource_identifier, user_id)
 
         # Delete each ref_doc_id from the vector store and docstore

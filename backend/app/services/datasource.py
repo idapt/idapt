@@ -31,39 +31,23 @@ def init_default_datasources(session: Session, user_id: str):
         logger.error(f"Error initializing default datasources: {str(e)}")
         raise
 
-def validate_datasource_name(name: str) -> tuple[bool, str]:
-    """Validate datasource name according to Chroma requirements"""
-    if len(name) < 3 or len(name) > 63:
-        return False, "Name must be between 3 and 63 characters"
-    
-    if not name[0].isalnum() or not name[-1].isalnum():
-        return False, "Name must start and end with an alphanumeric character"
-        
-    if '..' in name:
-        return False, "Name cannot contain consecutive periods (..)"
-        
-    if not all(c.isalnum() or c in '_-.' for c in name):
-        return False, "Name can only contain alphanumeric characters, underscores, hyphens or single periods"
-        
-    # Check if it's not an IPv4 address
-    if all(part.isdigit() and 0 <= int(part) <= 255 for part in name.split('.')):
-        return False, "Name cannot be in IPv4 address format"
-        
-    return True, ""
-
 def create_datasource(session: Session, user_id: str, name: str, type: str, settings: dict = None) -> Datasource:
     """Create a new datasource with its root folder and all required components"""
     try:
         logger.debug(f"Creating datasource with name: {name}")
+        # Check for invalid characters in name
+        invalid_chars = '<>:"|?*\\'
+        if any(char in name for char in invalid_chars):
+            raise ValueError(
+                f"Datasource name contains invalid characters. The following characters are not allowed: {invalid_chars}"
+            )
+
         # If the path already exists, the get_new_sanitized_path will append an uuid and get an unique path for it
-        full_path = get_new_sanitized_path(name, user_id, session, False) # Last path part is a folder and we want it created
+        full_path = get_new_sanitized_path(name, user_id, session, False)
         # Extract the sanitized datasource name as identifier from the full path last component
         logger.debug(f"Full path: {full_path}")
         identifier = Path(full_path).name
         logger.debug(f"Creating datasource with identifier: {identifier}")
-        # Check if the identifier is already used
-        if get_datasource(session, identifier):
-            raise ValueError(f"Datasource with name '{name}' already exists")
 
         # Ensure settings is a dict
         if settings is None:
@@ -97,12 +81,13 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
             identifier=identifier,
             name=name,
             type=type,
-            settings=settings,  # Now guaranteed to be a dict
+            settings=settings,
             root_folder_id=datasource_folder.id
         )
         session.add(datasource)
-        session.commit()
+        session.flush()  # This will populate the id field
 
+        session.commit()
         return datasource
     except Exception as e:
         session.rollback()

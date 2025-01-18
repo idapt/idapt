@@ -11,7 +11,6 @@ from app.services.processing_stacks import (
     change_processing_stack_step_order,
     delete_processing_stack_step,
     create_processing_step,
-    validate_stack_name,
     generate_stack_identifier,
     delete_processing_stack
 )
@@ -99,11 +98,13 @@ async def create_processing_stack_route(
     session: Session = Depends(get_db_session)
 ):
     try:
-        # Validate stack name
-        is_valid, error_message = validate_stack_name(session, stack.display_name)
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=error_message)
-        
+        # Check for invalid characters in display name
+        invalid_chars = '<>:"|?*\\'
+        if any(char in stack.display_name for char in invalid_chars):
+            raise ValueError(
+                f"Processing stack display name contains invalid characters. The following characters are not allowed: {invalid_chars}"
+            )
+
         # Generate identifier
         stack_identifier = generate_stack_identifier(stack.display_name)
 

@@ -7,12 +7,13 @@ from llama_index.core.tools import BaseTool
 from sqlalchemy.orm import Session
 #from app.engine.tools import ToolFactory
 from app.settings.model_initialization import init_llm, init_embedding_model
-from app.services.datasource import get_all_datasources
 from app.services.llama_index import create_query_tool, create_vector_store, create_doc_store
 from app.settings.models import AppSettings
 from app.services.settings import get_setting
+from app.database.models import Datasource
 
 import logging
+
 logger = logging.getLogger("uvicorn")
 
 
@@ -36,19 +37,21 @@ def get_chat_engine(session: Session,
 
         # Get the datasources tools
         if datasource_identifier:
+            # Get the corresponding datasource
+            datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
             # Get the vector store and doc store from the datasource identifier
-            vector_store = create_vector_store(datasource_identifier, user_id)
-            doc_store = create_doc_store(datasource_identifier, user_id)
+            vector_store = create_vector_store(datasource.id, user_id)
+            doc_store = create_doc_store(datasource.identifier, user_id)
             # Get specific datasource tool
-            tool = create_query_tool(session, datasource_identifier, vector_store, doc_store, embed_model, llm)
+            tool = create_query_tool(session, datasource.identifier, vector_store, doc_store, embed_model, llm)
             tools.append(tool)
         else:
             # Get all datasource tools
-            datasources = get_all_datasources(session)
+            datasources = session.query(Datasource).all()
             for ds in datasources:
                 # Get the vector store and doc store from the datasource identifier
                 logger.info(f"Creating vector store and doc store for datasource {ds.identifier}")
-                vector_store = create_vector_store(ds.identifier, user_id)
+                vector_store = create_vector_store(ds.id, user_id)
                 doc_store = create_doc_store(ds.identifier, user_id)
                 # Get specific datasource tool
                 tool = create_query_tool(

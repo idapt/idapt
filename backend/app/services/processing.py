@@ -4,6 +4,7 @@ from app.services.llama_index import delete_file_llama_index, delete_file_proces
 from app.services.ollama_status import is_ollama_server_reachable, wait_for_ollama_models_to_be_downloaded
 from app.database.models import File, FileStatus
 from app.services.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
+from app.database.models import Datasource
 from app.services.processing_stacks import get_transformations_for_stack
 from app.services.settings import get_setting
 from app.settings.models import AppSettings, OllamaSettings
@@ -371,6 +372,7 @@ def _process_single_file(session: Session, file: File, user_id: str):
         stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
         processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
         datasource_identifier = get_datasource_identifier_from_path(file.path)
+        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
         
         # Process each stack
         for stack_identifier in stacks_to_process:
@@ -387,7 +389,7 @@ def _process_single_file(session: Session, file: File, user_id: str):
                 logger.info(f"Processing stack {stack_identifier} for file {file.path}")
                 
                 # Create the ingestion pipeline for the datasource
-                vector_store = create_vector_store(datasource_identifier, user_id)
+                vector_store = create_vector_store(datasource.id, user_id)
                 doc_store = create_doc_store(datasource_identifier, user_id)
 
                 # Create the ingestion pipeline for the datasource

@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 import logging
-import os
 from typing import List
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -8,7 +7,8 @@ from sqlalchemy.orm import Session
 from app.services.processing import get_queue_status, process_queued_files, should_start_processing, mark_file_as_queued
 from app.services.database import get_db_session
 from app.api.dependencies import get_user_id
-from app.services.file_system import get_full_path_from_path
+from app.services.file_system import get_existing_sanitized_path
+from app.database.models import File, Folder
 
 
 logger = logging.getLogger("uvicorn")
@@ -40,7 +40,7 @@ async def processing_route(
         for file in request.files:
             mark_file_as_queued(
                 session,
-                get_full_path_from_path(file["path"], user_id), # The given path by the frontend is not a full path as the frontend is not aware of the DATA_DIR and the user_id
+                get_existing_sanitized_path(session, file["path"]),
                 file.get("transformations_stack_name_list")
             )
 
@@ -96,31 +96,18 @@ async def process_folder_route(
 ):
     """Add all files in a folder to generation queue and start processing if needed"""
     try:
-        full_folder_path = get_full_path_from_path(request.folder_path, user_id)
+        full_folder_path = get_existing_sanitized_path(session, request.folder_path)
         
-        if not os.path.exists(full_folder_path):
-            raise HTTPException(status_code=404, detail=f"Folder not found: {request.folder_path}")
-        
-        if not os.path.isdir(full_folder_path):
+        if not session.query(Folder).filter(Folder.path == full_folder_path).first():
             raise HTTPException(status_code=400, detail=f"Path is not a directory: {request.folder_path}")
 
-        # Get all files in the folder
-        files = []
-        for root, _, filenames in os.walk(full_folder_path):
-            for filename in filenames:
-                file_path = os.path.join(root, filename)
-                relative_path = os.path.relpath(file_path, get_full_path_from_path("", user_id))
-                files.append({
-                    "path": relative_path,
-                    "transformations_stack_name_list": request.transformations_stack_name_list
-                })
-
-        # Mark all files as queued
+        # Get all files in the folder from the database
+        files = session.query(File).filter(File.path.like(f"{full_folder_path}%")).all()
         for file in files:
             mark_file_as_queued(
                 session,
-                get_full_path_from_path(file["path"], user_id),
-                file["transformations_stack_name_list"]
+                file.path,
+                request.transformations_stack_name_list
             )
 
         # Start processing if needed
