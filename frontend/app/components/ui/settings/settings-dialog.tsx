@@ -431,6 +431,61 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
             </Select>
           </div>
 
+          {appSettings.embedding_model_provider === "ollama" && ollamaSettings && (
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ollama Embedding Host</label>
+                <p className="text-xs text-gray-500">
+                  Set to http://host.docker.internal:11434 if running locally
+                </p>
+                <Input
+                  value={ollamaSettings.embedding_host}
+                  onChange={(e) => setOllamaSettings({
+                    ...ollamaSettings,
+                    embedding_host: e.target.value
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Embedding Model</label>
+                <Select
+                  value={isCustomEmbeddingModel("ollama", ollamaSettings.embedding_model) ? "custom" : ollamaSettings.embedding_model}
+                  onValueChange={(value) => {
+                    if (value === "custom") return;
+                    setOllamaSettings({
+                      ...ollamaSettings,
+                      embedding_model: value
+                    });
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    <SelectGroup>
+                      {EMBEDDING_MODEL_OPTIONS["ollama"].map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                {isCustomEmbeddingModel("ollama", ollamaSettings.embedding_model) && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Enter custom embedding model name"
+                    value={ollamaSettings.embedding_model === "custom" ? "" : ollamaSettings.embedding_model}
+                    onChange={(e) => setOllamaSettings({
+                      ...ollamaSettings,
+                      embedding_model: e.target.value
+                    })}
+                  />
+                )}
+              </div>
+            </>
+          )}
+
           <div className="space-y-2">
             <label className="text-sm font-medium">Embedding Dimensions</label>
             <Input
