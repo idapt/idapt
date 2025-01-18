@@ -1,4 +1,4 @@
-import { Database, MoreVertical, Settings, Trash2 } from "lucide-react";
+import { Database, MoreVertical, Settings, Trash2, Layers } from "lucide-react";
 import { Button } from "../button";
 import {
   DropdownMenu,
@@ -13,6 +13,8 @@ import { Datasource } from "@/app/types/files";
 import { encodePathSafe } from "./utils/path-encoding";
 import { Textarea } from "../textarea";
 import { useApiClient } from "@/app/lib/api-client";
+import { useProcessingStacks } from "../processing/hooks/use-processing-stacks";
+import useProcessing from "./hooks/use-processing";
 
 interface DatasourceItemProps {
   datasource: Datasource;
@@ -27,6 +29,8 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { fetchWithAuth } = useApiClient();
+  const { stacks } = useProcessingStacks();
+  const { processFolder, processWithStack } = useProcessing();
 
   useEffect(() => {
     setDescription(datasource.description || '');
@@ -136,6 +140,18 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[200px] p-0.5 bg-white rounded-md shadow-md z-50">
+          {stacks.map((stack) => (
+              <DropdownMenuItem
+                className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
+                key={stack.identifier}
+                onSelect={() => {
+                  processFolder(datasource.name, stack.identifier);
+                }}
+              >
+                <Layers className="h-4 w-4 mr-2" />
+                <span>Process with {stack.display_name}</span>
+              </DropdownMenuItem>
+            ))}
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
               onSelect={() => setShowSettings(true)}
