@@ -7,7 +7,7 @@ def configure_app_logging():
 
     # Base configuration
     logging.basicConfig(
-        level=logging.DEBUG if environment == "dev" else logging.ERROR,
+        level=logging.INFO if environment == "dev" else logging.ERROR,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
