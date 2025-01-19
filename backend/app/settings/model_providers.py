@@ -40,7 +40,7 @@ def init_openai_embedding(openai_embed_settings: OpenAIEmbedSettings):
     os.environ["OPENAI_API_KEY"] = openai_embed_settings.api_key
     return OpenAIEmbedding(
         model=openai_embed_settings.model,
-        dimensions=int(openai_embed_settings.dimensions) if openai_embed_settings.dimensions is not None else None,
+        #dimensions=int(openai_embed_settings.dimensions) if openai_embed_settings.dimensions is not None else None,
         embed_batch_size=2048
     )
 
