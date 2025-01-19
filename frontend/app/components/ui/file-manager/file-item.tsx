@@ -176,7 +176,6 @@ export function FileItem({
     }
   };
 
-  console.log(status);
   return (
     <>
       <div 

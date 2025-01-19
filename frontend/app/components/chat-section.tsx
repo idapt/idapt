@@ -35,7 +35,6 @@ export default function ChatSection() {
       let errorMessage = "Chat error";
       
       if (error instanceof Error) {
-        console.log(error.message);
         if (error.message.includes("NetworkError")) {
           errorMessage = "Unable to connect to the AI service. Please check if the service is running and accessible.";
         } 

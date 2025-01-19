@@ -7,7 +7,6 @@ interface SettingsButtonProps {
 
 export function SettingsButton({ onClick }: SettingsButtonProps) {
   const handleClick = () => {
-    console.log("Settings button clicked");
     onClick();
   };
 

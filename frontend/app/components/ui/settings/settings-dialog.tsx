@@ -73,8 +73,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
       }
 
       const settings = response;
-      console.log(" provider settings", settings);
-      console.log("provider", provider);
+
       switch (provider) {
         case "ollama_llm":
           setOllamaLLMSettings(settings);
@@ -112,16 +111,13 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
     let mounted = true;
 
     const initializeSettings = async () => {
-      console.log("initializeSettings");
       if (!isOpen) return;
       setIsLoading(true);
 
       try {
         const appResponse = await getProviderSettings("app");
-        console.log("appResponse", appResponse);
         if (!mounted || !appResponse) {
           setIsLoading(false);
-          console.log("appResponse is null");
           return;
         }
 
@@ -136,13 +132,9 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
         setAppSettings(settings);
 
-        console.log("settings", settings);
-
         // Load provider settings sequentially
         if (settings.llm_model_provider) {
-          console.log("loading llm provider settings");
           await loadProviderSettings(settings.llm_model_provider);
-          console.log("llm provider settings", ollamaLLMSettings);
         }
         
         if (settings.embedding_model_provider && 
