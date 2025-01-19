@@ -2,17 +2,18 @@ import { useEffect, useState } from 'react';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
 import { useSettings } from "@/app/hooks/use-settings";
 import { useApiClient } from '@/app/lib/api-client';
+import { AppSettings } from '../types/settings';
 export function useOllamaStatus() {
   const { backend } = useClientConfig();
   const [isDownloading, setIsDownloading] = useState(false);
-  const { getSettings } = useSettings();
+  const { getProviderSettings } = useSettings();
   const { fetchWithAuth } = useApiClient();
 
   useEffect(() => {
     const abortController = new AbortController();
     const checkStatus = async () => {
       try {
-        const appSettings = await getSettings();
+        const appSettings: AppSettings = await getProviderSettings("app");
         // If the app settings embed model provider and llm model provider are both not set to ollama, we don't need to check the ollama status
         if (appSettings.embedding_model_provider !== 'ollama' && appSettings.llm_model_provider !== 'ollama') {
           setIsDownloading(false);
@@ -35,7 +36,7 @@ export function useOllamaStatus() {
       clearInterval(interval);
       abortController.abort();
     };
-  }, [backend, getSettings, fetchWithAuth]);
+  }, [backend, getProviderSettings, fetchWithAuth]);
 
   return { isDownloading };
 }
