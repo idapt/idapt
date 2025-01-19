@@ -157,24 +157,13 @@ def delete_files_in_folder_recursive_from_llama_index(session: Session, user_id:
     try:
         # Get the files in the folder recursively from the database
         files, _ = get_db_folder_files_recursive(session, full_folder_path)
-        # If a file is currently being processed, raise an error
-        for file in files:
-            if file.status == FileStatus.PROCESSING:
-                raise Exception(f"File {file.path} is currently being processed, please wait for it to finish or cancel the processing before deleting it")
+        
         # Delete each file from the llama index
         for file in files:
             try:
-                delete_file_llama_index(session, user_id, file.path)
+                delete_file_llama_index(session, user_id, file)
             except Exception as e:
                 logger.warning(f"Failed to delete {file.path} from LlamaIndex: {str(e)}")
-            # Mark the file statuis as pending
-            file.status = FileStatus.PENDING
-            # Remove already processed stacks from the file
-            file.processed_stacks = json.dumps([])
-            # Remove all pending stacks from the file # ?
-            file.stacks_to_process = json.dumps([])
-            # Commit the changes to the file the database
-            session.commit()
 
     except Exception as e:
         session.rollback()
@@ -226,17 +215,14 @@ def delete_datasource_llama_index_components(datasource_identifier: str, datasou
         logger.error(f"Error deleting datasource llama index components: {str(e)}")
         raise
 
-def delete_file_llama_index(session: Session, user_id: str, full_path: str):
+def delete_file_llama_index(session: Session, user_id: str, file: File):
     try:
-        # Get the file's ref_doc_ids from the database
-        file = get_db_file(session, full_path)
-        if not file or not file.ref_doc_ids:
-            logger.warning(f"No ref_doc_ids found for file: {full_path}")
-            return
+        if file.status == FileStatus.PROCESSING:
+            raise Exception(f"File {file.path} is currently being processed, please wait for it to finish or cancel the processing before deleting it")
 
         from app.services.datasource import get_datasource_identifier_from_path
         # Get the datasource name from the path
-        datasource_identifier = get_datasource_identifier_from_path(full_path)
+        datasource_identifier = get_datasource_identifier_from_path(file.path)
         datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
 
         # Get the datasource vector store and docstore
@@ -266,15 +252,24 @@ def delete_file_llama_index(session: Session, user_id: str, full_path: str):
                 processed_stacks = [stack_id for stack_id in processed_stacks if stack_id != processing_stack_identifier]
                 file.processed_stacks = json.dumps(processed_stacks)
                 # Commit the changes to the file the database
-                session.commit()
+                session.flush() # Commit ?
+
+        # Mark the file statuis as pending
+        file.status = FileStatus.PENDING
+        # Remove already processed stacks from the file
+        file.processed_stacks = json.dumps([])
+        # Remove all pending stacks from the file # ?
+        file.stacks_to_process = json.dumps([])
+        # Commit the changes to the file the database
+        session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
         doc_store.persist(persist_path=get_docstore_file_path(datasource_identifier, user_id))
 
-
     except Exception as e:
+        session.rollback()
         logger.error(f"Error deleting file from LlamaIndex: {str(e)}")
-        raise
+        raise e
 
 def delete_file_processing_stack_from_llama_index(session: Session, user_id: str, full_path: str, processing_stack_identifier: str):
     try:

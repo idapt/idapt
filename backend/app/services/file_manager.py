@@ -268,7 +268,7 @@ async def delete_file(session: Session, user_id: str, full_path: str):
 
         # Proceed with deletion
         await delete_file_filesystem(full_path)
-        delete_file_llama_index(session=session, user_id=user_id, full_path=full_path)
+        delete_file_llama_index(session=session, user_id=user_id, file=file)
         result = delete_db_file(session=session, full_path=full_path)
         
         if not result:
@@ -303,7 +303,7 @@ async def delete_folder(session: Session, user_id: str, full_path: str):
                     continue
 
                 await delete_file(session=session, user_id=user_id, full_path=file.path)
-                delete_file_llama_index(session=session, user_id=user_id, full_path=file.path)
+                delete_file_llama_index(session=session, user_id=user_id, file=file)
                 delete_db_file(session=session, full_path=file.path)
                 deleted_files.append(file.path)
             except Exception as e:

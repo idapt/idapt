@@ -1,6 +1,6 @@
 "use client";
 
-import { File, Folder, MoreVertical, Download, Trash2, Edit, Info, Layers } from "lucide-react";
+import { File, Folder, MoreVertical, Download, Trash2, Info, Layers, X } from "lucide-react";
 import { Button } from "../button";
 import {
   DropdownMenu,
@@ -150,6 +150,28 @@ export function FileItem({
     }
   };
 
+  const handleDeleteProcessedData = async () => {
+    if (!path) return;
+    
+    if (confirm(`Are you sure you want to delete all processed data for ${name}?`)) {
+      try {
+        const encodedPath = encodePathSafe(path);
+        const response = await fetchWithAuth(`${backend}/api/processing/processed-data/${encodedPath}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete processed data');
+        }
+
+        onRefresh?.();
+      } catch (error) {
+        console.error('Delete processed data failed:', error);
+        alert(error instanceof Error ? error.message : 'Failed to delete processed data');
+      }
+    }
+  };
+
   return (
     <>
       <div 
@@ -212,6 +234,13 @@ export function FileItem({
             >
               <Info className="h-4 w-4 mr-2" />
               <span>Details</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              className="cursor-pointer p-2 hover:bg-gray-100 rounded-md text-red-600 flex items-center"
+              onSelect={handleDeleteProcessedData}
+            >
+              <X className="h-4 w-4 mr-2" />
+              <span>Delete Processed Data</span>
             </DropdownMenuItem>
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md text-red-600 flex items-center"

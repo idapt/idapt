@@ -145,7 +145,7 @@ def _process_files_marked_as_processing(session: Session, user_id: str):
 
                 logger.info(f"Reprocessing interrupted file: {oldest_processing_file.path}")
                 try:
-                    delete_file_llama_index(session=session, user_id=user_id, full_path=oldest_processing_file.path)
+                    delete_file_llama_index(session=session, user_id=user_id, file=oldest_processing_file)
                 except Exception as e:
                     logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
                 

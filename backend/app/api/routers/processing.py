@@ -9,6 +9,8 @@ from app.services.database import get_db_session
 from app.api.dependencies import get_user_id
 from app.services.file_system import get_existing_sanitized_path
 from app.database.models import File, Folder
+from app.api.routers.file_manager import decode_path_safe
+from app.services.llama_index import delete_files_in_folder_recursive_from_llama_index, delete_file_llama_index
 
 logger = logging.getLogger("uvicorn")
 
@@ -126,3 +128,34 @@ async def process_folder_route(
     except Exception as e:
         logger.error(f"Error in process_folder endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@r.delete("/processed-data/{encoded_original_path}")
+async def delete_processed_data_route(
+    encoded_original_path: str,
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_db_session)
+):
+    try:
+        original_path = decode_path_safe(encoded_original_path)
+        full_path = get_existing_sanitized_path(session=session, original_path=original_path)
+        
+        # Check if it's a file
+        file = session.query(File).filter(File.path == full_path).first()
+        if file:
+            # Delete llama index data
+            delete_file_llama_index(session=session, user_id=user_id, file=file)
+
+            session.commit()
+            return {"success": True}
+            
+        # If not a file, check if it's a folder
+        folder = session.query(Folder).filter(Folder.path == full_path).first()
+        if folder:
+            delete_files_in_folder_recursive_from_llama_index(session=session, user_id=user_id, full_folder_path=full_path)
+            return {"success": True}
+            
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    except Exception as e:
+        logger.error(f"Error deleting processed data: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete processed data")
