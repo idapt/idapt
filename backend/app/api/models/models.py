@@ -343,7 +343,8 @@ class FileResponse(BaseModel):
     accessed_at: float
     file_created_at: float
     file_modified_at: float
-
+    stacks_to_process: str | None = None
+    processed_stacks: str | None = None
 
 class FolderResponse(BaseModel):
     id: int

@@ -58,6 +58,8 @@ export function FileList({
           accessed={file.uploaded_at.toString()}
           path={file.original_path}
           mimeType={file.mime_type}
+          stacks_to_process={file.stacks_to_process}
+          processed_stacks={file.processed_stacks}
           onRefresh={onUploadComplete}
           viewMode={viewMode}
         />

@@ -26,6 +26,8 @@ interface FileItemProps {
   accessed: string;
   path: string;
   mimeType?: string;
+  stacks_to_process?: string;
+  processed_stacks?: string;
   onClick?: () => void;
   onRefresh?: () => void;
   viewMode?: 'grid' | 'list';
@@ -40,6 +42,8 @@ export function FileItem({
   accessed,
   path,
   mimeType,
+  stacks_to_process,
+  processed_stacks,
   onClick, 
   onRefresh,
   viewMode = 'list'
@@ -256,6 +260,32 @@ export function FileItem({
             {modified && <p><strong>Modified:</strong> {modified}</p>}
             {accessed && <p><strong>Last Accessed:</strong> {accessed}</p>}
             {path && <p><strong>Path:</strong> {path}</p>}
+            
+            {processed_stacks && (
+              <div>
+                <strong>Processed with stacks:</strong>
+                <div className="mt-1">
+                  {JSON.parse(processed_stacks).map((stack: string) => (
+                    <span key={stack} className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded mr-2 mb-2 text-sm">
+                      {stack}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {stacks_to_process && (
+              <div>
+                <strong>Pending processing with stacks:</strong>
+                <div className="mt-1">
+                  {JSON.parse(stacks_to_process).map((stack: string) => (
+                    <span key={stack} className="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded mr-2 mb-2 text-sm">
+                      {stack}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
