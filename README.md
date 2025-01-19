@@ -27,27 +27,10 @@ git clone https://github.com/idapt/idapt.git && cd idapt && sudo docker compose 
 - Add your data sources, setup your settings (model provider, system prompt, etc.) and start chatting with your private, personal AI assistant !
 
 ### Model Provider
-You can use any hosted model provider that you want or use ollama for local inference, you will need to have [Ollama](https://ollama.com/) running on your machine **(at default port 11434 and with the default 0.0.0.0 host)**. We will soon propose a private hosted alternative so that you can run more powerful models.
+You can use any hosted model provider that you want or use ollama for local inference, you will need to have [Ollama](https://ollama.com/) running on your machine **(at default port 11434 and with the default 0.0.0.0 host)** or on a remote server. We will soon propose a private hosted alternative so that you can run more powerful models.
 
 ### Security
-The local server version of the app do not have any authentication system and is only meant to be used locally with localhost behind a safe firewall.
-
-### Remote Installation (IN PROGRESS)
-
-- Clone the repository with 
-```bash
-git clone https://github.com/idapt/idapt.git && cd idapt
-```
-- Fill in the `.env` file with the correct values.
-- Run 
-```bash
-docker compose up
-```
-in the idapt root folder to start the production server.
-*This will build the production images and start the containers in production mode with the settings you set in the `.env` file.*
-- Access the app at [https://your-custom-host](https://your-custom-host). *(if you don't have a domain and want to access it locally, use the local version)*
-- Create your account using a secure password and setup your TOTP (Time-based One-Time Password) for extra security.
-- Add your data sources, setup your settings (model provider, system prompt, etc.) and start chatting with your private, personal AI assistant !
+The local server version of the app do not have any authentication system and is only meant to be used locally with localhost behind a safe firewall. Authentication and encryption is coming soon.
 
 ## Development Installation
 
@@ -72,20 +55,13 @@ Development notes :
 *The node_modules are synced with the host.*
 *The developement stack and the production use different docker storage volumes as the compose name is different.*
 
-### Remote Development Installation 
-
-(IN PROGRESS)
-
 ## Architecture
 
 See the compose file for more details on the architecture.
 - FastAPI Python backend
 - NextJS React frontend
-- PostgreSQL database
-- Keycloak for authentication
+- SQLite database
+- Chroma vector database
 - Nginx for reverse proxy routing
-- Certbot (in nginx container) for SSL certificates using Let's Encrypt for custom domains
-- OAuth2 Proxy for authentication at nginx level (for keycloak)
-- Ollama for simple local integrated LLM model and Embeddings provider
 
 The local version do not have any authentication system.
