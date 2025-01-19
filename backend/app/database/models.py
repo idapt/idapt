@@ -39,6 +39,7 @@ class File(Base):
     
     # Processing status
     status = Column(Enum(FileStatus), default=FileStatus.PENDING, nullable=False)
+    error_message = Column(String, nullable=True)
     
     # Processing stacks tracking
     processed_stacks = Column(JSON, nullable=True)  # List of already processed stacks

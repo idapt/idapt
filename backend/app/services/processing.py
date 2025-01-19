@@ -197,6 +197,7 @@ def _process_single_file(session: Session, file: File, user_id: str):
     """Process a single file through the ingestion pipeline"""
     try:
         # Update status to processing
+        file.error_message = None
         file.status = FileStatus.PROCESSING
         file.processing_started_at = datetime.now()
         session.commit()
@@ -366,6 +367,7 @@ def _process_single_file(session: Session, file: File, user_id: str):
                 if stack_identifier not in stacks_to_process:
                     stacks_to_process.append(stack_identifier)
                     file.stacks_to_process = json.dumps(stacks_to_process)
+                file.error_message = str(e)
                 session.commit()
                 logger.error(f"Failed to process stack {stack_identifier} for file {file.path}, marking file status as error and letting the stack in stacks_to_process: {str(e)}")
                 raise
@@ -381,6 +383,7 @@ def _process_single_file(session: Session, file: File, user_id: str):
         logger.error(f"Failed to process file {file.path}: {str(e)}")
         try:
             file.status = FileStatus.ERROR
+            file.error_message = str(e)
             session.commit()
         except Exception as e:
             session.rollback()

@@ -60,6 +60,8 @@ export function FileList({
           mimeType={file.mime_type}
           stacks_to_process={file.stacks_to_process}
           processed_stacks={file.processed_stacks}
+          status={file.status}
+          error_message={file.error_message}
           onRefresh={onUploadComplete}
           viewMode={viewMode}
         />

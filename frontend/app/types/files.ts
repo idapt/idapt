@@ -22,6 +22,8 @@ export interface File {
   accessed_at: number;
   file_created_at: number;
   file_modified_at: number;
+  status: string;
+  error_message: string;
   stacks_to_process?: string;
   processed_stacks?: string;
 }

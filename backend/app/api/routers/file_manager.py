@@ -180,7 +180,9 @@ async def get_folder_contents_route(
             file_created_at=file.file_created_at.timestamp(),
             file_modified_at=file.file_modified_at.timestamp(),
             stacks_to_process=file.stacks_to_process,
-            processed_stacks=file.processed_stacks
+            processed_stacks=file.processed_stacks,
+            error_message=file.error_message,
+            status=file.status
         ) for file in files]
         folders = [FolderResponse(
             id=folder.id,

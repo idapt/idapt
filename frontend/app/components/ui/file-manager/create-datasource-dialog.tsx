@@ -16,9 +16,7 @@ import { useClientConfig } from "../chat/hooks/use-config";
 import { useApiClient } from "@/app/lib/api-client";
 import { 
   EMBEDDING_PROVIDER_OPTIONS, 
-  EMBEDDING_MODEL_OPTIONS,
-  OllamaEmbedSettings,
-  OpenAIEmbedSettings
+  EMBEDDING_MODEL_OPTIONS
 } from "@/app/types/settings";
 import { Textarea } from "../textarea";
 

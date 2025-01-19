@@ -1,6 +1,6 @@
 "use client";
 
-import { File, Folder, MoreVertical, Download, Trash2, Info, Layers, X, CheckCircle2, Clock } from "lucide-react";
+import { File, Folder, MoreVertical, Download, Trash2, Info, Layers, X, CheckCircle2, Clock, AlertCircle, RefreshCcw, CircleDashed } from "lucide-react";
 import { Button } from "../button";
 import {
   DropdownMenu,
@@ -28,6 +28,8 @@ interface FileItemProps {
   mimeType?: string;
   stacks_to_process?: string;
   processed_stacks?: string;
+  error_message?: string;
+  status?: string;
   onClick?: () => void;
   onRefresh?: () => void;
   viewMode?: 'grid' | 'list';
@@ -44,6 +46,8 @@ export function FileItem({
   mimeType,
   stacks_to_process,
   processed_stacks,
+  error_message,
+  status,
   onClick, 
   onRefresh,
   viewMode = 'list'
@@ -172,9 +176,7 @@ export function FileItem({
     }
   };
 
-  const hasProcessedStacks = processed_stacks && JSON.parse(processed_stacks).length > 0;
-  const hasPendingStacks = stacks_to_process && JSON.parse(stacks_to_process).length > 0;
-
+  console.log(status);
   return (
     <>
       <div 
@@ -187,11 +189,21 @@ export function FileItem({
           ) : (
             <File className="h-8 w-8 text-gray-500" />
           )}
-          {hasProcessedStacks && (
+
+          {status == "pending" && (
+            <CircleDashed className="h-4 w-4 text-red-500 absolute -top-1 -right-1 bg-white rounded-full" />
+          )}
+          {status == "queued" && (
+            <Clock className="h-4 w-4 text-yellow-500 absolute -top-1 -right-1 bg-white rounded-full" />
+          )}
+          {status == "completed" && (
             <CheckCircle2 className="h-4 w-4 text-green-500 absolute -top-1 -right-1 bg-white rounded-full" />
           )}
-          {hasPendingStacks && (
-            <Clock className="h-4 w-4 text-yellow-500 absolute -top-1 -right-1 bg-white rounded-full" />
+          {status == "processing" && (
+            <RefreshCcw className="h-4 w-4 text-blue-500 absolute -top-1 -right-1 bg-white rounded-full" />
+          )}
+          {status == "error" && (
+            <AlertCircle className="h-4 w-4 text-red-500 absolute -top-1 -right-1 bg-white rounded-full" />
           )}
         </div>
         <div className="flex-1 min-w-0">
@@ -323,6 +335,15 @@ export function FileItem({
                       {stack}
                     </span>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {error_message && (
+              <div className="mt-4">
+                <strong className="text-red-600">Processing Error:</strong>
+                <div className="mt-1 p-2 bg-red-50 text-red-700 rounded border border-red-200">
+                  {error_message}
                 </div>
               </div>
             )}

@@ -345,6 +345,8 @@ class FileResponse(BaseModel):
     file_modified_at: float
     stacks_to_process: str | None = None
     processed_stacks: str | None = None
+    error_message: str | None = None
+    status: str
 
 class FolderResponse(BaseModel):
     id: int
