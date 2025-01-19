@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -6,8 +7,11 @@ from base64 import urlsafe_b64decode
 
 from app.api.dependencies import get_user_id
 from app.services.database import get_db_session
-from app.services.datasource import get_all_datasources, get_datasource, create_datasource, delete_datasource, update_datasource_description
+from app.database.models import Datasource
+from app.services.datasource import get_datasource, create_datasource, delete_datasource, update_datasource
+from app.settings.models import OllamaEmbedSettings, OpenAIEmbedSettings
 import logging
+
 
 logger = logging.getLogger("uvicorn")
 
@@ -16,7 +20,10 @@ datasources_router = APIRouter()
 class DatasourceCreate(BaseModel):
     name: str
     type: str
+    description: Optional[str] = None
     settings: dict = {}
+    embedding_provider: str = "ollama_embed"
+    embedding_settings: Optional[dict] = None
 
 class DatasourceResponse(BaseModel):
     id: int
@@ -25,12 +32,16 @@ class DatasourceResponse(BaseModel):
     type: str
     description: Optional[str] = None
     settings: dict = {}
+    embedding_provider: str
+    embedding_settings: Optional[dict] = None
 
     class Config:
         from_attributes = True
 
 class DatasourceUpdate(BaseModel):
     description: Optional[str] = None
+    embedding_provider: Optional[str] = None
+    embedding_settings: Optional[dict] = None
 
 @datasources_router.get("", response_model=List[DatasourceResponse])
 async def get_datasources_route(
@@ -39,8 +50,7 @@ async def get_datasources_route(
 ):
     try:
         logger.info(f"Getting all datasources for user {user_id}")
-        datasources = get_all_datasources(session)
-        # Convert to DatasourceResponse manually
+        datasources = session.query(Datasource).all()
         return [DatasourceResponse(
             id=datasource.id,
             identifier=datasource.identifier,
@@ -48,6 +58,8 @@ async def get_datasources_route(
             type=datasource.type,
             description=datasource.description,
             settings=datasource.settings,
+            embedding_provider=datasource.embedding_provider,
+            embedding_settings=json.loads(datasource.embedding_settings) if isinstance(datasource.embedding_settings, str) else datasource.embedding_settings,
         ) for datasource in datasources]
     except Exception as e:
         logger.error(f"Error in get_datasources_route: {str(e)}")
@@ -73,6 +85,8 @@ async def get_datasource_route(
             type=datasource.type,
             description=datasource.description,
             settings=datasource.settings,
+            embedding_provider=datasource.embedding_provider,
+            embedding_settings=datasource.embedding_settings,
         )
     except HTTPException:
         raise
@@ -88,14 +102,31 @@ async def create_datasource_route(
 ):
     try:
         logger.info(f"Creating datasource {datasource.name} for user {user_id}")
+        # Convert settings to a pydantic model
+        match datasource.embedding_provider:
+            case "ollama_embed":
+                embedding_settings = OllamaEmbedSettings(**datasource.embedding_settings)
+            case "openai_embed":
+                embedding_settings = OpenAIEmbedSettings(**datasource.embedding_settings)
+            case _:
+                raise ValueError(f"Unsupported embedding provider: {datasource.embedding_provider}")
+            
+        logger.debug(f"Embedding settings: {json.dumps(embedding_settings.model_dump())}")
+
         created = create_datasource(
-            session,
-            user_id,
-            datasource.name,
-            datasource.type,
-            datasource.settings
+            session=session,
+            user_id=user_id,
+            name=datasource.name,
+            type=datasource.type,
+            description=datasource.description,
+            settings_json={},
+            embedding_provider=datasource.embedding_provider,
+            embedding_settings_json=json.dumps(embedding_settings.model_dump())
         )
-        # Convert to DatasourceResponse manually
+        
+        # Parse the JSON string back to dict for the response
+        embedding_settings_dict = json.loads(created.embedding_settings) if isinstance(created.embedding_settings, str) else created.embedding_settings
+        
         return DatasourceResponse(
             id=created.id,
             identifier=created.identifier,
@@ -103,6 +134,8 @@ async def create_datasource_route(
             type=created.type,
             description=created.description,
             settings=created.settings,
+            embedding_provider=created.embedding_provider,
+            embedding_settings=embedding_settings_dict,
         )
     except Exception as e:
         logger.error(f"Error in create_datasource_route: {str(e)}")
@@ -137,10 +170,17 @@ async def update_datasource_route(
     try:
         logger.info(f"Updating datasource {encoded_identifier} for user {user_id}")
         identifier = urlsafe_b64decode(encoded_identifier.encode()).decode()
-        if update.description is not None:
-            success = update_datasource_description(session, identifier, update.description)
-            if not success:
-                raise HTTPException(status_code=404, detail="Datasource not found")
+        
+        success = await update_datasource(
+            session=session,
+            user_id=user_id,
+            identifier=identifier,
+            description=update.description,
+            embedding_provider=update.embedding_provider,
+            embedding_settings=update.embedding_settings
+            )
+        if not success:
+            raise HTTPException(status_code=404, detail="Datasource not found")
         return {"message": "Datasource updated successfully"}
     except HTTPException:
         raise

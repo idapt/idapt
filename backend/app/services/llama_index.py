@@ -1,10 +1,17 @@
 import os
 import shutil
+from typing import List
+import chromadb
+import logging
+from pathlib import Path
+import json
+
 from sqlalchemy.orm import Session
-from app.database.models import Datasource
-from app.services.db_file import get_db_file
+from app.database.models import Datasource, File, FileStatus
+from app.services.db_file import get_db_file, get_db_folder_files_recursive
 from app.settings.models import AppSettings
 from app.services.settings import get_setting
+from app.services.user_path import get_user_app_data_dir
 
 from llama_index.core.storage import StorageContext
 from llama_index.core.indices import VectorStoreIndex
@@ -18,12 +25,6 @@ from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.core.llms import LLM
 from llama_index.core.base.embeddings.base import BaseEmbedding
 
-import chromadb
-
-import logging
-from pathlib import Path
-import json
-from app.services.user_path import get_user_app_data_dir
 
 logger = logging.getLogger("uvicorn")
 
@@ -32,13 +33,17 @@ def create_vector_store(datasource_id: int, user_id: str) -> ChromaVectorStore:
     try:
         # Create the embeddings directory if it doesn't exist
         datasource_embeddings_dir = Path(get_vector_store_folder_path(datasource_id, user_id))
-        datasource_embeddings_dir.parent.mkdir(parents=True, exist_ok=True)
+        logger.debug(f"Creating vector store for datasource {datasource_id} at {datasource_embeddings_dir}")
+
+        # Create the parent directory if it doesn't exist
+        datasource_embeddings_dir.mkdir(parents=True, exist_ok=True)
         
         # Create a Chroma persistent client with telemetry disabled
         client = chromadb.PersistentClient(
             path=str(datasource_embeddings_dir),
             settings=chromadb.Settings(
-                anonymized_telemetry=False
+                anonymized_telemetry=False,
+                allow_reset=True
             )
         )
         # Create a Chroma collection using the database ID
@@ -148,19 +153,75 @@ def create_query_tool(
         logger.error(f"Error creating query tool: {str(e)}")
         raise
 
-def delete_datasource_llama_index_components(datasource_identifier: str, user_id: str):
+def delete_files_in_folder_recursive_from_llama_index(session: Session, user_id: str, full_folder_path: str):
     try:
-        # Get the path to the vector store
-        vector_store_path = get_vector_store_folder_path(datasource_identifier, user_id)
-        # Delete the vector store folder and its content
-        if os.path.exists(vector_store_path):
-            shutil.rmtree(vector_store_path)
+        # Get the files in the folder recursively from the database
+        files, _ = get_db_folder_files_recursive(session, full_folder_path)
+        # If a file is currently being processed, raise an error
+        for file in files:
+            if file.status == FileStatus.PROCESSING:
+                raise Exception(f"File {file.path} is currently being processed, please wait for it to finish or cancel the processing before deleting it")
+        # Delete each file from the llama index
+        for file in files:
+            try:
+                delete_file_llama_index(session, user_id, file.path)
+            except Exception as e:
+                logger.warning(f"Failed to delete {file.path} from LlamaIndex: {str(e)}")
+            # Mark the file statuis as pending
+            file.status = FileStatus.PENDING
+            # Remove already processed stacks from the file
+            file.processed_stacks = json.dumps([])
+            # Remove all pending stacks from the file # ?
+            file.stacks_to_process = json.dumps([])
+            # Commit the changes to the file the database
+            session.commit()
 
-        # Get the path to the doc store
-        doc_store_path = get_docstore_file_path(datasource_identifier, user_id)
-        # Delete the doc store file
-        if os.path.exists(doc_store_path):
-            os.remove(doc_store_path)
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error deleting files in folder from LlamaIndex: {str(e)}")
+        raise
+
+def delete_datasource_llama_index_components(datasource_identifier: str, datasource_id: int, user_id: str):
+    try:
+        logger.debug(f"Deleting datasource llama index components for {datasource_identifier}")
+        
+        # Get the paths
+        vector_store_path = get_vector_store_folder_path(datasource_id, user_id)
+        docstore_file = get_docstore_file_path(datasource_identifier, user_id)
+        
+        # First close any open ChromaDB connections
+        try:
+            client = chromadb.PersistentClient(
+                path=str(vector_store_path),
+                settings=chromadb.Settings( # Need to be the same settings as the one used to create the vector store
+                    anonymized_telemetry=False,
+                    allow_reset=True
+                )
+            )
+            # Needed otherwise the client can persist in memory even if the files are deleted
+            client.reset()
+        except Exception as e:
+            logger.warning(f"Error closing ChromaDB connection: {str(e)}")
+
+        # Delete the entire vector store directory
+        # Known bug where recreating it lead to read permission errors https://github.com/langchain-ai/langchain/issues/14872
+        #if os.path.exists(vector_store_path):
+        #    try:
+        #        shutil.rmtree(vector_store_path, ignore_errors=True)
+        #        logger.info(f"Deleted vector store directory: {vector_store_path}")
+        #    except Exception as e:
+        #        logger.error(f"Error deleting vector store directory: {str(e)}")
+        #        raise
+            
+        # Delete the docstore file
+        if os.path.exists(docstore_file):
+            try:
+                os.remove(docstore_file)
+                logger.info(f"Deleted docstore file: {docstore_file}")
+            except Exception as e:
+                logger.error(f"Error deleting docstore file: {str(e)}")
+                raise
+            
     except Exception as e:
         logger.error(f"Error deleting datasource llama index components: {str(e)}")
         raise

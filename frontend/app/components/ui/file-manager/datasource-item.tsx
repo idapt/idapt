@@ -15,6 +15,17 @@ import { Textarea } from "../textarea";
 import { useApiClient } from "@/app/lib/api-client";
 import { useProcessingStacks } from "../processing/hooks/use-processing-stacks";
 import useProcessing from "./hooks/use-processing";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../select";
+import { Input } from "../input";
+import { EMBEDDING_MODEL_OPTIONS, EMBEDDING_PROVIDER_OPTIONS } from "@/app/types/settings";
+import { isCustomModel } from "./create-datasource-dialog";
 
 interface DatasourceItemProps {
   datasource: Datasource;
@@ -31,6 +42,13 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
   const { fetchWithAuth } = useApiClient();
   const { stacks } = useProcessingStacks();
   const { processFolder, processWithStack } = useProcessing();
+  const [embeddingProvider, setEmbeddingProvider] = useState(datasource.embedding_provider);
+  const [embeddingModel, setEmbeddingModel] = useState(datasource.embedding_settings.model);
+  const [customModel, setCustomModel] = useState("");
+  const [ollamaHost, setOllamaHost] = useState(
+    datasource.embedding_settings.host || "http://host.docker.internal:11434"
+  );
+  const [openAIKey, setOpenAIKey] = useState(datasource.embedding_settings.api_key || "");
 
   useEffect(() => {
     setDescription(datasource.description || '');
@@ -52,13 +70,41 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
     try {
       setError(null);
       setIsSaving(true);
+
+      let embeddingSettings;
+      const selectedModel = customModel || embeddingModel;
+
+      switch (embeddingProvider) {
+        case "ollama_embed":
+          embeddingSettings = {
+            identifier: "ollama_embed",
+            display_name: "Ollama Embeddings",
+            description: "Ollama embedding provider settings",
+            model: selectedModel,
+            host: ollamaHost,
+            request_timeout: 60
+          };
+          break;
+        case "openai_embed":
+          embeddingSettings = {
+            identifier: "openai_embed",
+            display_name: "OpenAI Embeddings",
+            description: "OpenAI embedding provider settings",
+            model: selectedModel,
+            api_key: openAIKey
+          };
+          break;
+      }
+
       const response = await fetchWithAuth(`${backend}/api/datasources/${encodePathSafe(datasource.identifier)}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          description: description
+          description,
+          embedding_provider: embeddingProvider,
+          embedding_settings: embeddingSettings
         })
       });
       
@@ -198,6 +244,84 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
                 autoFocus={false}
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Embedding Provider</label>
+              <Select value={embeddingProvider} onValueChange={setEmbeddingProvider}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {EMBEDDING_PROVIDER_OPTIONS.map((provider) => (
+                      <SelectItem key={provider} value={provider}>
+                        {provider}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Embedding Model</label>
+              <Select
+                value={isCustomModel(embeddingProvider || "", embeddingModel || "") ? "custom" : embeddingModel || ""}
+                onValueChange={(value) => {
+                  if (value === "custom") {
+                    setEmbeddingModel("custom");
+                  } else {
+                    setEmbeddingModel(value);
+                    setCustomModel("");
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {EMBEDDING_MODEL_OPTIONS[embeddingProvider as keyof typeof EMBEDDING_MODEL_OPTIONS].map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              {isCustomModel(embeddingProvider || "", embeddingModel || "") && (
+                <Input
+                  className="mt-2"
+                  placeholder="Enter custom model name"
+                  value={customModel}
+                  onChange={(e) => setCustomModel(e.target.value)}
+                />
+              )}
+            </div>
+
+            {embeddingProvider === "ollama_embed" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ollama Host</label>
+                <Input
+                  value={ollamaHost}
+                  onChange={(e) => setOllamaHost(e.target.value)}
+                  placeholder="Enter Ollama host URL"
+                />
+              </div>
+            )}
+
+            {embeddingProvider === "openai_embed" && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">OpenAI API Key</label>
+                <Input
+                  type="password"
+                  value={openAIKey}
+                  onChange={(e) => setOpenAIKey(e.target.value)}
+                  placeholder="Enter OpenAI API key"
+                />
+              </div>
+            )}
+
             <div className="flex justify-end space-x-2 pt-4">
               <Button 
                 variant="outline" 

@@ -1,13 +1,11 @@
 from app.services.db_file import get_db_file, get_db_files_by_status
 from app.services.datasource import get_datasource_identifier_from_path
 from app.services.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
-from app.services.ollama_status import is_ollama_server_reachable, wait_for_ollama_models_to_be_downloaded
-from app.database.models import File, FileStatus, ProcessingStackStep, ProcessingStack
+from app.database.models import File, FileStatus, ProcessingStack
 from app.services.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
 from app.database.models import Datasource
 from app.services.processing_stacks import get_transformations_for_stack
-from app.services.settings import get_setting
-from app.settings.models import AppSettings, OllamaSettings
+from app.services.ollama_status import can_process
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
@@ -16,18 +14,8 @@ Settings.llm = None
 Settings.embed_model = None
 from llama_index.core.ingestion import IngestionPipeline, DocstoreStrategy
 from llama_index.core.readers import SimpleDirectoryReader
-from llama_index.core.node_parser import SentenceSplitter, HierarchicalNodeParser
-from llama_index.core.extractors import (
-    SummaryExtractor,
-    QuestionsAnsweredExtractor,
-    TitleExtractor,
-    KeywordExtractor,
-)
-#from llama_index.extractors.entity import EntityExtractor
-
 
 from datetime import datetime
-import mimetypes
 import os
 from typing import List
 from sqlalchemy.orm import Session
@@ -35,161 +23,6 @@ import json
 import logging
 
 logger = logging.getLogger("uvicorn")
-
-TRANSFORMATIONS_STACKS = {
-# See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
-# List of avaliable transformations stacks with their name and transformations
-    "default": [
-        SentenceSplitter(
-            chunk_size=512,
-            chunk_overlap=64,
-        ),
-    ],
-    #"hierarchical": [ # TODO Fix the bug where a relation with a non existing doc id is created and creates issues when querying the index
-    #    HierarchicalNodeParser.from_defaults(
-    #        include_metadata=True,
-    #        chunk_sizes=[1024, 512, 256, 128], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum #size, we also chunk it into The smallest sentences possible to capture as much atomic meaning of the sentence as possible.
-    #        # When text chunks are too small like under 128 tokens, the embedding model may return null embeddings and we want to avoid that because it break the search as they can come out on top of the search results
-    #        chunk_overlap=0
-    #    ),
-    #    # Embedding is present at ingestion pipeline level
-    #],
-    "titles": [
-        TitleExtractor(
-            nodes=5,
-        ),
-    ],
-    "questions": [
-        QuestionsAnsweredExtractor(
-            questions=3,
-        ),
-    ],
-    "summary": [
-        SummaryExtractor(
-            summaries=["prev", "self"],
-        ),
-    ],
-    "keywords": [
-        KeywordExtractor(
-            keywords=10,
-        ),
-    ],
-    # NOTE: Current sentence splitter stacks are not linking each node like the hierarchical node parser does, so if multiple are used they are likely to generate duplicates nodes at retreival time. Only use one at a time to avoid this. # TODO Fix hierarchical node parser
-    "sentence-splitter-2048": [
-        SentenceSplitter(
-            chunk_size=2048,
-            chunk_overlap=256,
-        ),
-    ],
-    "sentence-splitter-1024": [
-        SentenceSplitter(
-            chunk_size=1024,
-            chunk_overlap=128,
-        ),
-    ],
-    "sentence-splitter-512": [
-        SentenceSplitter(
-            chunk_size=512,
-            chunk_overlap=64,
-        ),
-    ],
-    "sentence-splitter-256": [
-        SentenceSplitter(
-            chunk_size=256,
-            chunk_overlap=0,
-        ),
-    ],
-    "sentence-splitter-128": [
-        SentenceSplitter(
-            chunk_size=128,
-            chunk_overlap=0,
-        ),
-    ],
-    "image": [
-        #ImageDescriptionExtractor(
-        #    
-        #),
-        #ImageEXIFExtractor(
-        #    
-        #),
-    ],
-    "video": [
-        #VideoDescriptionExtractor(
-        #    
-        #),
-        #VideoTranscriptionExtractor(
-        #    
-        #),
-        #VideoEXIFExtractor(
-        #    
-        #),
-    ],
-    "audio": [
-        #AudioTranscriptionExtractor(
-        #    
-        #),
-        #AudioEXIFExtractor(
-        #    
-        #),
-    ],
-    "code": [
-        #CodeExtractor(
-        #    
-        #),
-    ],
-    #"entities": [
-    #    EntityExtractor(prediction_threshold=0.5),
-    #],
-    #"zettlekasten": [
-    #    ZettlekastenExtractor(
-    #        similar_notes_top_k=5
-    #    ),
-    #],
-}
-
-logger = logging.getLogger("uvicorn")
-
-# Not used for now do not use it
-def _get_file_type(file_path: str) -> str:
-    """Get the file type from the file path"""
-    try:
-        file_extension = os.path.splitext(file_path)[1]
-        file_type = ""
-        match file_extension:
-            # Text files
-            case ".pdf" | ".doc" | ".odt" | ".docx" | ".txt" | ".md" | ".markdown":
-                file_type = "text"
-            # Images
-            case ".jpg" | ".jpeg" | ".png" | ".gif" | ".bmp" | ".tiff" | ".ico" | ".webp":
-                file_type = "image"
-            # Videos
-            case ".mp4" | ".avi" | ".mov" | ".wmv" | ".flv" | ".mkv" | ".webm" | ".mpg" | ".mpeg" | ".m4v":
-                file_type = "video"
-            # Audio
-            case ".mp3" | ".wav" | ".aac" | ".flac" | ".m4a" | ".ogg" | ".opus":
-                file_type = "audio"
-            # Code
-            case ".py" | ".js" | ".html" | ".css" | ".java" | ".c" | ".cpp" | ".cs" | ".go" | ".rb" | ".swift" | ".kt" | ".rs" | ".php" | ".sql" | ".xml" | ".json" | ".yaml" | ".yml" | ".toml" | ".md" | ".rst" | ".sh" | ".bash" | ".zsh" | ".fish" | ".powershell" | ".ps1" | ".bat" | ".cmd" | ".psm1" | ".ps1xml" | ".psscrip" :
-                file_type = "code"
-            case _:
-                # File extension not recognized, try to use the mime type
-                mime_type = mimetypes.guess_type(file_path)
-                match mime_type:
-                    case "text/plain":
-                        file_type = "text"
-                    case "image/jpeg" | "image/png" | "image/gif" | "image/bmp" | "image/tiff" | "image/ico" | "image/webp":
-                        file_type = "image"
-                    case "video/mp4" | "video/avi" | "video/mov" | "video/wmv" | "video/flv" | "video/mkv":
-                        file_type = "video"
-                    case "audio/mp3" | "audio/wav" | "audio/aac" | "audio/flac" | "audio/m4a" | "audio/ogg" | "audio/opus":
-                        file_type = "audio"
-                    case _:
-                        file_type = "unknown"
-            
-        return file_type
-    except Exception as e:
-        logger.error(f"Failed to get file type for {file_path}: {str(e)}")
-        return "unknown"
     
 # Not used for now do not use it
 def _validate_stacks_to_process_for_file_extension(session: Session, stacks_to_process: List[str], file_extension: str) -> List[str]:
@@ -267,17 +100,11 @@ async def process_queued_files(
     ):
     """Processing loop"""
     try:
-        app_settings : AppSettings = get_setting(session, "app")
-        if app_settings.llm_model_provider == "ollama" or app_settings.embedding_model_provider == "ollama":
-            ollama_settings : OllamaSettings = get_setting(session, "ollama")
-            # Check if the ollama server is reachable
-            if not await is_ollama_server_reachable(ollama_settings.llm_host):
-                # We can't process files if the ollama server is not reachable, skip this processing request
-                logger.error("Ollama server is not reachable, skipping processing request")
-                return
+        # TODO Check only for the datasources that are in the files to process
+        # TODO Make it work with other providers
 
         # Wait for Ollama models to be downloaded
-        await wait_for_ollama_models_to_be_downloaded(session)
+        await can_process(session, True)
    
         logger.info("Beginning processing files")
         # Process all files marked as processing that have been interrupted with unfinished processing
@@ -463,7 +290,7 @@ def _process_single_file(session: Session, file: File, user_id: str):
                     document.doc_id = f"{original_doc_id}_{stack_identifier}"
 
                     # Get the transformations stack
-                    transformations = get_transformations_for_stack(session, stack_identifier)
+                    transformations = get_transformations_for_stack(session, stack_identifier, datasource)
 
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess

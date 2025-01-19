@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.database.models import ProcessingStack, ProcessingStep, ProcessingStackStep
+from app.database.models import Datasource, ProcessingStack, ProcessingStep, ProcessingStackStep
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.extractors import (
     TitleExtractor,
@@ -192,14 +192,14 @@ def change_processing_stack_step_order(session: Session, stack_identifier: str, 
         logger.error(f"Error changing processing stack step order: {e}")
         raise e
 
-def get_transformer_for_step(session: Session, step: ProcessingStep, parameters: dict):
+def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource: Datasource):
     """Convert a ProcessingStep and parameters into a LlamaIndex transformer"""
     try:
         match step.identifier:
             case "sentence_splitter":
                 return SentenceSplitter(**parameters)
             case "embedding":
-                return init_embedding_model(session)
+                return init_embedding_model(datasource.embedding_provider, datasource.embedding_settings)
             case "title_extractor":
                 return TitleExtractor(**parameters)
             case "questions_extractor":
@@ -214,7 +214,7 @@ def get_transformer_for_step(session: Session, step: ProcessingStep, parameters:
         logger.error(f"Error getting transformer for step: {e}")
         raise e
 
-def get_transformations_for_stack(session: Session, stack_identifier: str):
+def get_transformations_for_stack(session: Session, stack_identifier: str, datasource: Datasource):
     """Get all transformations for a processing stack"""
     try:
         stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
@@ -228,7 +228,7 @@ def get_transformations_for_stack(session: Session, stack_identifier: str):
                       .all())
                       
         for stack_step in stack_steps:
-            transformer = get_transformer_for_step(session, stack_step.step, stack_step.parameters or {})
+            transformer = get_transformer_for_step(stack_step.step, stack_step.parameters or {}, datasource)
             transformations.append(transformer)
             
         return transformations
@@ -262,3 +262,116 @@ def delete_processing_stack(session: Session, stack_identifier: str) -> bool:
         session.rollback()
         logger.error(f"Error deleting processing stack: {e}")
         raise e
+
+
+
+#TRANSFORMATIONS_STACKS = {
+## See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
+## List of avaliable transformations stacks with their name and transformations
+#    "default": [
+#        SentenceSplitter(
+#            chunk_size=512,
+#            chunk_overlap=64,
+#        ),
+#    ],
+#    #"hierarchical": [ # TODO Fix the bug where a relation with a non existing doc id is created and creates issues when querying the index
+#    #    HierarchicalNodeParser.from_defaults(
+#    #        include_metadata=True,
+#    #        chunk_sizes=[1024, 512, 256, 128], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum #size, #we also chunk it into The smallest sentences possible to capture as much atomic meaning of the sentence as possible.
+#    #        # When text chunks are too small like under 128 tokens, the embedding model may return null embeddings and we want to avoid that because #it break the search as they can come out on top of the search results
+#    #        chunk_overlap=0
+#    #    ),
+#    #    # Embedding is present at ingestion pipeline level
+#    #],
+#    "titles": [
+#        TitleExtractor(
+#            nodes=5,
+#        ),
+#    ],
+#    "questions": [
+#        QuestionsAnsweredExtractor(
+#            questions=3,
+#        ),
+#    ],
+#    "summary": [
+#        SummaryExtractor(
+#            summaries=["prev", "self"],
+#        ),
+#    ],
+#    "keywords": [
+#        KeywordExtractor(
+#            keywords=10,
+#        ),
+#    ],
+#    # NOTE: Current sentence splitter stacks are not linking each node like the hierarchical node parser does, so if multiple are used they are likely #to generate duplicates nodes at retreival time. Only use one at a time to avoid this. # TODO Fix hierarchical node parser
+#    "sentence-splitter-2048": [
+#        SentenceSplitter(
+#            chunk_size=2048,
+#            chunk_overlap=256,
+#        ),
+#    ],
+#    "sentence-splitter-1024": [
+#        SentenceSplitter(
+#            chunk_size=1024,
+#            chunk_overlap=128,
+#        ),
+#    ],
+#    "sentence-splitter-512": [
+#        SentenceSplitter(
+#            chunk_size=512,
+#            chunk_overlap=64,
+#        ),
+#    ],
+#    "sentence-splitter-256": [
+#        SentenceSplitter(
+#            chunk_size=256,
+#            chunk_overlap=0,
+#        ),
+#    ],
+#    "sentence-splitter-128": [
+#        SentenceSplitter(
+#            chunk_size=128,
+#            chunk_overlap=0,
+#        ),
+#    ],
+#    "image": [
+#        #ImageDescriptionExtractor(
+#        #    
+#        #),
+#        #ImageEXIFExtractor(
+#        #    
+#        #),
+#    ],
+#    "video": [
+#        #VideoDescriptionExtractor(
+#        #    
+#        #),
+#        #VideoTranscriptionExtractor(
+#        #    
+#        #),
+#        #VideoEXIFExtractor(
+#        #    
+#        #),
+#    ],
+#    "audio": [
+#        #AudioTranscriptionExtractor(
+#        #    
+#        #),
+#        #AudioEXIFExtractor(
+#        #    
+#        #),
+#    ],
+#    "code": [
+#        #CodeExtractor(
+#        #    
+#        #),
+#    ],
+#    #"entities": [
+#    #    EntityExtractor(prediction_threshold=0.5),
+#    #],
+#    #"zettlekasten": [
+#    #    ZettlekastenExtractor(
+#    #        similar_notes_top_k=5
+#    #    ),
+#    #],
+#}

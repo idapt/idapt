@@ -7,13 +7,13 @@ def configure_app_logging():
 
     # Base configuration
     logging.basicConfig(
-        level=logging.INFO if environment == "dev" else logging.INFO,
+        level=logging.DEBUG if environment == "dev" else logging.ERROR,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
     # Configure FastAPI application logger
     app_logger = logging.getLogger("app")
-    app_logger.setLevel(logging.DEBUG if environment == "dev" else logging.INFO)
+    app_logger.setLevel(logging.DEBUG if environment == "dev" else logging.ERROR)
 
     # Configure uvicorn loggers
     uvicorn_logger = logging.getLogger("uvicorn")
@@ -27,7 +27,7 @@ def configure_app_logging():
     handler = logging.StreamHandler()
     handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     uvicorn_logger.addHandler(handler)
-    uvicorn_logger.setLevel(logging.DEBUG if environment == "dev" else logging.INFO)
+    uvicorn_logger.setLevel(logging.DEBUG if environment == "dev" else logging.ERROR)
 
     # Set other loggers
     logging.getLogger('sqlalchemy').setLevel(logging.WARNING)

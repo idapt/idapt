@@ -6,86 +6,118 @@ class SettingBase(BaseModel):
     display_name: str
     description: Optional[str] = None
 
-# Provider-specific settings
-class OllamaSettings(SettingBase):
-    identifier: str = "ollama"
-    display_name: str = "Ollama"
-    description: str = "Ollama LLM and embedding provider settings"
-    llm_model: str = "llama3.1:8b"
-    llm_host: str = "http://host.docker.internal:11434"
-    llm_request_timeout: float = 300
-    embedding_model: str = "Losspost/stella_en_1.5b_v5"
-    embedding_host: str = "http://host.docker.internal:11434"
-    embedding_request_timeout: float = 60
+# LLM Settings
+class OllamaLLMSettings(SettingBase):
+    identifier: str = "ollama_llm"
+    display_name: str = "Ollama LLM"
+    description: str = "Ollama LLM provider settings"
+    model: str = "llama3.1:8b"
+    host: str = "http://host.docker.internal:11434"
+    request_timeout: float = 300
 
-class OpenAISettings(SettingBase):
-    identifier: str = "openai"
-    display_name: str = "OpenAI"
-    description: str = "OpenAI LLM and embedding provider settings"
-    llm_model: str = "gpt-3.5-turbo"
+class OllamaEmbedSettings(SettingBase):
+    identifier: str = "ollama_embed"
+    display_name: str = "Ollama Embeddings"
+    description: str = "Ollama embedding provider settings"
+    model: str = "bge-m3"
+    host: str = "http://host.docker.internal:11434"
+    request_timeout: float = 60
+
+class OpenAILLMSettings(SettingBase):
+    identifier: str = "openai_llm"
+    display_name: str = "OpenAI LLM"
+    description: str = "OpenAI LLM provider settings"
+    model: str = "gpt-3.5-turbo"
     api_key: str = ""
-    embedding_model: str = "text-embedding-3-large"
     max_tokens: Optional[int] = None
 
-class AnthropicSettings(SettingBase):
-    identifier: str = "anthropic"
-    display_name: str = "Anthropic"
+class OpenAIEmbedSettings(SettingBase):
+    identifier: str = "openai_embed"
+    display_name: str = "OpenAI Embeddings"
+    description: str = "OpenAI embedding provider settings"
+    model: str = "text-embedding-3-large"
+    api_key: str = ""
+
+# Provider-specific settings
+class AnthropicLLMSettings(SettingBase):
+    identifier: str = "anthropic_llm"
+    display_name: str = "Anthropic LLM"
     description: str = "Anthropic LLM provider settings"
-    llm_model: str = "claude-3-sonnet"
+    model: str = "claude-3-sonnet"
     api_key: str = ""
 
-class GroqSettings(SettingBase):
-    identifier: str = "groq"
-    display_name: str = "Groq"
+class GroqLLMSettings(SettingBase):
+    identifier: str = "groq_llm"
+    display_name: str = "Groq LLM"
     description: str = "Groq LLM provider settings"
-    llm_model: str = "mixtral-8x7b-v0.1"
+    model: str = "mixtral-8x7b-v0.1"
     api_key: str = ""
 
-class GeminiSettings(SettingBase):
-    identifier: str = "gemini"
-    display_name: str = "Gemini"
+class GeminiLLMSettings(SettingBase):
+    identifier: str = "gemini_llm"
+    display_name: str = "Gemini LLM"
     description: str = "Gemini LLM provider settings"
-    llm_model: str = "gemini-pro"
+    model: str = "gemini-pro"
     api_key: str = ""
-    embedding_model: str = "embedding-001"
 
-class MistralSettings(SettingBase):
-    identifier: str = "mistral"
-    display_name: str = "Mistral"
+class GeminiEmbedSettings(SettingBase):
+    identifier: str = "gemini_embed"
+    display_name: str = "Gemini Embeddings"
+    description: str = "Gemini Embeddings provider settings"
+    model: str = "embedding-001"
+    api_key: str = ""
+
+class MistralLLMSettings(SettingBase):
+    identifier: str = "mistral_llm"
+    display_name: str = "Mistral LLM"
     description: str = "Mistral LLM provider settings"
-    llm_model: str = "mistral-medium"
+    model: str = "mistral-medium"
     api_key: str = ""
-    embedding_model: str = "mistral-embed"
 
-class AzureOpenAISettings(SettingBase):
-    identifier: str = "azure-openai"
-    display_name: str = "Azure OpenAI"
-    description: str = "Azure OpenAI LLM and embedding provider settings"
-    llm_model: str = "gpt-4"
+class MistralEmbedSettings(SettingBase):
+    identifier: str = "mistral_embed"
+    display_name: str = "Mistral Embeddings"
+    description: str = "Mistral Embeddings provider settings"
+    model: str = "mistral-embed"
+    api_key: str = ""
+
+class AzureOpenAILLMSettings(SettingBase):
+    identifier: str = "azure-openai_llm"
+    display_name: str = "Azure OpenAI LLM"
+    description: str = "Azure OpenAI LLM provider settings"
+    model: str = "gpt-4"
     api_key: str = ""
     endpoint: str = ""
     api_version: str = ""
     deployment_name: str = ""
-    embedding_model: str = "text-embedding-ada-002"
-    embedding_deployment_name: str = ""
 
-class TGISettings(SettingBase):
-    identifier: str = "tgi"
-    display_name: str = "Text Generation Inference"
+class AzureOpenAIEmbedSettings(SettingBase):
+    identifier: str = "azure-openai_embed"
+    display_name: str = "Azure OpenAI Embeddings"
+    description: str = "Azure OpenAI Embeddings provider settings"
+    model: str = "text-embedding-ada-002"
+    api_key: str = ""
+    endpoint: str = ""
+    api_version: str = ""
+    deployment_name: str = ""
+
+class TGILLMSettings(SettingBase):
+    identifier: str = "tgi_llm"
+    display_name: str = "Text Generation Inference LLM"
     description: str = "Text Generation Inference LLM provider settings"
-    llm_model: str = "llama3.1"
-    llm_host: str = ""
-    llm_request_timeout: float = 500
+    model: str = "llama3.1"
+    host: str = ""
+    request_timeout: float = 500
 
-class FastEmbedSettings(SettingBase):
-    identifier: str = "fastembed"
-    display_name: str = "FastEmbed"
+class FastEmbedEmbedSettings(SettingBase):
+    identifier: str = "fastembed_embed"
+    display_name: str = "FastEmbed Embeddings"
     description: str = "FastEmbed embedding provider settings"
     embedding_model: str = "all-MiniLM-L6-v2"
 
-class TEISettings(SettingBase):
-    identifier: str = "tei"
-    display_name: str = "Text Embeddings Inference"
+class TEIEmbedSettings(SettingBase):
+    identifier: str = "tei_embed"
+    display_name: str = "Text Embeddings Inference Embeddings"
     description: str = "Text Embeddings Inference embedding provider settings"
     embedding_model: str = "nvidia/NV-Embed-v2"
     embedding_host: str = ""
@@ -96,19 +128,12 @@ class AppSettings(SettingBase):
     description: str = "General app settings"
 
     llm_model_provider: Literal[
-        "ollama", "openai", 
-        "text-generation-inference", "anthropic", "groq", 
-        "gemini", "mistral", "azure-openai"
-    ] = "ollama"
+        "ollama_llm", "openai_llm", 
+        "text-generation-inference", "anthropic_llm", "groq_llm", 
+        "gemini_llm", "mistral_llm", "azure-openai_llm"
+    ] = "ollama_llm"
     
-    embedding_model_provider: Literal[
-        "ollama", "openai",
-        "azure-openai", "gemini", "mistral", "fastembed",
-        "text-embeddings-inference"
-    ] = "ollama"
-
     # General settings
-    embedding_dim: int = 1536
     top_k: int = 15
     max_iterations: int = 14
     temperature: float = 0.7

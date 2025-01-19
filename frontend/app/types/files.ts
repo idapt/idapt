@@ -5,6 +5,8 @@ export interface Datasource {
   type: string;
   description?: string;
   settings?: any;
+  embedding_provider?: string;
+  embedding_settings?: any;
   created_at: number;
   updated_at: number;
 }

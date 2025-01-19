@@ -3,7 +3,6 @@
 import { FileItem } from "./file-item";
 import { File, Folder, Datasource } from "@/app/types/files";
 import { DatasourceItem } from "./datasource-item";
-import { useProcessingStacks } from '@/app/components/ui/processing/hooks/use-processing-stacks';
 
 interface FileListProps {
   files: File[];

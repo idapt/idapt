@@ -1,6 +1,5 @@
 "use client";
 
-import { AppSettings } from "../types/settings";
 import { useClientConfig } from "../components/ui/chat/hooks/use-config";
 import { useState, useCallback } from "react";
 import { useApiClient } from "../lib/api-client";

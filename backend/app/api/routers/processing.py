@@ -10,7 +10,6 @@ from app.api.dependencies import get_user_id
 from app.services.file_system import get_existing_sanitized_path
 from app.database.models import File, Folder
 
-
 logger = logging.getLogger("uvicorn")
 
 processing_router = r = APIRouter()
@@ -46,7 +45,8 @@ async def processing_route(
 
         # Start processing the files in the background
         # TODO Move the processing service to a separate api running on its own server
-        if should_start_processing(session):    
+        # TODO Split the files to process by datasource and enhance all should_start_processing to check if all datasources are ready
+        if should_start_processing(session):
             logger.info(f"Starting processing of queued files for user {user_id}")
             background_tasks.add_task(process_queued_files, session, user_id)
 

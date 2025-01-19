@@ -69,6 +69,8 @@ class Datasource(Base):
     type = Column(String, nullable=False)
     description = Column(String, nullable=True)
     settings = Column(JSON, nullable=True)
+    embedding_provider = Column(String, nullable=False)
+    embedding_settings = Column(JSON, nullable=False)  # Store embedding-specific settings
     
     # System tracking
     created_at = Column(DateTime, server_default=func.now())

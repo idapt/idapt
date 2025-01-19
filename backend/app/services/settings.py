@@ -9,16 +9,14 @@ logger = logging.getLogger("uvicorn")
 
 SETTING_MODELS: Dict[str, Type[SettingBase]] = {
     "app": AppSettings,
-    "ollama": OllamaSettings,
-    "openai": OpenAISettings,
-    "anthropic": AnthropicSettings,
-    "groq": GroqSettings,
-    "gemini": GeminiSettings,
-    "mistral": MistralSettings,
-    "azure-openai": AzureOpenAISettings,
-    "tgi": TGISettings,
-    "fastembed": FastEmbedSettings,
-    "tei": TEISettings,
+    "ollama_llm": OllamaLLMSettings,
+    "openai_llm": OpenAILLMSettings,
+    "anthropic_llm": AnthropicLLMSettings,
+    "groq_llm": GroqLLMSettings,
+    "gemini_llm": GeminiLLMSettings,
+    "mistral_llm": MistralLLMSettings,
+    "azure-openai_llm": AzureOpenAILLMSettings,
+    "tgi_llm": TGILLMSettings,
 }
 
 def get_setting(session: Session, identifier: str) -> SettingBase:

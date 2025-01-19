@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from sqlalchemy.orm import Session
 from app.database.models import Datasource, Folder
@@ -5,11 +6,13 @@ from app.services.db_file import get_db_folder_id
 from app.services.file_manager import delete_folder
 from app.services.file_system import get_full_path_from_path, get_new_sanitized_path
 from app.services.user_path import get_user_data_dir
-from app.services.llama_index import delete_datasource_llama_index_components
+from app.services.llama_index import delete_datasource_llama_index_components, delete_files_in_folder_recursive_from_llama_index
+from app.settings.models import OllamaEmbedSettings
 
 import logging
 from typing import List, Optional
 import re
+
 
 
 logger = logging.getLogger("uvicorn")
@@ -18,12 +21,19 @@ def init_default_datasources(session: Session, user_id: str):
     """Initialize default datasources if they don't exist"""
     try:
         if not get_datasource(session, "Files"):
+            default_embedding_settings = OllamaEmbedSettings()
+                        
+            logger.debug(f"Embedding settings: {json.dumps(default_embedding_settings.model_dump())}")
+
             create_datasource(
                 session=session,
                 user_id=user_id,
                 name="Files",
                 type="files",
-                settings={}
+                description="Various files, prefer using another datasource if it seems more relevant",
+                settings_json={},
+                embedding_provider="ollama_embed",
+                embedding_settings_json=json.dumps(default_embedding_settings.model_dump())
             )
             logger.info("Created default datasource 'Files'")
             
@@ -31,7 +41,16 @@ def init_default_datasources(session: Session, user_id: str):
         logger.error(f"Error initializing default datasources: {str(e)}")
         raise
 
-def create_datasource(session: Session, user_id: str, name: str, type: str, settings: dict = None) -> Datasource:
+def create_datasource(
+    session: Session, 
+    user_id: str, 
+    name: str, 
+    type: str,
+    embedding_provider: str,
+    embedding_settings_json: str,
+    settings_json: str = None,
+    description: Optional[str] = None
+) -> Datasource:
     """Create a new datasource with its root folder and all required components"""
     try:
         logger.debug(f"Creating datasource with name: {name}")
@@ -49,11 +68,11 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
         identifier = Path(full_path).name
         logger.debug(f"Creating datasource with identifier: {identifier}")
 
-        # Ensure settings is a dict
-        if settings is None:
-            settings = {}
-        elif not isinstance(settings, dict):
-            raise ValueError("Settings must be a dictionary")
+        if settings_json is None:
+            settings_json = {}
+
+        if embedding_settings_json is None:
+            embedding_settings_json = {}
 
         root_folder_path = get_user_data_dir(user_id)
         root_folder_id = get_db_folder_id(session, root_folder_path)
@@ -76,12 +95,15 @@ def create_datasource(session: Session, user_id: str, name: str, type: str, sett
         else:
             logger.info(f"Datasource folder already exists: {datasource_folder.path}")
 
-        # Create datasource
+        # Create datasource with embedding settings
         datasource = Datasource(
             identifier=identifier,
             name=name,
             type=type,
-            settings=settings,
+            description=description,
+            settings=settings_json,
+            embedding_provider=embedding_provider,
+            embedding_settings=embedding_settings_json,
             root_folder_id=datasource_folder.id
         )
         session.add(datasource)
@@ -117,7 +139,7 @@ async def delete_datasource(session: Session, user_id: str, identifier: str) -> 
         await delete_folder(session, user_id, root_folder_path)
 
         # Delete the llama index components
-        delete_datasource_llama_index_components(identifier, user_id)
+        delete_datasource_llama_index_components(datasource.identifier, datasource.id, user_id)
 
         # If file deletion succeeded, delete database entry
         session.delete(datasource)
@@ -142,20 +164,36 @@ def get_all_datasources(session: Session) -> List[Datasource]:
     """Get all datasources"""
     return session.query(Datasource).all()
 
-def update_datasource_description(session: Session, identifier: str, description: str) -> bool:
+async def update_datasource(session: Session, user_id: str, identifier: str, description: str, embedding_provider: str, embedding_settings: str) -> bool:
     """Update a datasource's description and its associated query tool"""
     try:
         datasource = get_datasource(session, identifier)
-        if datasource:
-            # Update description in database
-            datasource.description = description
-            session.commit()
 
-            # Update the query tool description by recreating the tool
-            # TODO Add caching
+        if not datasource:
+            return False
+        # Convert embedding_settings to json string
+        embedding_settings_json = json.dumps(embedding_settings)
+        # If the provider has changed, delete the llama index components
+        if datasource.embedding_provider != embedding_provider or datasource.embedding_settings != embedding_settings_json:
+            # If there is 
+            # Get root folder of datasource
+            root_folder = session.query(Folder).filter(Folder.id == datasource.root_folder_id).first()
+            if not root_folder:
+                raise Exception("Datasource has no root folder")
+            # Delete the files in the folder from llama index
+            delete_files_in_folder_recursive_from_llama_index(session, user_id, root_folder.path)
+            # Delete the datasource llama index components
+            delete_datasource_llama_index_components(datasource.identifier, datasource.id, user_id)
+            # New one will be created when first files are processed with it
+            datasource.embedding_provider = embedding_provider
+            datasource.embedding_settings = embedding_settings_json
 
-            return True
-        return False
+        # Update description in database
+        datasource.description = description
+        session.commit()
+    
+        return True
+    
     except Exception as e:
         session.rollback()
         logger.error(f"Error updating datasource description: {str(e)}")

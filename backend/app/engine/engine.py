@@ -32,8 +32,6 @@ def get_chat_engine(session: Session,
 
         # Init the llm from the app settings
         llm = init_llm(session)
-        # Init the embedding model from the app settings
-        embed_model = init_embedding_model(session)
 
         # Get the datasources tools
         if datasource_identifier:
@@ -42,21 +40,24 @@ def get_chat_engine(session: Session,
             # Get the vector store and doc store from the datasource identifier
             vector_store = create_vector_store(datasource.id, user_id)
             doc_store = create_doc_store(datasource.identifier, user_id)
+            # Init the embedding model from the app settings
+            embed_model = init_embedding_model(datasource.embedding_provider, datasource.embedding_settings)
             # Get specific datasource tool
             tool = create_query_tool(session, datasource.identifier, vector_store, doc_store, embed_model, llm)
             tools.append(tool)
         else:
             # Get all datasource tools
             datasources = session.query(Datasource).all()
-            for ds in datasources:
+            for datasource in datasources:
                 # Get the vector store and doc store from the datasource identifier
-                logger.info(f"Creating vector store and doc store for datasource {ds.identifier}")
-                vector_store = create_vector_store(ds.id, user_id)
-                doc_store = create_doc_store(ds.identifier, user_id)
+                vector_store = create_vector_store(datasource.id, user_id)
+                doc_store = create_doc_store(datasource.identifier, user_id)
+                # Init the embedding model from the app settings
+                embed_model = init_embedding_model(datasource.embedding_provider, datasource.embedding_settings)
                 # Get specific datasource tool
                 tool = create_query_tool(
                     session=session, 
-                    datasource_identifier=ds.identifier, vector_store=vector_store, doc_store=doc_store, embed_model=embed_model, llm=llm)
+                    datasource_identifier=datasource.identifier, vector_store=vector_store, doc_store=doc_store, embed_model=embed_model, llm=llm)
                 tools.append(tool)
 
         # For each tool, set the callback manager to be able to display the events in the steps ui

@@ -49,9 +49,11 @@ export function OllamaToast() {
             <CheckCircle className="h-3 w-3 flex-shrink-0" />
           )}
           <span className="text-xs">
-            Waiting for ollama to be reachable and have the selected model downloaded. <br />
-            Check if the ollama host url is correctly set up in the settings and if when you access it in your browser, you see &quot;Ollama is running&quot;. <br />
-            Any file upload and processing attempts done while you see this toast will be queued and processed once the provider is ready and a new file is uploaded.
+            At least one of your ollama servers is unreachable. <br />
+            Check if the ollama host url is correctly set up in the settings and datasources settings. <br /> 
+            Do not add trailing slashes to the url, use http if you did not set up https for your ollama server and use OLLAMA_HOST=0.0.0.0 if you want to access it from outside your local network. <br />
+            Check if when you access it in your browser, you see &quot;Ollama is running&quot;. <br />
+            Any processing attempts done while you see this toast will be queued and processed once the provider is ready you trigger processing for a file.
           </span>
         </div>
       </div>
