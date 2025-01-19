@@ -1,6 +1,6 @@
 "use client";
 
-import { File, Folder, MoreVertical, Download, Trash2, Info, Layers, X } from "lucide-react";
+import { File, Folder, MoreVertical, Download, Trash2, Info, Layers, X, CheckCircle2, Clock } from "lucide-react";
 import { Button } from "../button";
 import {
   DropdownMenu,
@@ -172,17 +172,28 @@ export function FileItem({
     }
   };
 
+  const hasProcessedStacks = processed_stacks && JSON.parse(processed_stacks).length > 0;
+  const hasPendingStacks = stacks_to_process && JSON.parse(stacks_to_process).length > 0;
+
   return (
     <>
       <div 
         className="group relative flex items-center space-x-4 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
         onClick={handleClick}
       >
-        {type === 'folder' ? (
-          <Folder className="h-8 w-8 text-blue-500" />
-        ) : (
-          <File className="h-8 w-8 text-gray-500" />
-        )}
+        <div className="relative">
+          {type === 'folder' ? (
+            <Folder className="h-8 w-8 text-blue-500" />
+          ) : (
+            <File className="h-8 w-8 text-gray-500" />
+          )}
+          {hasProcessedStacks && (
+            <CheckCircle2 className="h-4 w-4 text-green-500 absolute -top-1 -right-1 bg-white rounded-full" />
+          )}
+          {hasPendingStacks && (
+            <Clock className="h-4 w-4 text-yellow-500 absolute -top-1 -right-1 bg-white rounded-full" />
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
           {size && <p className="text-sm text-gray-500">{size}</p>}
