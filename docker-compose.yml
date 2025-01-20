@@ -45,7 +45,6 @@ services:
       - "8000:8000"
     environment:
       ENVIRONMENT: prod
-      # Entrypoint script variables
       HOST_DOMAIN: ${HOST_DOMAIN}
       ANONYMIZED_TELEMETRY: False # For chromadb
     networks:
