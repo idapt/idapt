@@ -3,7 +3,7 @@ import logging
 from typing import Dict, List
 from llama_parse import LlamaParse
 from pydantic import BaseModel
-from app.config import DATA_DIR
+from app.constants.data_dir import DATA_DIR
 logger = logging.getLogger("uvicorn")
 
 class FileLoaderConfig(BaseModel):

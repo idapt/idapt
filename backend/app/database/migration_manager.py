@@ -8,7 +8,7 @@ from pathlib import Path
 from filelock import FileLock
 import os
 
-from app.database.connection import get_db_path
+from app.database.utils import get_db_path
 
 logger = logging.getLogger("uvicorn")
 
@@ -80,17 +80,17 @@ def run_migrations(engine: Engine, user_id: str):
                 with Session() as session:
                     try:
                         # Init default folders
-                        from app.services.db_file import create_default_db_filestructure
+                        from app.file_manager.db_file import create_default_db_filestructure
                         create_default_db_filestructure(session, user_id)
                         logger.info("Default folders initialized")
 
                         # Init default datasources
-                        from app.services.datasource import init_default_datasources
+                        from app.datasources.service import init_default_datasources
                         init_default_datasources(session, user_id)
                         logger.info("Default datasources initialized")
                         
                         # Init default processing stacks
-                        from app.services.processing_stacks import create_default_processing_stacks
+                        from app.processing_stacks.service import create_default_processing_stacks
                         create_default_processing_stacks(session)
                         logger.info("Default processing stacks initialized")
                         

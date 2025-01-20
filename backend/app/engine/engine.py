@@ -7,9 +7,9 @@ from llama_index.core.tools import BaseTool
 from sqlalchemy.orm import Session
 #from app.engine.tools import ToolFactory
 from app.settings.model_initialization import init_llm, init_embedding_model
-from app.services.llama_index import create_query_tool, create_vector_store, create_doc_store
+from app.file_manager.llama_index import create_query_tool, create_vector_store, create_doc_store
 from app.settings.models import AppSettings
-from app.services.settings import get_setting
+from app.settings.service import get_setting
 from app.database.models import Datasource
 
 import logging

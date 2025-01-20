@@ -6,7 +6,7 @@ from app.engine.loaders.db import DBLoaderConfig, get_db_documents
 from app.engine.loaders.file import FileLoaderConfig, get_file_documents
 from app.engine.loaders.web import WebLoaderConfig, get_web_documents
 from llama_index.core import Document
-from app.database.connection import get_connection_string
+from app.database.service import get_connection_string
 
 logger = logging.getLogger("uvicorn")
 

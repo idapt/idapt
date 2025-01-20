@@ -5,7 +5,7 @@ from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.llms.base import BaseLLM
 
 from sqlalchemy.orm import Session
-from app.services.settings import get_setting
+from app.settings.service import get_setting
 from app.settings.models import AppSettings
 
 def init_llm(session: Session) -> BaseLLM:

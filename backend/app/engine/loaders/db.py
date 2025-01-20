@@ -3,7 +3,7 @@ import os
 import yaml
 from typing import List
 from pydantic import BaseModel
-from app.database.connection import get_connection_string
+from app.database.service import get_connection_string
 logger = logging.getLogger("uvicorn")
 
 

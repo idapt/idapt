@@ -1,4 +1,0 @@
-file: {}
-db:
-  - uri: ""  # This will be replaced with the actual connection string
-    queries: []

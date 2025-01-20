@@ -3,17 +3,17 @@
 set -e
 
 # Process nginx.conf with environment variables
-envsubst '$HOST_DOMAIN' < /nginx-config-source/nginx.conf > /etc/nginx/nginx.conf
+envsubst '$HOST_DOMAIN $FRONTEND_PORT $API_PORT' < /nginx-config-source/nginx.conf > /etc/nginx/nginx.conf
 
 # If environment is dev, process dev-server.conf with environment variables
 if [ "$ENVIRONMENT" = "dev" ]; then
-    envsubst '$HOST_DOMAIN' < /nginx-config-source/dev-server.conf > /etc/nginx/conf.d/dev-server.conf
+    envsubst '$HOST_DOMAIN $FRONTEND_PORT $API_PORT' < /nginx-config-source/dev-server.conf > /etc/nginx/conf.d/dev-server.conf
 # If deployment type is hosted, process local-frontend-server.conf with environment variables
 elif [ "$DEPLOYMENT_TYPE" = "hosted" ]; then
-    envsubst '$HOST_DOMAIN' < /nginx-config-source/local-frontend-server.conf > /etc/nginx/conf.d/local-frontend-server.conf
+    envsubst '$HOST_DOMAIN $FRONTEND_PORT $API_PORT' < /nginx-config-source/local-frontend-server.conf > /etc/nginx/conf.d/local-frontend-server.conf
 else
     # Else process server.conf with environment variables
-    envsubst '$HOST_DOMAIN' < /nginx-config-source/server.conf > /etc/nginx/conf.d/server.conf
+    envsubst '$HOST_DOMAIN $FRONTEND_PORT $API_PORT' < /nginx-config-source/server.conf > /etc/nginx/conf.d/server.conf
 fi
 
 

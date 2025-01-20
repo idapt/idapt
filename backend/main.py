@@ -3,6 +3,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 import time
+from typing import Tuple
 # Set up logging configuration
 from app.api.logging import configure_app_logging
 configure_app_logging()
@@ -14,56 +15,36 @@ from fastapi import FastAPI
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI application"""
-
-    # Initialize observability for logging of this api
-    from app.observability import init_observability
-    init_observability()
      
     yield  # Application runs here
     
 
 def create_app() -> FastAPI:
+
     app = FastAPI(
         title="idapt API",
         lifespan=lifespan
     )
+
+    environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
+
+    # Initialize observability for logging of this api
+    if environment == "dev":
+        from app.api.observability import init_observability
+        init_observability()
     
     # Configure CORS
-    configure_cors(app)
+    from app.api.cors import configure_cors
+    configure_cors(app, environment)
     
     # Mount static files
     #mount_static_files(app)
     
     # Include API router
-    from app.api.routers import api_router
+    from app.api import api_router
     app.include_router(api_router, prefix="/api")
     
     return app
-
-def configure_cors(app: FastAPI):
-
-    from fastapi.middleware.cors import CORSMiddleware
-
-    environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
-
-    if environment == "dev":
-        app.add_middleware(
-            CORSMiddleware,
-            # For development we allow requests from any origin
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-    else:
-        app.add_middleware(
-            CORSMiddleware,
-            # For production we only allow requests from the same machine coming from the frontend as traffic is routed through nginx and origin is 127.0.0.1:3000
-            allow_origins=["*"],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
 
 # TODO Implement this without using StaticFiles and only return a file if authenticated and authorized and it need to be stateless
 #def mount_static_files(app: FastAPI):
@@ -81,6 +62,7 @@ def configure_cors(app: FastAPI):
 #    # Mount the output files from tools
 #    mount_directory("/data/.idapt/output", "/api/files/output")
 
+
 # Create the app instance
 app = create_app()
 
@@ -89,67 +71,38 @@ if __name__ == "__main__":
 
     import uvicorn
 
-    app_host = "0.0.0.0" #os.getenv("HOST_DOMAIN", "0.0.0.0") # For now use 0.0.0.0
-    app_port = 8000
+    host_domain = "0.0.0.0" #os.getenv("HOST_DOMAIN", "0.0.0.0") # TODO Use the host domain
+    api_port = int(os.getenv("API_PORT", 8000))
+    environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk set dev env in prod
+    deployment_type = os.getenv("DEPLOYMENT_TYPE", "self-hosted")
 
-    environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk exposing the API to the public
-    deployment_type = os.getenv("DEPLOYMENT_TYPE", "local")
-    host_domain = os.getenv("HOST_DOMAIN", "localhost")
-    ssl_keyfile = "/certs/live/" + host_domain + "/privkey.pem"
-    ssl_certfile = "/certs/live/" + host_domain + "/fullchain.pem"
-
-
-    if deployment_type == "hosted":
-        ssl_keyfile = "/etc/certs/tls.key"
-        ssl_certfile = "/etc/certs/tls.crt"
-        # Print the content of the certs folder
-        logger.info(f"Certs folder content: {os.listdir('/etc/certs')}")
-        # Wait until the certs are ready at /certs
-        while not os.path.exists(ssl_keyfile) or not os.path.exists(ssl_certfile):
-            logger.info("Waiting for certs to be ready")
-            time.sleep(1)
-        
-    else:
-        # Check if the certs are present in /certs and create them if not
-        if not os.path.exists(ssl_keyfile) or not os.path.exists(ssl_certfile):
-            # Create the backend managed tag file to indicate that the certs are managed by the backend
-            with open("/certs/backend-managed", "w") as f:
-                f.write("true")
-            # Create the certs
-            logger.info("Creating certs")
-            os.makedirs("/certs/live/" + host_domain, exist_ok=True)
-            os.system("openssl req -x509 -newkey rsa:4096 -keyout /certs/live/" + host_domain + "/privkey.pem -out /certs/live/" + host_domain + "/fullchain.pem -days 365 -nodes -subj '/CN=" + host_domain + "'")
-
-        # If they exist and are backend managed, check if the certs are valid
-        if os.path.exists("/certs/backend-managed") and os.path.exists("/certs/live/" + os.getenv("HOST_DOMAIN") + "/privkey.pem") and os.path.exists("/certs/live/" + os.getenv("HOST_DOMAIN") + "/fullchain.pem"):
-            # If the certs are not valid, regenerate new ones
-            if os.system("openssl x509 -in /certs/live/" + host_domain + "/fullchain.pem -noout -text") != 0:
-                logger.info("Certs are not valid, regenerating")
-                os.system("openssl req -x509 -newkey rsa:4096 -keyout /certs/live/" + host_domain + "/privkey.pem -out /certs/live/" + host_domain + "/fullchain.pem -days 365 -nodes -subj '/CN=" + host_domain + "'")
+    # Setup the backend certs
+    from app.api.certs import setup_backend_certs
+    ssl_keyfile_path, ssl_certfile_path = setup_backend_certs(host_domain, deployment_type)
 
     if environment == "dev":
         logger.info("Starting in development mode with hot reload")
         uvicorn.run(
             "main:app",
-            host=app_host,
-            port=app_port,
+            host=host_domain,
+            port=api_port,
             reload=True,
             reload_excludes=['venv', '.venv', 'output', 'config', '__pycache__'],
             reload_includes=['*.py'],
             reload_dirs=['app'],
             log_level="info",
-            ssl_keyfile=ssl_keyfile,
-            ssl_certfile=ssl_certfile
+            ssl_keyfile=ssl_keyfile_path,
+            ssl_certfile=ssl_certfile_path
         )
     else:
         logger.info("Starting in production mode")
         uvicorn.run(
             "main:app",
-            host=app_host,
-            port=app_port,
+            host=host_domain,
+            port=api_port,
             reload=False,
             workers=4,
-            log_level="info",
-            ssl_keyfile=ssl_keyfile,
-            ssl_certfile=ssl_certfile
+            log_level="error",
+            ssl_keyfile=ssl_keyfile_path,
+            ssl_certfile=ssl_certfile_path
         )

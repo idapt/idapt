@@ -4,7 +4,7 @@ import os
 import uuid
 from typing import List, Optional
 
-from app.services.file import DocumentFile, save_file
+from app.chat.file import DocumentFile, save_file
 from e2b_code_interpreter import CodeInterpreter
 from e2b_code_interpreter.models import Logs
 from llama_index.core.tools import FunctionTool

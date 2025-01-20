@@ -12,10 +12,12 @@ services:
       ENVIRONMENT: prod
       DEPLOYMENT_TYPE: self-hosted
       HOST_DOMAIN: ${HOST_DOMAIN}
+      API_PORT: ${API_PORT}
+      FRONTEND_PORT: ${FRONTEND_PORT}
     ports:
       # Expose the nginx listening ports through the host firewall.
       # Add 127.0.0.1 to only open ports locally and not through the host firewall.
-      - '443:443'
+      - '${FRONTEND_PORT}:${FRONTEND_PORT}'
     # Nginx has access to every container exposed via their own network for routing.
     networks:
       idapt-network: {}
@@ -42,10 +44,11 @@ services:
       context: ./backend
       dockerfile: ./Dockerfile
     ports:
-      - "8000:8000"
+      - "${API_PORT}:${API_PORT}"
     environment:
       ENVIRONMENT: prod
       HOST_DOMAIN: ${HOST_DOMAIN}
+      API_PORT: ${API_PORT}
       ANONYMIZED_TELEMETRY: False # For chromadb
     networks:
       idapt-network: {}
@@ -56,7 +59,7 @@ services:
       - user-data:/data # The volume where the data is stored. Use data mount name to make it shorter.
       - backend-certs:/certs # Needed to store, share and generate the certs
     healthcheck:
-      test: ["CMD", "curl", "-f", "https://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "https://localhost:${API_PORT}/api/health"]
       interval: 5s
       timeout: 10s
       retries: 3
