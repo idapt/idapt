@@ -73,7 +73,7 @@ async def can_process(session: Session, download_models: bool = True) -> bool:
         datasources = session.query(Datasource).all()
         # Check if any datasource is using ollama
         for datasource in datasources:
-            if datasource.embedding_provider == "ollama_embed" or datasource.llm_provider == "ollama_llm":
+            if datasource.embedding_provider == "ollama_embed":
                 ollama_embed_settings : OllamaEmbedSettings = OllamaEmbedSettings(**json.loads(datasource.embedding_settings))
                 # Check if the ollama server is reachable
                 if not await is_ollama_server_reachable(ollama_embed_settings.host):

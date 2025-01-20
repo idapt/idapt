@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
 
@@ -20,40 +20,71 @@ export function useProcessingStatus() {
   const { fetchWithAuth } = useApiClient();
   const [status, setStatus] = useState<ProcessingStatus | null>(null);
   const errorCountRef = useRef(0);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (!backend) return;
+
+    const wsUrl = backend.replace(/^http/, 'ws');
+    const userId = localStorage.getItem('userId');
+    const ws = new WebSocket(`${wsUrl}/api/processing/status/ws?user_id=${userId}`);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setStatus(data);
+      errorCountRef.current = 0;
+    };
+
+    ws.onclose = () => {
+      // Try to reconnect after 2 seconds
+      reconnectTimeoutRef.current = setTimeout(connect, 2000);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      ws.close();
+    };
+  }, [backend]);
+
+  const fetchInitialStatus = useCallback(async () => {
+    try {
+      const response = await fetchWithAuth(`${backend}/api/processing/status`, {
+        signal: new AbortController().signal
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Status response not ok: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setStatus(data);
+      errorCountRef.current = 0;
+    } catch (error) {
+      errorCountRef.current++;
+      if (errorCountRef.current > 3) {
+        setStatus(null);
+      }
+    }
+  }, [backend, fetchWithAuth]);
 
   useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchStatus = async () => {
-      try {
-        const response = await fetchWithAuth(`${backend}/api/processing/status`, {
-          signal: controller.signal
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Status response not ok: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setStatus(data);
-        errorCountRef.current = 0; // Reset error count on success
-      } catch (error) {
-        errorCountRef.current++;
-        //console.error(`Failed to fetch processing status (attempt ${errorCountRef.current}):`, error);
-        if (errorCountRef.current > 3) {
-          setStatus(null);
-        }
-      }
-    };
-
-    const interval = setInterval(fetchStatus, 2000);
-    fetchStatus(); // Initial fetch
+    // Fetch initial status then connect to WebSocket
+    fetchInitialStatus().then(() => {
+      connect();
+    });
 
     return () => {
-      controller.abort();
-      clearInterval(interval);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
     };
-  }, [backend, fetchWithAuth]);
+  }, [connect, fetchInitialStatus]);
 
   return { status };
 } 

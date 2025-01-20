@@ -3,6 +3,8 @@ import logging
 from typing import List
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+import asyncio
+from fastapi import WebSocket
 
 from app.services.processing import get_queue_status, process_queued_files, should_start_processing, mark_file_as_queued
 from app.services.database import get_db_session
@@ -78,16 +80,34 @@ async def get_processing_status_route(
         logger.error(f"Error in get_generation_status_route: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-#@r.websocket("/status/ws")
-#async def processing_status_websocket(
-#    websocket: WebSocket,
-#    session: Session = Depends(get_db_session),
-#    user_id: str = Depends(get_user_id),
-#):
-#    """WebSocket endpoint for generation status updates"""
-#    while True:
-#        await asyncio.sleep(1)
-#        # TODO Reimplement this, either use db on update or ...
+@r.websocket("/status/ws")
+async def processing_status_websocket(
+    websocket: WebSocket,
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_db_session),
+):
+    """WebSocket endpoint for processing status updates"""
+    await websocket.accept()
+    
+    prev_status = None
+    try:
+        while True:
+            # Check status every 2 seconds
+            current_status = get_queue_status(session)
+            
+            # Only send if status changed
+            if current_status != prev_status:
+                await websocket.send_json(current_status)
+                prev_status = current_status
+            
+            await asyncio.sleep(2)
+    except Exception as e:
+        logger.error(f"Error in processing_status_websocket: {str(e)}")
+    finally:
+        try:
+            await websocket.close()
+        except:
+            pass
 
 @r.post("/folder")
 async def process_folder_route(

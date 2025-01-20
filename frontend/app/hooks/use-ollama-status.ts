@@ -1,42 +1,67 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useClientConfig } from '@/app/components/ui/chat/hooks/use-config';
 import { useSettings } from "@/app/hooks/use-settings";
 import { useApiClient } from '@/app/lib/api-client';
 //import { AppSettings } from '../types/settings';
+
 export function useOllamaStatus() {
   const { backend } = useClientConfig();
   const [isDownloading, setIsDownloading] = useState(false);
   const { getProviderSettings } = useSettings();
   const { fetchWithAuth } = useApiClient();
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    if (!backend) return;
+
+    const wsUrl = backend.replace(/^http/, 'ws');
+    const userId = localStorage.getItem('userId');
+    const ws = new WebSocket(`${wsUrl}/api/ollama-status/ws?user_id=${userId}`);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setIsDownloading(data.is_downloading);
+    };
+
+    ws.onclose = () => {
+      // Try to reconnect after 2 seconds
+      reconnectTimeoutRef.current = setTimeout(connect, 2000);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      ws.close();
+    };
+  }, [backend]);
+
+  const fetchInitialStatus = useCallback(async () => {
+    try {
+      const response = await fetchWithAuth(`${backend}/api/ollama-status`);
+      const data = await response.json();
+      setIsDownloading(data.is_downloading);
+    } catch (error) {
+      setIsDownloading(true);
+    }
+  }, [backend, fetchWithAuth]);
 
   useEffect(() => {
-    const abortController = new AbortController();
-    const checkStatus = async () => {
-      try {
-        //const appSettings: AppSettings = await getProviderSettings("app");
-        // If the app settings embed model provider and llm model provider are both not set to ollama, we don't need to check the ollama status
-        //if (appSettings.embedding_model_provider !== 'ollama' && appSettings.llm_model_provider !== 'ollama') {
-        //  setIsDownloading(false);
-        //  return;
-        //}
+    // Fetch initial status then connect to WebSocket
+    fetchInitialStatus().then(() => {
+      connect();
+    });
 
-        const response = await fetchWithAuth(`${backend}/api/ollama-status`, { signal: abortController.signal });
-        const data = await response.json();
-        const isDownloading = data.is_downloading;
-        setIsDownloading(isDownloading);
-      } catch (error) {
-        //console.error('Failed to fetch ollama status:', error);
-        // By default, we set isDownloading to true to show the processing toast
-        setIsDownloading(true);
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
       }
     };
-
-    const interval = setInterval(checkStatus, 2000);
-    return () => {
-      clearInterval(interval);
-      abortController.abort();
-    };
-  }, [backend, getProviderSettings, fetchWithAuth]);
+  }, [connect, fetchInitialStatus]);
 
   return { isDownloading };
 }
