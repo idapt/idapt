@@ -1,4 +1,5 @@
-import { File, Folder, Datasource } from '@/app/types/files';
+import { File, Folder } from '@/app/types/files';
+import { Datasource } from '@/app/types/datasources';
 import { useCallback, useEffect, useState } from 'react';
 import { useClientConfig } from '../../chat/hooks/use-config';
 import { encodePathSafe } from '@/app/components/file-manager/utils/path-encoding';

@@ -1,6 +1,11 @@
 "use client";
 
-import { JSONValue } from "llamaindex";
+//import { JSONValue } from "llamaindex";
+type JSONValue = string | number | boolean | JSONObject | JSONArray;
+type JSONObject = {
+    [key: string]: JSONValue;
+};
+type JSONArray = Array<JSONValue>;
 import { useState } from "react";
 import {
   DocumentFile,
