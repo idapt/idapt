@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { SettingsProvider } from "./components/ui/settings/settings-provider";
-import "./globals.css";
-import "./markdown.css";
-import { Providers } from './components/providers/upload-provider';
-import { UserProvider } from './contexts/user-context';
-import { ProcessingStacksProvider } from "./components/ui/processing/processing-stacks-provider";
+import { SettingsProvider } from "@/app/components/settings/settings-provider";
+import "@/app/globals.css";
+import "@/app/markdown.css";
+import { Providers } from "@/app/components/providers/upload-provider";
+import { UserProvider } from "@/app/contexts/user-context";
+import { ProcessingStacksProvider } from "@/app/components/processing/processing-stacks-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 

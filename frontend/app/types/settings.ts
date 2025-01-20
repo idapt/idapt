@@ -123,13 +123,3 @@ export interface TEIEmbedSettings extends SettingBase {
   model: string;
   host: string;
 }
-
-
-
-export interface CreateDatasourceRequest {
-  name: string;
-  type: string;
-  settings: Record<string, any>;
-  embedding_provider: string;
-  embedding_settings: Record<string, any>;
-}

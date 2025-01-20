@@ -1,12 +1,12 @@
 import { XCircleIcon } from "lucide-react";
 import Image from "next/image";
-import DocxIcon from "../ui/icons/docx.svg";
-import PdfIcon from "../ui/icons/pdf.svg";
-import SheetIcon from "../ui/icons/sheet.svg";
-import TxtIcon from "../ui/icons/txt.svg";
-import DocumentIcon from "../ui/icons/document.svg";
-import { Button } from "./button";
-import { DocumentFile, DocumentFileType } from "./chat";
+import DocxIcon from "@/app/components/ui/icons/docx.svg";
+import PdfIcon from "@/app/components/ui/icons/pdf.svg";
+import SheetIcon from "@/app/components/ui/icons/sheet.svg";
+import TxtIcon from "@/app/components/ui/icons/txt.svg";
+import DocumentIcon from "@/app/components/ui/icons/document.svg";
+import { Button } from "@/app/components/ui/button";
+import { DocumentFile, DocumentFileType } from "@/app/components/chat";
 import {
   Drawer,
   DrawerClose,
@@ -15,8 +15,8 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "./drawer";
-import { cn } from "./lib/utils";
+} from "@/app/components/ui/drawer";
+import { cn } from "@/app/components/lib/utils";
 
 export interface DocumentPreviewProps {
   file: DocumentFile;

@@ -1,16 +1,3 @@
-export interface Datasource {
-  id: number;
-  identifier: string;
-  name: string;
-  type: string;
-  description?: string;
-  settings?: any;
-  embedding_provider?: string;
-  embedding_settings?: any;
-  created_at: number;
-  updated_at: number;
-}
-
 export interface File {
   id: number;
   name: string;

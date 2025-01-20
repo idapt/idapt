@@ -1,8 +1,8 @@
 import Header from "@/app/components/header";
-import { Settings } from "./components/ui/settings";
-import { ResetButton } from "./components/ui/chat/reset-button";
-import { NavMenu } from "./components/ui/nav/nav-menu";
-import ChatSection from "./components/chat-section";
+import { Settings } from "@/app/components/settings";
+import { ResetButton } from "@/app/components/chat/reset-button";
+import { NavMenu } from "@/app/components/nav/nav-menu";
+import ChatSection from "@/app/components/chat-section";
 
 export default function Home() {
   return (

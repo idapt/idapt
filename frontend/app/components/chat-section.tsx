@@ -2,8 +2,8 @@
 
 import { useChat } from "ai/react";
 import { useState } from "react";
-import { ChatInput, ChatMessages } from "./ui/chat";
-import { useClientConfig } from "./ui/chat/hooks/use-config";
+import { ChatInput, ChatMessages } from "@/app/components/chat";
+import { useClientConfig } from "@/app/components/chat/hooks/use-config";
 import { useUser } from "@/app/contexts/user-context";
 
 export default function ChatSection() {

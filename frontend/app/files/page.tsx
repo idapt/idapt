@@ -1,8 +1,8 @@
 import Header from "@/app/components/header";
-import { Settings } from "../components/ui/settings";
-import { NavMenu } from "../components/ui/nav/nav-menu";
-import { FileManager } from "../components/ui/file-manager/file-manager";
-import { ProcessingStacks } from "../components/ui/processing/processing-stacks";
+import { Settings } from "@/app/components/settings";
+import { NavMenu } from "@/app/components/nav/nav-menu";
+import { FileManager } from "@/app/components/file-manager/file-manager";
+import { ProcessingStacks } from "@/app/components/processing/processing-stacks";
 
 export default function Files() {
   return (
@@ -18,4 +18,4 @@ export default function Files() {
       <ProcessingStacks />
     </main>
   );
-}
+} 
