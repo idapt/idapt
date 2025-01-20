@@ -21,7 +21,7 @@ export function useProcessingStatus() {
   const [status, setStatus] = useState<ProcessingStatus | null>(null);
   const errorCountRef = useRef(0);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;

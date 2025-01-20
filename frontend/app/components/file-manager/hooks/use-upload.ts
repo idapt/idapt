@@ -12,7 +12,7 @@ interface FileUploadItem {
 
 export function useFiles() {
   const { backend } = useClientConfig();
-  const abortControllerRef = useRef<AbortController>();
+  const abortControllerRef = useRef<AbortController | null>(null);
   const shouldCancelAllRef = useRef(false);
   const [isUploading, setIsUploading] = useState(false);
   const { fetchWithAuth } = useApiClient();

@@ -29,7 +29,7 @@ import Markdown from "@/app/components/chat/chat-message/markdown";
 
 type ContentDisplayConfig = {
   order: number;
-  component: JSX.Element | null;
+  component: React.ReactNode | null;
 };
 
 function ChatMessageContent({

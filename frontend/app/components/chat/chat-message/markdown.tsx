@@ -97,15 +97,24 @@ export default function Markdown({
         p({ children }) {
           return <div className="mb-2 last:mb-0">{children}</div>;
         },
-        code({ node, inline, className, children, ...props }) {
-          if (children.length) {
-            if (children[0] == "▍") {
-              return (
-                <span className="mt-1 animate-pulse cursor-default">▍</span>
-              );
-            }
+        code({ node, inline, className, children, ...props }: {
+          node?: any;
+          inline?: boolean;
+          className?: string;
+          children?: React.ReactNode;
+        } & React.HTMLAttributes<HTMLElement>) {
+          if (Array.isArray(children) && children.length > 0) {
+            const firstChild = children[0];
+            
+            if (typeof firstChild === 'string') {
+              if (firstChild === "▍") {
+                return (
+                  <span className="mt-1 animate-pulse cursor-default">▍</span>
+                );
+              }
 
-            children[0] = (children[0] as string).replace("`▍`", "▍");
+              children[0] = firstChild.replace("`▍`", "▍");
+            }
           }
 
           const match = /language-(\w+)/.exec(className || "");

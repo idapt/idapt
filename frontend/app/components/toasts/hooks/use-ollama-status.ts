@@ -7,10 +7,9 @@ import { useApiClient } from '@/app/lib/api-client';
 export function useOllamaStatus() {
   const { backend } = useClientConfig();
   const [isDownloading, setIsDownloading] = useState(false);
-  const { getProviderSettings } = useSettings();
   const { fetchWithAuth } = useApiClient();
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
