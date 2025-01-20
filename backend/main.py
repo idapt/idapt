@@ -134,7 +134,7 @@ if __name__ == "__main__":
             host=app_host,
             port=app_port,
             reload=True,
-            workers=4,
+            reload_excludes=['venv', '.venv', 'output', 'config', '__pycache__'],
             reload_includes=['*.py'],
             reload_dirs=['app'],
             log_level="info",

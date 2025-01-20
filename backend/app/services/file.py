@@ -14,7 +14,6 @@ from llama_index.core.readers.file.base import (
 )
 from llama_index.core.schema import Document
 from llama_index.core.tools.function_tool import FunctionTool
-from llama_index.indices.managed.llama_cloud.base import LlamaCloudIndex
 from llama_index.readers.file import FlatReader
 from pydantic import BaseModel, Field
 logger = logging.getLogger("uvicorn")
@@ -73,6 +72,8 @@ def process_private_file(
     if extension == "csv" and any(tool in tools for tool in code_executor_tools):
         return document_file
     else:
+        from llama_index.indices.managed.llama_cloud.base import LlamaCloudIndex
+
         # Insert the file into the index and update document ids to the file metadata
         if isinstance(index, LlamaCloudIndex):
             doc_id = _add_file_to_llama_cloud_index(
@@ -203,7 +204,7 @@ def _add_documents_to_vector_store_index(
     #)
 
 def _add_file_to_llama_cloud_index(
-    index: LlamaCloudIndex,
+    index,
     file_name: str,
     file_data: bytes,
 ) -> str:

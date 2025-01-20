@@ -27,7 +27,7 @@
 
 
 # Container build script
-FROM python:3.11 AS backend-build
+FROM python:3.13 AS backend-build
 
 # Install all the poetry dependencies in a separate directory
 WORKDIR /poetry-install

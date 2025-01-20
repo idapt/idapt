@@ -3,14 +3,13 @@ FROM debian:bookworm-slim AS backend-build
 
 # Install Python and required packages
 RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3-pip \
-    python3.11-venv \
+    python3.13 \
+    python3.13-venv \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Add python to the path and create symlink for python command
-RUN ln -s /usr/bin/python3.11 /usr/bin/python
+RUN ln -s /usr/bin/python3.13 /usr/bin/python
 #ENV PATH=/usr/bin:$PATH
 
 # Install poetry with curl as recommended by poetry, use version 2.0.0, install it in /opt/poetry
@@ -37,9 +36,8 @@ FROM debian:bookworm-slim AS release
 
 # Install python
 RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3-pip \
-    python3-virtualenv \
+    python3.13 \
+    python3.13-venv \
     curl \
     openssl \
     && rm -rf /var/lib/apt/lists/*

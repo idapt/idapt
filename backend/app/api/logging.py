@@ -19,6 +19,9 @@ def configure_app_logging():
     uvicorn_logger = logging.getLogger("uvicorn")
     uvicorn_logger.handlers = []  # Remove existing handlers
     uvicorn_logger.propagate = False  # Don't propagate to root logger
+    # Configure watchfiles logger for dev
+    watchfiles_logger = logging.getLogger("watchfiles")
+    watchfiles_logger.setLevel(logging.DEBUG if environment == "dev" else logging.ERROR)
 
     uvicorn_access_logger = logging.getLogger("uvicorn.access")
     uvicorn_access_logger.setLevel(logging.WARNING if environment == "dev" else logging.WARNING)
