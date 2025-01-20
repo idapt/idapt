@@ -3,7 +3,7 @@ import { useClientConfig } from '../../chat/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
 
 interface FileUploadItem {
-  relative_path_from_home: string;
+  original_path: string;
   base64_content: string;
   name: string;
   file_created_at: number;

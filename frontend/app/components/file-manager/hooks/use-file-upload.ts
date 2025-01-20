@@ -33,7 +33,7 @@ export function useFileUpload() {
       // Upload file
       await uploadFileApi(
         {
-          relative_path_from_home: folderId ? `${folderId}/${file.name}` : file.name,
+          original_path: folderId ? `${folderId}/${file.name}` : file.name,
           base64_content: base64_content,
           name: file.name,
           file_created_at: file.lastModified / 1000,

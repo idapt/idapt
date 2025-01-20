@@ -4,58 +4,57 @@ from fastapi import HTTPException
 import shutil
 import re
 import uuid
-from typing import Tuple
 from sqlalchemy.orm import Session
 
 from app.user.user_path import get_user_data_dir
-from app.database.models import File, Datasource, Folder
+from app.database.models import File, Folder
 
 import logging
 logger = logging.getLogger('uvicorn')
 
-async def write_file_filesystem(full_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
+async def write_file_filesystem(fs_path: str, content: bytes | str, created_at_unix_timestamp: float, modified_at_unix_timestamp: float):
     """Write content to a file in the filesystem and set its metadata"""
     try:
-        full_path = Path(full_path)
+        fs_path = Path(fs_path)
 
         # Create parent directories if they don't exist
-        if not full_path.parent.exists():
-            await create_folder_filesystem(str(full_path.parent))
+        if not fs_path.parent.exists():
+            await create_folder_filesystem(str(fs_path.parent))
         
         if isinstance(content, str):
             content = content.encode()
             
         # Write the file content
-        with open(str(full_path), "wb") as f:
+        with open(str(fs_path), "wb") as f:
             f.write(content)
 
         # Set file timestamps
         # ! The file creation time will be set to the current time regardless of the value passed in
-        os.utime(str(full_path), (created_at_unix_timestamp, modified_at_unix_timestamp))
+        os.utime(str(fs_path), (created_at_unix_timestamp, modified_at_unix_timestamp))
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to write file: {str(e)}")
 
-async def read_file_filesystem(full_path: str) -> bytes:
+async def read_file_filesystem(fs_path: str) -> bytes:
     """Read file from the filesystem"""
     try:
-        with open(str(full_path), "rb") as f:
+        with open(str(fs_path), "rb") as f:
             return f.read()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read file: {str(e)}")
 
-async def create_folder_filesystem(full_path: str):
+async def create_folder_filesystem(fs_path: str):
     """Create a folder in the filesystem"""
     try:
-        os.makedirs(str(full_path), exist_ok=True)
+        os.makedirs(str(fs_path), exist_ok=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create folder: {str(e)}")
 
-async def delete_file_filesystem(full_path: str):
+async def delete_file_filesystem(fs_path: str):
     try:
-        full_path = Path(full_path)
-        if full_path.exists():
-            os.unlink(str(full_path))
+        fs_path = Path(fs_path)
+        if fs_path.exists():
+            os.unlink(str(fs_path))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
 
@@ -69,103 +68,44 @@ async def rename_file_filesystem(full_old_path: str, new_file_name: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to rename file: {str(e)}")
 
-async def delete_folder_filesystem(full_path: str):
+async def delete_folder_filesystem(fs_path: str):
     """Delete a folder and its contents from the filesystem"""
     try:
-        full_path = Path(full_path)
-        if full_path.exists():
-            shutil.rmtree(str(full_path))
+        fs_path = Path(fs_path)
+        if fs_path.exists():
+            shutil.rmtree(str(fs_path))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
 
-def get_full_path_from_path(path: str, user_id: str) -> str:
+def get_fs_path_from_path(path: str, user_id: str) -> str:
     """Convert a relative path to a full path including user directory"""
     try:
         
         data_dir = Path(get_user_data_dir(user_id))
         
         if path == "" or path is None:
-            logger.debug(f"Path is empty, returning data directory: {str(data_dir)}")
             return str(data_dir)
         
         path = Path(path)
-        logger.debug(f"Path: {str(data_dir / path)}")
         return str(data_dir / path)
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get full path from path: {str(e)}")
 
-def get_path_from_full_path(full_path: str, user_id: str) -> str:
+def get_path_from_fs_path(fs_path: str, user_id: str) -> str:
     """Convert a full filesystem path to a database path."""
     try:
-        if full_path is None or full_path == "":
+        if fs_path is None or fs_path == "":
             return ""
         # Remove the user data directory from the full path
         user_data_dir = get_user_data_dir(user_id) + '/'
-        path = full_path.replace(user_data_dir, '')
-        logger.debug(f"Path result: {path}")
+        path = fs_path.replace(user_data_dir, '')
         return path
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get path from full path: {str(e)}")
-
-def validate_path(relative_path_from_home: str, session: Session) -> None:
-    """Validate path format and security"""
-    try:
-        if not relative_path_from_home:
-            raise HTTPException(status_code=400, detail="File path cannot be empty")
-        
-        if len(relative_path_from_home) > 255:
-            raise HTTPException(status_code=400, detail="File name exceeds maximum length of 255 characters")
-
-        # Check for invalid characters in filename
-        invalid_chars = '<>:"|?*\\'
-        if any(char in relative_path_from_home for char in invalid_chars):
-            raise HTTPException(
-                status_code=400,
-                detail=f"File path contains invalid characters. The following characters are not allowed: {invalid_chars}"
-            )
-        
-        # Check if the path is relative and doesn't start with a /
-        if relative_path_from_home.startswith('/'):
-            raise HTTPException(status_code=400, detail="Path must be relative to the user's home directory")
-        
-        # Split path and validate datasource identifier
-        path_parts = relative_path_from_home.split('/')
-        if len(path_parts) < 1:
-            raise HTTPException(
-                status_code=400, 
-                detail="Invalid path format. Path must include datasource identifier (e.g., 'files/your-file.txt')"
-            )
-            
-        original_datasource_name = path_parts[0]
-        logger.info(f"Datasource name: {original_datasource_name}")
-        
-        # Check if datasource exists
-        datasource = session.query(Datasource).filter(Datasource.name == original_datasource_name).first()
-        if original_datasource_name == '.idapt' or not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{original_datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
-        
-        # Check for path traversal attempts
-        if '..' in relative_path_from_home or '//' in relative_path_from_home:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid path: potential path traversal detected"
-            )
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Path validation error: {str(e)}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid path format: {str(e)}"
-        )
     
-def get_existing_sanitized_path(session: Session, original_path: str) -> str:
-    """Get the existing sanitized path from the database"""
+def get_existing_fs_path_from_db(session: Session, original_path: str) -> str:
+    """Get the existing fs path from the database"""
     try:
         # Check if the file exists in the database
         file = session.query(File).filter(File.original_path == original_path).first()
@@ -177,21 +117,20 @@ def get_existing_sanitized_path(session: Session, original_path: str) -> str:
             return folder.path
         raise HTTPException(status_code=404, detail=f"File or folder not found: {original_path}")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to get existing sanitized path: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to get existing fs path: {str(e)}")
     
 def sanitize_name(name: str) -> str:
     """Sanitize a path name"""
     return re.sub(r'[^a-zA-Z0-9-_.]', '_', name)
 
-def get_new_sanitized_path(original_path: str, user_id: str, session: Session, last_path_part_is_file : bool = True) -> str:
+def get_new_fs_path(original_path: str, user_id: str, session: Session, last_path_part_is_file : bool = True) -> str:
     """
-    Sanitizes a path and ensures uniqueness for both original and sanitized paths.
+    Sanitizes a path and ensures uniqueness for both original and fs paths.
     If the path exists in the database, it returns the existing path for consistency.
     It checks both files and folders in the database.
     Returns (sanitized_path, full_sanitized_path)
     """
     try:
-        logger.debug(f"Sanitizing path: {original_path}")
         # Convert Windows path to Posix path if needed
         if '\\' in original_path:
             original_path = str(PureWindowsPath(original_path).as_posix())
@@ -203,7 +142,6 @@ def get_new_sanitized_path(original_path: str, user_id: str, session: Session, l
         
         # Decompose the original path into into parts and for each part create a folder in the database if it doesn't exist
         original_path_parts = Path(clean_original_path).parts
-        logger.debug(f"Original path parts: {original_path_parts}")
         current_original_path = Path()
         current_sanitized_path = Path()
         for part_index in range(len(original_path_parts)):
@@ -212,19 +150,18 @@ def get_new_sanitized_path(original_path: str, user_id: str, session: Session, l
             current_original_path = current_original_path / original_path_parts[part_index]
 
             
-            # If the file already exists in the database with original path, we can use the sanitized path from the database
+            # If the file already exists in the database with original path, we can use the fs path from the database
             existing_file = session.query(File).filter(File.original_path == str(current_original_path)).first()
             if existing_file:
-                logger.debug(f"File already exists in the database with original path: {str(current_original_path)}")
-                # Return the sanitized path from the database as this is the last part of the path
+                # Return the fs path from the database as this is the last part of the path
                 # Raise an error as the file already exists and this function is for creating a new path
                 raise HTTPException(status_code=400, detail=f"File already exists: {str(current_original_path)}")
                 
-            # If the folder already exists in the database at this original path, rebuild the current sanitized path from it and continue the loop
+            # If the folder already exists in the database at this original path, rebuild the current fs path from it and continue the loop
             existing_folder = session.query(Folder).filter(Folder.original_path == str(current_original_path)).first()
             if existing_folder:
-                # Get its sanitized path and use it so that we keep things consistent and dont risk creating a new folder with the same name
-                # Use it as the sanitized path for the rest of the loop as it contains the full right path up to this point
+                # Get its fs path and use it so that we keep things consistent and dont risk creating a new folder with the same name
+                # Use it as the fs path for the rest of the loop as it contains the full right path up to this point
                 current_sanitized_path = Path(existing_folder.path) 
                 # Continue the loop as we dont need to create the folder in the database
                 continue
@@ -235,10 +172,9 @@ def get_new_sanitized_path(original_path: str, user_id: str, session: Session, l
             if not parent_folder:
                 raise ValueError(f"Parent folder {str(current_parent_original_path)} not found")
             
-            # Build the sanitized path for the existing parent folder path that is already created and sanitized and add the current sanitized name to it
+            # Build the fs path for the existing parent folder path that is already created and fs and add the current fs name to it
             current_sanitized_path = Path(parent_folder.path) / sanitize_name(original_path_parts[part_index])
-            logger.debug(f"Current sanitized path: {current_sanitized_path}")
-            # Check if the sanitized path exists in the database and we need to generate a new unique sanitized path by appending a UUID to the end of the path
+            # Check if the fs path exists in the database and we need to generate a new unique fs path by appending a UUID to the end of the path
             if session.query(File).filter(File.path == str(current_sanitized_path)).first() or session.query(Folder).filter(Folder.path == str(current_sanitized_path)).first():
                 # Generate the uuid  
                 base_current_sanitized_path = current_sanitized_path
@@ -256,15 +192,12 @@ def get_new_sanitized_path(original_path: str, user_id: str, session: Session, l
                         # Split path into name and extension
                         base_name, ext = os.path.splitext(str(base_current_sanitized_path))
                         current_sanitized_path = Path(str(base_current_sanitized_path.parent) + '/' + base_name + '_' + str(uuid.uuid4())[:8] + ext)
-                        logger.debug(f"Path already exists: {current_sanitized_path} trying {attempt} times to generate a unique path")
                         # We then exit the loop as it is the last part of the path and we have found a unique path
                     
                         #return current_sanitized_path_str
                     else:
                         # If it is a folder
-                        
                         current_sanitized_path = Path(str(base_current_sanitized_path.parent) + '/' + sanitize_name(original_path_parts[part_index]) + f"_{str(uuid.uuid4())[:8]}")
-                        logger.debug(f"Path already exists for folder: {current_sanitized_path} trying {attempt} times to generate a unique path")
                     
                         
                 if attempt >= 100:

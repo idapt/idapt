@@ -7,9 +7,9 @@ from base64 import urlsafe_b64decode
 from app.api.utils import get_user_id
 from app.database.service import get_db_session
 from app.database.models import Datasource
-from app.datasources.models import DatasourceCreate, DatasourceResponse, DatasourceUpdate
+from app.datasources.schemas import DatasourceCreate, DatasourceResponse, DatasourceUpdate
 from app.datasources.service import get_datasource, create_datasource, delete_datasource, update_datasource
-from app.settings.models import OllamaEmbedSettings, OpenAIEmbedSettings
+from app.settings.schemas import OllamaEmbedSettings, OpenAIEmbedSettings
 import logging
 
 
@@ -85,8 +85,6 @@ async def create_datasource_route(
             case _:
                 raise ValueError(f"Unsupported embedding provider: {datasource.embedding_provider}")
             
-        logger.debug(f"Embedding settings: {json.dumps(embedding_settings.model_dump())}")
-
         created = create_datasource(
             session=session,
             user_id=user_id,

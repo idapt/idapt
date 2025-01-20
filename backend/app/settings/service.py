@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.database.models import Setting
-from app.settings.models import *
+from app.settings.schemas import *
 from typing import Type, Dict, Any
 import json
 import logging

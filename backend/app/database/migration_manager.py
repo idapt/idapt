@@ -80,7 +80,7 @@ def run_migrations(engine: Engine, user_id: str):
                 with Session() as session:
                     try:
                         # Init default folders
-                        from app.file_manager.db_file import create_default_db_filestructure
+                        from app.file_manager.service.db_operations import create_default_db_filestructure
                         create_default_db_filestructure(session, user_id)
                         logger.info("Default folders initialized")
 

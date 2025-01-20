@@ -9,10 +9,10 @@ from fastapi import WebSocket
 from app.processing.service import get_queue_status, process_queued_files, should_start_processing, mark_file_as_queued
 from app.database.service import get_db_session
 from app.api.utils import get_user_id
-from app.file_manager.file_system import get_existing_sanitized_path
+from app.file_manager.service.file_system import get_existing_fs_path_from_db
 from app.database.models import File, Folder
 from app.file_manager.router import decode_path_safe
-from app.file_manager.llama_index import delete_files_in_folder_recursive_from_llama_index, delete_file_llama_index
+from app.file_manager.service.llama_index import delete_files_in_folder_recursive_from_llama_index, delete_file_llama_index
 
 logger = logging.getLogger("uvicorn")
 
@@ -43,7 +43,7 @@ async def processing_route(
         for file in request.files:
             mark_file_as_queued(
                 session,
-                get_existing_sanitized_path(session, file["path"]),
+                get_existing_fs_path_from_db(session, file["path"]),
                 file.get("transformations_stack_name_list")
             )
 
@@ -118,7 +118,7 @@ async def process_folder_route(
 ):
     """Add all files in a folder to generation queue and start processing if needed"""
     try:
-        full_folder_path = get_existing_sanitized_path(session, request.folder_path)
+        full_folder_path = get_existing_fs_path_from_db(session, request.folder_path)
         
         if not session.query(Folder).filter(Folder.path == full_folder_path).first():
             raise HTTPException(status_code=400, detail=f"Path is not a directory: {request.folder_path}")
@@ -157,10 +157,10 @@ async def delete_processed_data_route(
 ):
     try:
         original_path = decode_path_safe(encoded_original_path)
-        full_path = get_existing_sanitized_path(session=session, original_path=original_path)
+        fs_path = get_existing_fs_path_from_db(session=session, original_path=original_path)
         
         # Check if it's a file
-        file = session.query(File).filter(File.path == full_path).first()
+        file = session.query(File).filter(File.path == fs_path).first()
         if file:
             # Delete llama index data
             delete_file_llama_index(session=session, user_id=user_id, file=file)
@@ -169,9 +169,9 @@ async def delete_processed_data_route(
             return {"success": True}
             
         # If not a file, check if it's a folder
-        folder = session.query(Folder).filter(Folder.path == full_path).first()
+        folder = session.query(Folder).filter(Folder.path == fs_path).first()
         if folder:
-            delete_files_in_folder_recursive_from_llama_index(session=session, user_id=user_id, full_folder_path=full_path)
+            delete_files_in_folder_recursive_from_llama_index(session=session, user_id=user_id, full_folder_path=fs_path)
             return {"success": True}
             
         raise HTTPException(status_code=404, detail="Item not found")

@@ -2,26 +2,26 @@ from pydantic import BaseModel
 from typing import List, Optional
 
 class FileUploadItem(BaseModel):
-    relative_path_from_home: str  # Relative path from the user home directory
+    original_path: str  # Relative path from the user home directory
     base64_content: str  # Base64 content
     name: str  # Original file name
+    # TODO Do pydantic validation for the file creation and modification time
     file_created_at: float # Unix timestamp in milliseconds
     file_modified_at: float # Unix timestamp in milliseconds
 
+class FileDownloadResponse(BaseModel):
+    content: bytes
+    media_type: str
+    filename: str
+    created_at: float
+    modified_at: float
 
-class FileUploadRequest(BaseModel):
-    items: List[FileUploadItem]
+class FolderDownloadResponse(BaseModel):
+    content: bytes
+    filename: str
+    mime_type: str
 
-
-class FileUploadProgress(BaseModel):
-    total: int
-    current: int
-    processed_items: List[str]
-    status: str
-    error: Optional[str] = None
-
-
-class FileResponse(BaseModel):
+class FileInfoResponse(BaseModel):
     id: int
     name: str
     path: str
@@ -37,7 +37,7 @@ class FileResponse(BaseModel):
     error_message: str | None = None
     status: str
 
-class FolderResponse(BaseModel):
+class FolderInfoResponse(BaseModel):
     id: int
     name: str
     path: str
@@ -46,5 +46,5 @@ class FolderResponse(BaseModel):
     accessed_at: float
 
 class FolderContentsResponse(BaseModel):
-    files: list[FileResponse]
-    folders: list[FolderResponse]
+    files: list[FileInfoResponse]
+    folders: list[FolderInfoResponse]

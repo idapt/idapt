@@ -1,8 +1,7 @@
-from app.file_manager.db_file import get_db_file, get_db_files_by_status
 from app.datasources.service import get_datasource_identifier_from_path
-from app.file_manager.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
+from app.file_manager.service.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.database.models import File, FileStatus, ProcessingStack
-from app.file_manager.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
+from app.file_manager.service.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
 from app.database.models import Datasource
 from app.processing_stacks.service import get_transformations_for_stack
 from app.ollama_status.service import can_process
@@ -56,7 +55,7 @@ def mark_file_as_queued(session: Session, file_path: str, stacks_to_process: Lis
         validated_stacks_to_process = _validate_stacks_to_process_for_file_extension(session, stacks_to_process, file_extension)
         
         # Get the file
-        file = get_db_file(session, file_path)
+        file = session.query(File).filter(File.path == file_path).first()
         if not file:
             raise ValueError(f"File not found: {file_path}")
 
@@ -359,7 +358,7 @@ def _process_single_file(session: Session, file: File, user_id: str):
                 session.rollback()
                 # try to delete the processing stack from llama index as it failed to try to avoid partially processed states
                 try:
-                    delete_file_processing_stack_from_llama_index(session=session, user_id=user_id, full_path=file.path, processing_stack_identifier=stack_identifier)
+                    delete_file_processing_stack_from_llama_index(session=session, user_id=user_id, fs_path=file.path, processing_stack_identifier=stack_identifier)
                 except Exception as e:
                     logger.error(f"Failed to delete erroring file stack {file.path} from stores: {str(e)}")
                 # Add the stack to the stacks_to_process list as it failed to process and if we retry to process the file we want it there
@@ -401,14 +400,8 @@ def _process_single_file(session: Session, file: File, user_id: str):
 def get_queue_status(session: Session) -> dict:
     """Get the current status of the generation queue"""
     try:
-        queued_files = get_db_files_by_status(
-            session, 
-            FileStatus.QUEUED
-        )
-        processing_files = get_db_files_by_status(
-            session,
-            FileStatus.PROCESSING
-        )
+        queued_files = session.query(File).filter(File.status == FileStatus.QUEUED).all()
+        processing_files = session.query(File).filter(File.status == FileStatus.PROCESSING).all()
         
         return {
             "queued_count": len(queued_files),

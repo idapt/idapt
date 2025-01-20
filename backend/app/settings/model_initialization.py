@@ -1,12 +1,12 @@
 import json
-from app.settings.models import *
+from app.settings.schemas import *
 from app.settings.model_providers import *
 from llama_index.core.base.embeddings.base import BaseEmbedding
 from llama_index.core.base.llms.base import BaseLLM
 
 from sqlalchemy.orm import Session
 from app.settings.service import get_setting
-from app.settings.models import AppSettings
+from app.settings.schemas import AppSettings
 
 def init_llm(session: Session) -> BaseLLM:
     """Initialize LLM based on model provider setting"""

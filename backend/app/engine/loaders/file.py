@@ -41,9 +41,9 @@ def get_file_documents(config: FileLoaderConfig, file_paths: List[str] = None):
         if file_paths:
             valid_paths = []
             for path in file_paths:
-                full_path = os.path.join(DATA_DIR, path)
-                if os.path.exists(full_path):
-                    valid_paths.append(full_path)
+                fs_path = os.path.join(DATA_DIR, path)
+                if os.path.exists(fs_path):
+                    valid_paths.append(fs_path)
                 else:
                     logger.warning(f"File not found: {path}")
             

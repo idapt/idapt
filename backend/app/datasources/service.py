@@ -2,12 +2,11 @@ import json
 from pathlib import Path
 from sqlalchemy.orm import Session
 from app.database.models import Datasource, Folder
-from app.file_manager.db_file import get_db_folder_id
-from app.file_manager.service import delete_folder
-from app.file_manager.file_system import get_full_path_from_path, get_new_sanitized_path
+from app.file_manager.service.service import delete_folder
+from app.file_manager.service.file_system import get_fs_path_from_path, get_new_fs_path
 from app.user.user_path import get_user_data_dir
-from app.file_manager.llama_index import delete_datasource_llama_index_components, delete_files_in_folder_recursive_from_llama_index
-from app.settings.models import OllamaEmbedSettings
+from app.file_manager.service.llama_index import delete_datasource_llama_index_components, delete_files_in_folder_recursive_from_llama_index
+from app.settings.schemas import OllamaEmbedSettings
 
 import logging
 from typing import List, Optional
@@ -23,8 +22,6 @@ def init_default_datasources(session: Session, user_id: str):
         if not get_datasource(session, "Files"):
             default_embedding_settings = OllamaEmbedSettings()
                         
-            logger.debug(f"Embedding settings: {json.dumps(default_embedding_settings.model_dump())}")
-
             create_datasource(
                 session=session,
                 user_id=user_id,
@@ -53,7 +50,6 @@ def create_datasource(
 ) -> Datasource:
     """Create a new datasource with its root folder and all required components"""
     try:
-        logger.debug(f"Creating datasource with name: {name}")
         # Check for invalid characters in name
         invalid_chars = '<>:"|?*\\'
         if any(char in name for char in invalid_chars):
@@ -61,12 +57,10 @@ def create_datasource(
                 f"Datasource name contains invalid characters. The following characters are not allowed: {invalid_chars}"
             )
 
-        # If the path already exists, the get_new_sanitized_path will append an uuid and get an unique path for it
-        full_path = get_new_sanitized_path(name, user_id, session, False)
-        # Extract the sanitized datasource name as identifier from the full path last component
-        logger.debug(f"Full path: {full_path}")
-        identifier = Path(full_path).name
-        logger.debug(f"Creating datasource with identifier: {identifier}")
+        # If the path already exists, the get_new_fs_path will append an uuid and get an unique path for it
+        fs_path = get_new_fs_path(name, user_id, session, False)
+        # Extract the fs datasource name as identifier from the full path last component
+        identifier = Path(fs_path).name
 
         if settings_json is None:
             settings_json = {}
@@ -75,11 +69,10 @@ def create_datasource(
             embedding_settings_json = {}
 
         root_folder_path = get_user_data_dir(user_id)
-        root_folder_id = get_db_folder_id(session, root_folder_path)
+        root_folder_id = session.query(Folder).filter(Folder.path == root_folder_path).first().id
 
         # Create root folder for datasource
-        full_datasource_path = get_full_path_from_path(identifier, user_id)
-        logger.debug(f"Full datasource path: {full_datasource_path}")
+        full_datasource_path = get_fs_path_from_path(identifier, user_id)
         # Try to get the folder from the database
         datasource_folder = session.query(Folder).filter(Folder.path == full_datasource_path).first()
         if not datasource_folder:

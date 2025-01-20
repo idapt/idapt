@@ -8,8 +8,8 @@ import json
 
 from sqlalchemy.orm import Session
 from app.database.models import Datasource, File, FileStatus
-from app.file_manager.db_file import get_db_file, get_db_folder_files_recursive
-from app.settings.models import AppSettings
+from app.file_manager.service.db_operations import get_db_folder_files_recursive
+from app.settings.schemas import AppSettings
 from app.settings.service import get_setting
 from app.user.user_path import get_user_app_data_dir
 
@@ -33,7 +33,6 @@ def create_vector_store(datasource_id: int, user_id: str) -> ChromaVectorStore:
     try:
         # Create the embeddings directory if it doesn't exist
         datasource_embeddings_dir = Path(get_vector_store_folder_path(datasource_id, user_id))
-        logger.debug(f"Creating vector store for datasource {datasource_id} at {datasource_embeddings_dir}")
 
         # Create the parent directory if it doesn't exist
         datasource_embeddings_dir.mkdir(parents=True, exist_ok=True)
@@ -171,9 +170,7 @@ def delete_files_in_folder_recursive_from_llama_index(session: Session, user_id:
         raise
 
 def delete_datasource_llama_index_components(datasource_identifier: str, datasource_id: int, user_id: str):
-    try:
-        logger.debug(f"Deleting datasource llama index components for {datasource_identifier}")
-        
+    try:        
         # Get the paths
         vector_store_path = get_vector_store_folder_path(datasource_id, user_id)
         docstore_file = get_docstore_file_path(datasource_identifier, user_id)
@@ -271,17 +268,17 @@ def delete_file_llama_index(session: Session, user_id: str, file: File):
         logger.error(f"Error deleting file from LlamaIndex: {str(e)}")
         raise e
 
-def delete_file_processing_stack_from_llama_index(session: Session, user_id: str, full_path: str, processing_stack_identifier: str):
+def delete_file_processing_stack_from_llama_index(session: Session, user_id: str, fs_path: str, processing_stack_identifier: str):
     try:
         # Get the file's ref_doc_ids from the database
-        file = get_db_file(session, full_path)
+        file = session.query(File).filter(File.path == fs_path).first()
         if not file or not file.ref_doc_ids:
-            logger.warning(f"No ref_doc_ids found for file: {full_path}")
+            logger.warning(f"No ref_doc_ids found for file: {fs_path}")
             return
 
         from app.datasources.service import get_datasource_identifier_from_path
         # Get the datasource name from the path
-        datasource_identifier = get_datasource_identifier_from_path(full_path)
+        datasource_identifier = get_datasource_identifier_from_path(fs_path)
         datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
 
         # Get the datasource vector store and docstore

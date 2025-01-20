@@ -1,5 +1,5 @@
 import os
-from app.settings.models import *
+from app.settings.schemas import *
 
 
 def init_ollama_embedding(ollama_embed_settings: OllamaEmbedSettings):

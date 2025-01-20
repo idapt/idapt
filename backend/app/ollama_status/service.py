@@ -1,7 +1,7 @@
 import json
 from fastapi import BackgroundTasks
 import logging
-from app.settings.models import AppSettings, OllamaLLMSettings, OllamaEmbedSettings
+from app.settings.schemas import AppSettings, OllamaLLMSettings, OllamaEmbedSettings
 import httpx
 import time
 from sqlalchemy.orm import Session
@@ -78,7 +78,7 @@ async def can_process(session: Session, download_models: bool = True) -> bool:
                 # Check if the ollama server is reachable
                 if not await is_ollama_server_reachable(ollama_embed_settings.host):
                     # We can't process files if the ollama server is not reachable, skip this processing request
-                    logger.error("Ollama server is not reachable, skipping processing request")
+                    #logger.error("Ollama server is not reachable, skipping processing request")
                     return False
                 if not await _check_ollama_model(ollama_embed_settings.host, ollama_embed_settings.model):
                     logger.info(f"Model {ollama_embed_settings.model} not found, downloading...")

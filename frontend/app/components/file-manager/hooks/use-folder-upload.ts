@@ -31,7 +31,7 @@ export function useFolderUpload() {
       });
 
       await uploadFileApi({
-        relative_path_from_home: targetPath ? `${targetPath}/${file.webkitRelativePath}` : file.webkitRelativePath,
+        original_path: targetPath ? `${targetPath}/${file.webkitRelativePath}` : file.webkitRelativePath,
         base64_content: base64Content,
         name: file.name,
         file_created_at: file.lastModified / 1000,

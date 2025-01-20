@@ -1,0 +1,415 @@
+from datetime import datetime
+from pathlib import Path
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+import zipfile
+from io import BytesIO
+import os
+import time
+
+# The services are already initialized in the main.py file
+from app.file_manager.service.db_operations import get_db_folder_files_recursive, delete_db_folder_recursive
+from app.file_manager.service.file_system import get_path_from_fs_path, get_fs_path_from_path, get_existing_fs_path_from_db, write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_new_fs_path
+from app.file_manager.service.llama_index import delete_file_llama_index
+from app.file_manager.schemas import FileUploadItem, FileDownloadResponse, FolderContentsResponse, FileInfoResponse, FolderInfoResponse, FolderDownloadResponse
+from app.database.models import FileStatus, File, Folder
+from app.file_manager.utils import validate_path, preprocess_base64_file
+
+import logging
+
+logger = logging.getLogger("uvicorn")
+
+async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> FileInfoResponse:
+    try:
+
+        # Validate path and raise if invalid
+        validate_path(item.original_path, session)
+
+        # Validate file content
+        if not item.base64_content:
+            raise HTTPException(status_code=400, detail="File content cannot be empty")
+            
+        # Validate base64 format
+        if not item.base64_content.startswith('data:'):
+            raise HTTPException(status_code=400, detail="Invalid base64 content format")
+            
+        # Extract content type and base64 data
+        content_parts = item.base64_content.split(',', 1)
+        if len(content_parts) != 2:
+            raise HTTPException(status_code=400, detail="Invalid base64 content format")
+
+        # Validate file metadata
+        if item.file_created_at and item.file_created_at < 0:
+            raise HTTPException(status_code=400, detail="Invalid file creation timestamp")
+            
+        if item.file_modified_at and item.file_modified_at < 0:
+            raise HTTPException(status_code=400, detail="Invalid file modification timestamp")
+        
+        fs_path = None
+        # Get fs paths
+        try:
+            #This will create or get the folders if they already exist by original path and if not it will create them minding existing ones
+            fs_path = get_new_fs_path(
+                item.original_path, 
+                user_id, 
+                session
+            )
+        # If the path already exists and an http error 400 error is raised, get the full path with get_existing_fs_path instead
+        except HTTPException as e:
+            if e.status_code == 400 and "File already exists" in e.detail:
+                # TODO Implement conflict resolution, for now overwrite
+                fs_path = get_existing_fs_path_from_db(session=session, original_path=item.original_path)
+            else:
+                raise e
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Unexpected error during file upload: {str(e)}")
+        
+        # Check if original path exists (handle overwrite)
+        existing_file = session.query(File).filter(
+            File.original_path == item.original_path
+        ).first()
+        
+        if existing_file:
+            # Check if file is being processed before allowing overwrite
+            if existing_file.status == FileStatus.PROCESSING:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Cannot overwrite file that is currently being processed"
+                )
+            # Delete existing file
+            await delete_file(session, user_id, existing_file.path)
+            
+        # Process file content and write to filesystem
+        decoded_file_data, mime_type = preprocess_base64_file(item.base64_content)       
+            
+        await write_file_filesystem(
+            fs_path=fs_path,
+            content=decoded_file_data,
+            created_at_unix_timestamp=item.file_created_at or time.time(),
+            modified_at_unix_timestamp=item.file_modified_at or time.time()
+        )
+
+        # Create database entry with error handling
+        try:
+            # Get parent folder id
+            parent_folder_path = str(Path(fs_path).parent)
+            parent_folder = session.query(Folder).filter(Folder.path == parent_folder_path).first()
+            if not parent_folder:
+                raise ValueError(f"Parent folder {parent_folder_path} not found")
+            
+            # Create file
+            file = File(
+                name=item.name,
+                path=fs_path,
+                original_path=item.original_path,
+                size=len(decoded_file_data),
+                mime_type=mime_type,
+                folder_id=parent_folder.id,
+                file_created_at=datetime.fromtimestamp(item.file_created_at) if item.file_created_at else datetime.now(),
+                file_modified_at=datetime.fromtimestamp(item.file_modified_at) if item.file_modified_at else datetime.now()
+            )
+            session.add(file)
+            session.commit()
+        except Exception as e:
+            # Clean up filesystem file if database insert fails
+            await delete_file_filesystem(fs_path)
+            session.rollback()
+            logger.error(f"Error creating database entry: {str(e)}")
+            raise HTTPException(
+                status_code=500, 
+                detail="Failed to create database entry for file"
+            )
+
+        return FileInfoResponse(
+            id=file.id,
+            name=file.name,
+            path=file.path,
+            original_path=file.original_path,
+            mime_type=file.mime_type,
+            size=file.size,
+            uploaded_at=file.uploaded_at.timestamp(),
+            accessed_at=file.accessed_at.timestamp(),
+            file_created_at=file.file_created_at.timestamp(),
+            file_modified_at=file.file_modified_at.timestamp(),
+            stacks_to_process=file.stacks_to_process,
+            processed_stacks=file.processed_stacks,
+            error_message=file.error_message,
+            status=file.status
+        )
+        
+    except Exception as e:
+        logger.error(f"Unexpected error during file upload: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred during file upload"
+        )
+    
+def get_folder_content(session: Session, user_id: str, original_path: str) -> FolderContentsResponse:
+    try:
+        logger.info(f"Getting folder contents for path: {original_path} for user {user_id}")
+        
+        if original_path:
+            validate_path(original_path, session)
+            # Convert it to the fs path used by the backend
+            fs_path = get_existing_fs_path_from_db(session=session, original_path=original_path)
+        else:
+            fs_path = get_fs_path_from_path("", user_id)
+
+        # Get folder id from path
+        folder_id = session.query(Folder).filter(Folder.path == fs_path).first().id
+
+        # Get all folders in this folder
+        folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
+
+        # Get files - for root folder (folder_id is None) or specific folder
+        files = session.query(File).filter(File.folder_id == folder_id).all()
+
+        files = [FileInfoResponse(
+            id=file.id,
+            name=file.name,
+            # We are leaving the api so convert the full path to path
+            path=get_path_from_fs_path(file.path, user_id),
+            original_path=get_path_from_fs_path(file.original_path, user_id),
+            mime_type=file.mime_type,
+            size=file.size,
+            uploaded_at=file.uploaded_at.timestamp(),
+            accessed_at=file.accessed_at.timestamp(),
+            file_created_at=file.file_created_at.timestamp(),
+            file_modified_at=file.file_modified_at.timestamp(),
+            stacks_to_process=file.stacks_to_process,
+            processed_stacks=file.processed_stacks,
+            error_message=file.error_message,
+            status=file.status
+        ) for file in files]
+        folders = [FolderInfoResponse(
+            id=folder.id,
+            name=folder.name,
+            # We are leaving the api so convert the full path to path
+            path=get_path_from_fs_path(folder.path, user_id),
+            original_path=get_path_from_fs_path(folder.original_path, user_id),
+            uploaded_at=folder.uploaded_at.timestamp(),
+            accessed_at=folder.accessed_at.timestamp()
+        ) for folder in folders]
+        return FolderContentsResponse(files=files, folders=folders)
+    
+    except Exception as e:
+        logger.error(f"Error getting folder content: {str(e)}")
+        raise HTTPException(status_code=500, detail="An unexpected error occurred while getting folder content")
+
+async def download_file(session: Session, original_path: str) -> FileDownloadResponse:
+    try:
+        # Validate path and raise if invalid
+        validate_path(original_path, session)
+
+        # Convert it to the fs path used by the backend, if it exists it will return the existing path in the database corresponding to the original path
+        fs_path = get_existing_fs_path_from_db(session=session, original_path=original_path)
+
+        # First try to get file from database to see fast if it exists
+        file = session.query(File).filter(File.path == fs_path).first()
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Get file content from filesystem
+        file_content = await read_file_filesystem(fs_path)
+
+        if not file_content:
+            raise HTTPException(status_code=404, detail="File content not found")
+
+        return FileDownloadResponse(
+            content=file_content,
+            filename=file.name,
+            mime_type=file.mime_type,
+            size=file.size,
+            created_at=file.file_created_at,
+            modified_at=file.file_modified_at
+        )
+        
+    except Exception as e:
+        logger.error(f"Error downloading file: {str(e)}")
+        raise
+
+async def delete_item(session: Session, user_id: str, original_path: str):
+    """ 
+    Delete the item at the given original path 
+    If it's a file, delete it
+    If it's a folder, delete it and child files and folders recursively
+    """
+    try:
+        # Validate path and raise if invalid
+        validate_path(original_path, session)
+        
+        # Convert it to the fs path used by the backend
+        fs_path = get_existing_fs_path_from_db(session=session, original_path=original_path)
+        
+        # Check if it's a file first
+        file = session.query(File).filter(File.path == fs_path).first()
+        if file:
+            await delete_file(session=session, user_id=user_id, fs_path=fs_path)
+            return {"success": True}
+            
+        # If not a file, check if it's a folder
+        folder = session.query(Folder).filter(Folder.path == fs_path).first()
+        if folder:
+            await delete_folder(session=session, user_id=user_id, fs_path=fs_path)
+            return {"success": True}
+            
+        # If neither found, return 404
+        raise HTTPException(status_code=404, detail="Item not found")
+    except Exception as e:
+        logger.error(f"Error deleting file from database: {str(e)}")
+        raise e
+
+async def delete_file(session: Session, user_id: str, fs_path: str):
+    try:
+        logger.info(f"Deleting file {fs_path} for user {user_id}")
+        file = session.query(File).filter(File.path == fs_path).first()
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Check if file is being processed
+        if file.status in [FileStatus.PROCESSING]:
+            raise HTTPException(
+                status_code=409,
+                detail="File is currently being processed and cannot be deleted"
+            )
+
+        # Proceed with deletion
+        await delete_file_filesystem(fs_path)
+        delete_file_llama_index(session=session, user_id=user_id, file=file)
+        # Delete from database
+        session.delete(file)
+        session.commit()
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error deleting file: {str(e)}")
+        raise
+
+async def delete_folder(session: Session, user_id: str, fs_path: str):
+    # TODO Make more robust to avoid partial deletion
+    try:
+        logger.info(f"Deleting folder: {fs_path}")
+
+        folder = session.query(Folder).filter(Folder.path == fs_path).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found")
+
+        # Get all files in folder and subfolders recursively
+        files, subfolders = get_db_folder_files_recursive(session, fs_path)
+        
+        processing_files = []
+        deleted_files = []
+        failed_files = []
+
+        # First delete from filesystem and LlamaIndex
+        for file in files:
+            try:
+                # Skip files that are being processed
+                if file.status in [FileStatus.PROCESSING]:
+                    processing_files.append(file.path)
+                    continue
+
+                await delete_file(session=session, user_id=user_id, fs_path=file.path)
+                delete_file_llama_index(session=session, user_id=user_id, file=file)
+                session.delete(file)
+                session.commit()
+                deleted_files.append(file.path)
+            except Exception as e:
+                logger.warning(f"Error deleting file {file.path}: {str(e)}")
+                failed_files.append(file.path)
+                continue
+
+        # Delete folder from filesystem if no files are being processed
+        if not processing_files:
+            await delete_folder_filesystem(fs_path)
+            
+            # Delete everything from database in one transaction
+            delete_db_folder_recursive(session, fs_path)
+
+        else:
+            # Raise an exception with information about processing files
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Some files are being processed and cannot be deleted",
+                    "processing_files": processing_files,
+                    "deleted_files": deleted_files,
+                    "failed_files": failed_files
+                }
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting folder: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Unused
+async def rename_file(session: Session, user_id: str, fs_path: str, new_name: str):
+    try:
+        file = session.query(File).filter(File.path == fs_path).first()
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Rename in filesystem
+        await rename_file_filesystem(fs_path, new_name)
+        
+        new_fs_path = file.path.replace(file.name, new_name)
+        
+        # Update database
+        #updated_file =
+        #if not updated_file:
+        #    raise HTTPException(status_code=500, detail="Failed to update file in database")
+
+        # Update in LlamaIndex
+        #rename_file_llama_index(session=session, user_id=user_id, full_old_path=fs_path, full_new_path=new_fs_path) 
+
+    except Exception as e:
+        logger.error(f"Error renaming file: {str(e)}")
+        raise
+
+async def download_folder(session: Session, original_path: str) -> FolderDownloadResponse:
+    try:
+        # Validate path and raise if invalid
+        validate_path(original_path, session)
+        # Convert it to the fs path used by the backend
+        fs_path = get_existing_fs_path_from_db(session=session, original_path=original_path)
+        # Get folder from database
+        folder = session.query(Folder).filter(Folder.path == fs_path).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found")
+        
+        # Create a memory buffer for the zip file
+        zip_buffer = BytesIO()
+        
+        # Create zip file
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Get all files recursively
+            files, _ = get_db_folder_files_recursive(session, fs_path)
+            
+            # Iterate over all retrieved files
+            for file in files:
+                # TODO Make it work with original paths
+                # Calculate relative path within the zip
+                relative_path = os.path.relpath(file.path, folder.path)
+                
+                # Read file content
+                file_content = await read_file_filesystem(file.path)
+
+                # Write file content to zip
+                if file_content:
+                    zip_file.writestr(relative_path, file_content)
+        
+        # Get the zip content
+        zip_buffer.seek(0)
+        zip_content = zip_buffer.getvalue()
+        
+        return FolderDownloadResponse(
+            content=zip_content,
+            filename=f"{folder.name}.zip",
+            mime_type="application/zip"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating folder zip: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error creating folder zip: {str(e)}")
