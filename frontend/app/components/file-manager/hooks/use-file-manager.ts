@@ -19,38 +19,46 @@ export function useFileManager() {
   const fetchFolderContents = useCallback(async (path?: string) => {
     try {
       setLoading(true);
-      const encodedPath = path ? encodePathSafe(path) : '';
       
-      const [folderResponse, datasourcesResponse] = await Promise.all([
-        fetchWithAuth(`${backend}/api/file-manager/folder/${encodedPath}`),
-        fetchWithAuth(`${backend}/api/datasources`)
-      ]);
+      if (!path) {
+        // Only fetch datasources for root view
+        const datasourcesResponse = await fetchWithAuth(`${backend}/api/datasources`);
+        if (!datasourcesResponse.ok) throw new Error('Failed to fetch datasources');
+        const datasources = await datasourcesResponse.json();
+        setFiles([]);
+        setFolders([]);
+        setDatasources(datasources);
+        setCurrentDatasource(undefined);
+      } else {
+        // Fetch folder contents and datasources
+        const encodedPath = encodePathSafe(path);
+        const [folderResponse, datasourcesResponse] = await Promise.all([
+          fetchWithAuth(`${backend}/api/file-manager/folder/${encodedPath}`),
+          fetchWithAuth(`${backend}/api/datasources`)
+        ]);
 
-      if (!folderResponse.ok) throw new Error('Failed to fetch folder contents');
-      if (!datasourcesResponse.ok) throw new Error('Failed to fetch datasources');
+        if (!folderResponse.ok) throw new Error('Failed to fetch folder contents');
+        if (!datasourcesResponse.ok) throw new Error('Failed to fetch datasources');
 
-      const [folderData, datasources] = await Promise.all([
-        folderResponse.json(),
-        datasourcesResponse.json()
-      ]);
+        const [folderData, datasources] = await Promise.all([
+          folderResponse.json(),
+          datasourcesResponse.json()
+        ]);
 
-      setFiles(folderData.files);
-      setFolders(folderData.folders);
-      setDatasources(datasources);
+        setFiles(folderData.files);
+        setFolders(folderData.folders);
+        setDatasources(datasources);
 
-      // Set current datasource
-      if (path) {
+        // Set current datasource
         const pathParts = path.split('/').filter(Boolean);
         if (pathParts.length > 0) {
           const datasourceIdentifier = pathParts[0];
           const currentDatasource = datasources.find((d: Datasource) => d.identifier === datasourceIdentifier);
           setCurrentDatasource(currentDatasource);
         }
-      } else {
-        setCurrentDatasource(undefined);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch folder contents');
+      setError(e instanceof Error ? e.message : 'Failed to fetch contents');
     } finally {
       setLoading(false);
     }
@@ -61,7 +69,7 @@ export function useFileManager() {
     fetchFolderContents(path);
   }, [fetchFolderContents]);
 
-  // Initial load of root folder
+  // Initial load of datasources only
   useEffect(() => {
     fetchFolderContents();
   }, [fetchFolderContents]);

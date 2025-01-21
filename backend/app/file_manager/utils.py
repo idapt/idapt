@@ -17,7 +17,7 @@ def decode_path_safe(encoded_original_path: str) -> str:
         raise HTTPException(status_code=400, detail="Invalid path encoding")
 
 
-def validate_path(original_path: str, session: Session) -> str:
+def validate_path(original_path: str) -> str:
     """Validate path format and security, raise if invalid and return the str if ok"""
     try:
         if not original_path:
@@ -45,18 +45,7 @@ def validate_path(original_path: str, session: Session) -> str:
                 status_code=400, 
                 detail="Invalid path format. Path must include datasource identifier (e.g., 'files/your-file.txt')"
             )
-            
-        original_datasource_name = path_parts[0]
-        logger.info(f"Datasource name: {original_datasource_name}")
-        
-        # Check if datasource exists
-        datasource = session.query(Datasource).filter(Datasource.name == original_datasource_name).first()
-        if original_datasource_name == '.idapt' or not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{original_datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
-        
+                    
         # Check for path traversal attempts
         if '..' in original_path or '//' in original_path:
             raise HTTPException(

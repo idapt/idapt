@@ -56,6 +56,10 @@ def create_datasource(
             raise ValueError(
                 f"Datasource name contains invalid characters. The following characters are not allowed: {invalid_chars}"
             )
+        
+        # Check if the datasource name is valid
+        if name == '.idapt':
+            raise ValueError("Datasource name cannot be '.idapt'")
 
         # If the path already exists, the get_new_fs_path will append an uuid and get an unique path for it
         fs_path = get_new_fs_path(name, user_id, session, False)

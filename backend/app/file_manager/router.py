@@ -8,7 +8,7 @@ from app.file_manager.service.file_system import get_existing_fs_path_from_db
 from app.file_manager.service.service import upload_file, download_file, delete_item, download_folder, get_folder_content
 from app.database.service import get_db_session
 from app.api.utils import get_user_id
-from app.file_manager.utils import decode_path_safe, validate_path
+from app.file_manager.utils import decode_path_safe
 
 import logging
 
@@ -55,29 +55,13 @@ async def delete_route(
         raise HTTPException(status_code=500, detail="Failed to delete item")
     
 @r.get(
-    "/folder",
-    response_model=FolderContentsResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Get root folder contents"
-)
-async def get_root_folder_contents_route(
-    user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
-):
-    try:
-        return get_folder_content(session=session, user_id=user_id, original_path="")
-    except Exception as e:
-        logger.error(f"Error getting root folder contents: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to get root folder contents")
-
-@r.get(
     "/folder/{encoded_original_path}",
     response_model=FolderContentsResponse,
     status_code=status.HTTP_200_OK,
     summary="Get folder contents"
 )
 async def get_folder_contents_route(
-    encoded_original_path: str | None = None,
+    encoded_original_path: str,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session),
     original_path: str = Depends(decode_path_safe)
