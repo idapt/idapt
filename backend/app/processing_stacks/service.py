@@ -1,5 +1,12 @@
+import logging
+import re
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
+
+from app.settings.model_initialization import init_embedding_model
+from app.constants.file_extensions import TEXT_FILE_EXTENSIONS
 from app.database.models import Datasource, ProcessingStack, ProcessingStep, ProcessingStackStep
+from app.processing_stacks.schemas import ProcessingStackCreate, ProcessingStackResponse, ProcessingStackStepCreate, SentenceSplitterParameters, ProcessingStackUpdate, ProcessingStackStepUpdate, ProcessingStackStepResponse, ProcessingStepResponse
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.extractors import (
     TitleExtractor,
@@ -8,13 +15,6 @@ from llama_index.core.extractors import (
     KeywordExtractor,
 )
 
-from pydantic import BaseModel, Field
-import logging
-import re
-
-from app.settings.model_initialization import init_embedding_model
-from app.constants.file_extensions import TEXT_FILE_EXTENSIONS
-
 logger = logging.getLogger("uvicorn")
 
 def create_default_processing_stacks(session: Session):
@@ -22,10 +22,11 @@ def create_default_processing_stacks(session: Session):
     try:
         # Create processing steps
         # Sentence splitter step
-        create_processing_step(session=session, type="node_parser", identifier="sentence_splitter", display_name="Sentence Splitter", description="Splits text into sentences with configurable chunk size and overlap", parameters_schema=SentenceSplitterParameters.model_json_schema())
+        session.add(ProcessingStep(type="node_parser", identifier="sentence_splitter", display_name="Sentence Splitter", description="Splits text into sentences with configurable chunk size and overlap", parameters_schema=SentenceSplitterParameters.model_json_schema()))
         # Embedding step
-        create_processing_step(session=session, type="embedding", identifier="embedding", display_name="Embedding", description="Converts text into vector embeddings for semantic search", parameters_schema={})
-
+        session.add(ProcessingStep(type="embedding", identifier="embedding", display_name="Embedding", description="Converts text into vector embeddings for semantic search", parameters_schema={}))
+        
+        session.commit()
 
         # Text Processing
         # Try to get the stack from the database
@@ -33,21 +34,29 @@ def create_default_processing_stacks(session: Session):
         if text_processing_stack:
             logger.info(f"Text processing stack already exists: {text_processing_stack.display_name}")
             return
-        # Text Processing
-        create_empty_processing_stack(
-            session=session,
-            stack_identifier="text_processing",
+        
+        # Create the processing stack
+        text_processing_stack_create = ProcessingStackCreate(
             display_name="Text Processing",
             description="Processing stack for text data",
-            supported_extensions=list(TEXT_FILE_EXTENSIONS)
+            supported_extensions=list(TEXT_FILE_EXTENSIONS),
+            steps=[
+                ProcessingStackStepCreate(
+                    step_identifier="sentence_splitter",
+                    order=1,
+                    parameters=SentenceSplitterParameters(
+                        chunk_size=512,
+                        chunk_overlap=128
+                    ).model_dump()
+                ),
+                ProcessingStackStepCreate(
+                    step_identifier="embedding",
+                    order=2,
+                    parameters={}
+                )
+            ]
         )
-        # Add processing stack steps to it 
-        sentence_splitter_parameters = SentenceSplitterParameters(
-            chunk_size=512,
-            chunk_overlap=128
-        )
-        add_processing_stack_step(session=session, stack_identifier="text_processing", step_identifier="sentence_splitter", order=1, parameters=sentence_splitter_parameters.model_dump())
-        add_processing_stack_step(session=session, stack_identifier="text_processing", step_identifier="embedding", order=2, parameters={})
+        create_processing_stack(session=session, stack=text_processing_stack_create)
 
         # TODO Add image, video, audio, code processing stacks
 
@@ -55,50 +64,125 @@ def create_default_processing_stacks(session: Session):
     except Exception as e:
         session.rollback()
         logger.error(f"Error creating default processing stacks: {e}")
+        raise e    
+
+def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> ProcessingStackResponse:
+    """Create a processing stack"""
+    try:
+        
+        # Check for invalid characters in display name
+        invalid_chars = '<>:"|?*\\'
+        if any(char in stack.display_name for char in invalid_chars):
+            raise ValueError(
+                f"Processing stack display name contains invalid characters. The following characters are not allowed: {invalid_chars}"
+            )
+
+        # Generate identifier
+        stack_identifier = generate_stack_identifier(stack.display_name)
+
+        # Create the stack
+        stack_to_create = ProcessingStack(
+            identifier=stack_identifier,
+            display_name=stack.display_name,
+            description=stack.description,
+            supported_extensions=stack.supported_extensions,
+            steps=[]
+        )
+        session.add(stack_to_create)
+        session.commit()
+        
+        # Add steps with this function so that validation is done there
+        for step in stack.steps:
+            add_processing_stack_step(
+                session=session,
+                stack_identifier=stack_identifier,
+                step_identifier=step.step_identifier,
+                order=step.order,
+                parameters=step.parameters or {}
+            )
+
+        response = ProcessingStackResponse(
+            identifier=stack_to_create.identifier,
+            display_name=stack_to_create.display_name,
+            description=stack_to_create.description,
+            is_enabled=stack_to_create.is_enabled,
+            steps=[ ProcessingStackStepResponse(
+                id=step.id,
+                order=step.order,
+                parameters=step.parameters,
+                step_identifier=step.step_identifier,
+                step=ProcessingStepResponse(
+                    identifier=step.step.identifier,
+                    display_name=step.step.display_name,
+                    description=step.step.description,
+                    type=step.step.type,
+                    parameters_schema=step.step.parameters_schema
+                )
+            ) for step in sorted(stack_to_create.steps, key=lambda x: x.order) ]
+        )
+    
+        return response
+    
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error creating processing stack: {e}")
         raise e
     
-class SentenceSplitterParameters(BaseModel):
-    chunk_size: int = Field(description="The size of the chunks to split the text into", default=512)
-    chunk_overlap: int = Field(description="The overlap of the chunks to split the text into", default=128)
-
-def create_processing_step(session: Session, type: str, identifier: str, display_name: str, description: str, parameters_schema: dict):
-    """Create a processing step in the database"""
+def update_processing_stack(session: Session, stack_identifier: str, stack_update: ProcessingStackUpdate) -> ProcessingStackResponse:
+    """Update a processing stack"""
     try:
-        # Check if the processing step already exists
-        existing_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == identifier).first()
-        if existing_step:
-            raise ValueError(f"Processing step with identifier '{identifier}' already exists")
+
+        db_stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
+        if not db_stack:
+            raise HTTPException(status_code=404, detail="Stack not found")
         
-        session.add(ProcessingStep(type=type, identifier=identifier, display_name=display_name, description=description, parameters_schema=parameters_schema))
+        # Update supported extensions if provided
+        if stack_update.supported_extensions is not None:
+            db_stack.supported_extensions = stack_update.supported_extensions
+        
+        # Delete existing steps
+        session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier).delete()
+        
+        # Add new steps
+        for step in stack_update.steps:
+            add_processing_stack_step(
+                session=session,
+                stack_identifier=stack_identifier,
+                step_identifier=step.step_identifier,
+                order=step.order,
+                parameters=step.parameters or {}
+            )
+        
         session.commit()
+        
+        # Return updated stack
+        updated_stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
+        return ProcessingStackResponse(
+            identifier=updated_stack.identifier,
+            display_name=updated_stack.display_name,
+            description=updated_stack.description,
+            is_enabled=updated_stack.is_enabled,
+            steps=[
+                ProcessingStackStepResponse(
+                    id=step.id,
+                    order=step.order,
+                    parameters=step.parameters,
+                    step_identifier=step.step_identifier,
+                    step=ProcessingStepResponse(
+                        identifier=step.step.identifier,
+                        display_name=step.step.display_name,
+                        description=step.step.description,
+                        type=step.step.type,
+                        parameters_schema=step.step.parameters_schema
+                    )
+                )
+                for step in sorted(updated_stack.steps, key=lambda x: x.order)
+            ]
+        )
+
     except Exception as e:
         session.rollback()
-        logger.error(f"Error creating processing step: {e}")
-        raise e
-
-def create_empty_processing_stack(
-    session: Session, 
-    stack_identifier: str, 
-    display_name: str, 
-    description: str,
-    supported_extensions: list[str] | None = None
-):
-    """Create an empty processing stack in the database"""
-    try:
-        existing_stack = session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_identifier).first()
-        if existing_stack:
-            raise ValueError(f"Processing stack with identifier '{stack_identifier}' already exists")
-
-        session.add(ProcessingStack(
-            identifier=stack_identifier, 
-            display_name=display_name, 
-            description=description,
-            supported_extensions=supported_extensions
-        ))
-        session.commit()
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Error creating empty processing stack: {e}")
+        logger.error(f"Error updating processing stack: {e}")
         raise e
     
 def get_default_parameters(parameters_schema: dict) -> dict:

@@ -1,17 +1,20 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import List
 
 from app.database.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.database.service import get_db_session
+from app.api.utils import get_user_id
+from app.processing_stacks.schemas import (
+    ProcessingStackCreate,
+    ProcessingStackUpdate,
+    ProcessingStepResponse,
+    ProcessingStackResponse,
+    ProcessingStackStepResponse
+)
 from app.processing_stacks.service import (
-    create_empty_processing_stack,
-    add_processing_stack_step,
-    change_processing_stack_step_order,
-    delete_processing_stack_step,
-    create_processing_step,
-    generate_stack_identifier,
+    create_processing_stack,
+    update_processing_stack,
     delete_processing_stack
 )
 
@@ -21,179 +24,99 @@ logger = logging.getLogger("uvicorn")
 
 processing_stacks_router = r = APIRouter()
 
-class ProcessingStepCreate(BaseModel):
-    identifier: str
-    display_name: str
-    description: Optional[str] = None
-    type: str
-    parameters_schema: dict
-
-class ProcessingStackStepUpdate(BaseModel):
-    step_identifier: str
-    order: int
-    parameters: Optional[dict] = None
-
-class ProcessingStackUpdate(BaseModel):
-    steps: List[ProcessingStackStepUpdate]
-    supported_extensions: Optional[List[str]] = None
-
-class ProcessingStackCreate(BaseModel):
-    display_name: str
-    description: Optional[str] = None
-    supported_extensions: Optional[List[str]] = None
-    steps: List[ProcessingStackStepUpdate]
-
-@r.get("/steps")
-async def get_processing_steps_route(session: Session = Depends(get_db_session)):
+@r.get(
+    "/steps",
+    response_model=List[ProcessingStepResponse]
+)
+async def get_processing_steps_route(
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_db_session)
+):
     try:
         steps = session.query(ProcessingStep).all()
         return [
-            {
-                "identifier": step.identifier,
-                "display_name": step.display_name,
-                "description": step.description,
-                "type": step.type,
-                "parameters_schema": step.parameters_schema
-            }
+            ProcessingStepResponse(
+                identifier=step.identifier,
+                display_name=step.display_name,
+                description=step.description,
+                type=step.type,
+                parameters_schema=step.parameters_schema
+            )
             for step in steps
         ]
     except Exception as e:
         logger.error(f"Error getting processing steps: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@r.get("/stacks")
-async def get_processing_stacks_route(session: Session = Depends(get_db_session)):
+@r.get(
+    "/stacks",
+    response_model=List[ProcessingStackResponse]
+)
+async def get_processing_stacks_route(
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_db_session)
+):
     try:
         stacks = session.query(ProcessingStack).all()
         return [
-            {
-                "identifier": stack.identifier,
-                "display_name": stack.display_name,
-                "description": stack.description,
-                "is_enabled": stack.is_enabled,
-                "steps": [
-                    {
-                        "id": step.id,
-                        "order": step.order,
-                        "parameters": step.parameters,
-                        "step_identifier": step.step_identifier,
-                        "step": {
-                            "identifier": step.step.identifier,
-                            "display_name": step.step.display_name,
-                            "description": step.step.description,
-                            "type": step.step.type,
-                            "parameters_schema": step.step.parameters_schema
-                        }
-                    }
+            ProcessingStackResponse(
+                identifier=stack.identifier,
+                display_name=stack.display_name,
+                description=stack.description,
+                is_enabled=stack.is_enabled,
+                steps=[
+                    ProcessingStackStepResponse(
+                        id=step.id,
+                        step_identifier=step.step_identifier,
+                        order=step.order,
+                        parameters=step.parameters,
+                        step=ProcessingStepResponse(
+                            identifier=step.step.identifier,
+                            display_name=step.step.display_name,
+                            description=step.step.description,
+                            type=step.step.type,
+                            parameters_schema=step.step.parameters_schema
+                        )
+                    )
                     for step in sorted(stack.steps, key=lambda x: x.order)
                 ]
-            }
+            )
             for stack in stacks
         ]
     except Exception as e:
         logger.error(f"Error getting processing stacks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@r.post("/stacks")
+@r.post(
+    "/stacks",
+    response_model=ProcessingStackResponse
+)
 async def create_processing_stack_route(
     stack: ProcessingStackCreate,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
     try:
-        # Check for invalid characters in display name
-        invalid_chars = '<>:"|?*\\'
-        if any(char in stack.display_name for char in invalid_chars):
-            raise ValueError(
-                f"Processing stack display name contains invalid characters. The following characters are not allowed: {invalid_chars}"
-            )
-
-        # Generate identifier
-        stack_identifier = generate_stack_identifier(stack.display_name)
-
-        create_empty_processing_stack(
-            session=session,
-            stack_identifier=stack_identifier,
-            display_name=stack.display_name,
-            description=stack.description,
-            supported_extensions=stack.supported_extensions
-        )
-        
-        # Add steps
-        for step in stack.steps:
-            add_processing_stack_step(
-                session=session,
-                stack_identifier=stack_identifier,
-                step_identifier=step.step_identifier,
-                order=step.order,
-                parameters=step.parameters or {}
-            )
-
-        return {
-            "identifier": stack_identifier,
-            "display_name": stack.display_name,
-            "description": stack.description,
-            "is_enabled": True,
-            "steps": stack.steps
-        }
+        logger.info(f"Creating processing stack {stack.display_name} for user {user_id}")
+        response = create_processing_stack(session=session, stack=stack)
+        return response
 
     except Exception as e:
         logger.error(f"Error creating processing stack: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@r.put("/stacks/{stack_identifier}")
+@r.put(
+    "/stacks/{stack_identifier}",
+    response_model=ProcessingStackResponse
+)
 async def update_processing_stack_route(
     stack_identifier: str,
     stack_update: ProcessingStackUpdate,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
     try:
-        db_stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
-        if not db_stack:
-            raise HTTPException(status_code=404, detail="Stack not found")
-        
-        # Update supported extensions if provided
-        if stack_update.supported_extensions is not None:
-            db_stack.supported_extensions = stack_update.supported_extensions
-        
-        # Delete existing steps
-        session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier).delete()
-        
-        # Add new steps
-        for step in stack_update.steps:
-            add_processing_stack_step(
-                session=session,
-                stack_identifier=stack_identifier,
-                step_identifier=step.step_identifier,
-                order=step.order,
-                parameters=step.parameters or {}
-            )
-        
-        session.commit()
-        
-        # Return updated stack
-        updated_stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
-        return {
-            "identifier": updated_stack.identifier,
-            "display_name": updated_stack.display_name,
-            "description": updated_stack.description,
-            "is_enabled": updated_stack.is_enabled,
-            "steps": [
-                {
-                    "id": step.id,
-                    "order": step.order,
-                    "parameters": step.parameters,
-                    "step_identifier": step.step_identifier,
-                    "step": {
-                        "identifier": step.step.identifier,
-                        "display_name": step.step.display_name,
-                        "description": step.step.description,
-                        "type": step.step.type,
-                        "parameters_schema": step.step.parameters_schema
-                    }
-                }
-                for step in sorted(updated_stack.steps, key=lambda x: x.order)
-            ]
-        }
+        return update_processing_stack(session=session, stack_identifier=stack_identifier, stack_update=stack_update)
     except Exception as e:
         session.rollback()
         logger.error(f"Error updating processing stack: {e}")
@@ -202,10 +125,11 @@ async def update_processing_stack_route(
 @r.delete("/stacks/{stack_identifier}")
 async def delete_processing_stack_route(
     stack_identifier: str,
+    user_id: str = Depends(get_user_id),
     session: Session = Depends(get_db_session)
 ):
     try:
-        delete_processing_stack(session, stack_identifier)
+        delete_processing_stack(session=session, stack_identifier=stack_identifier)
         return {"message": "Stack deleted successfully"}
     except Exception as e:
         logger.error(f"Error deleting processing stack: {e}")
