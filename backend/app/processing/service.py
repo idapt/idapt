@@ -1,10 +1,11 @@
 from app.datasources.service import get_datasource_identifier_from_path
 from app.file_manager.service.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
-from app.database.models import File, FileStatus, ProcessingStack
+from app.database.models import File, FileStatus, ProcessingStack, Datasource, Folder
 from app.file_manager.service.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
-from app.database.models import Datasource
 from app.processing_stacks.service import get_transformations_for_stack
 from app.ollama_status.service import can_process
+from app.file_manager.utils import validate_path
+from app.processing.schema import ProcessingItem, ProcessingRequest
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
@@ -19,10 +20,92 @@ import os
 from typing import List
 from sqlalchemy.orm import Session
 import json
+import threading
+from contextlib import contextmanager
+import asyncio
+
 import logging
 
 logger = logging.getLogger("uvicorn")
+
+# Global processing thread reference
+processing_thread = None
+processing_thread_lock = threading.Lock()
+
+@contextmanager
+def get_processing_thread():
+    global processing_thread
+    with processing_thread_lock:
+        yield processing_thread
+
+def start_processing_thread(session: Session, user_id: str):
+    """Start a new processing thread if none is running"""
+    global processing_thread
     
+    with processing_thread_lock:
+        if processing_thread and processing_thread.is_alive():
+            return
+            
+        # Create a new session with the same configuration as the original session
+        thread_session = Session(bind=session.get_bind())
+        
+        def process_wrapper():
+            try:
+                asyncio.run(process_queued_files(thread_session, user_id))
+            except Exception as e:
+                logger.error(f"Processing thread error: {str(e)}")
+            finally:
+                thread_session.close()
+                
+        processing_thread = threading.Thread(target=process_wrapper, daemon=True)
+        processing_thread.start()
+
+
+def mark_items_as_queued(session: Session, user_id: str, items: List[ProcessingItem]):
+    """Mark items as queued"""
+    try:
+        total_files = 0
+        
+        for item in items:
+            # Validate path
+            validate_path(item.path)
+            
+            # Check if it's a folder
+            folder = session.query(Folder).filter(Folder.original_path == item.path).first()
+            if folder:
+                # Get all files in the folder from the database
+                files = session.query(File).filter(File.path.like(f"{folder.path}%")).all()
+                for file in files:
+                    mark_file_as_queued(
+                        session,
+                        file.path,
+                        item.transformations_stack_name_list
+                    )
+                total_files += len(files)
+                continue
+                
+            # If not a folder, try as a file
+            file = session.query(File).filter(File.original_path == item.path).first()
+            if file:
+                mark_file_as_queued(
+                    session,
+                    file.path,
+                    item.transformations_stack_name_list
+                )
+                total_files += 1
+                continue
+
+            logger.warning(f"File or folder {item.path} not found, skipping")
+
+        # Start processing thread if needed
+        if should_start_processing(session):
+            logger.info(f"Starting processing thread for user {user_id}")
+            start_processing_thread(session, user_id)
+
+    except Exception as e:
+        logger.error(f"Failed to mark items as queued: {str(e)}")
+        raise
+
 # Not used for now do not use it
 def _validate_stacks_to_process_for_file_extension(session: Session, stacks_to_process: List[str], file_extension: str) -> List[str]:
     """Validate the stacks to process for a given file extension"""
@@ -34,7 +117,6 @@ def _validate_stacks_to_process_for_file_extension(session: Session, stacks_to_p
             if not stack:
                 logger.error(f"Stack {stack_name} not found, skipping")
                 continue
-                
             # Check if this transformation stack is applicable to the file type
             if stack.supported_extensions and file_extension in stack.supported_extensions:
                 validated_stacks_to_process.append(stack_name)
@@ -121,6 +203,7 @@ def _process_files_marked_as_processing(session: Session, user_id: str):
     """Process all files marked as processing"""
     try:
         while True:
+            oldest_processing_file = None  # Initialize the variable
             try:
                 logger.info("Processing files marked as processing")
                 # Get the files one by one so that in case of queued file changes we get the freshest database data
@@ -151,13 +234,17 @@ def _process_files_marked_as_processing(session: Session, user_id: str):
                 _process_single_file(session, oldest_processing_file, user_id)
             except Exception as e:
                 session.rollback()
-                logger.error(f"Failed to process interrupted file {oldest_processing_file.path}: {str(e)}, marking as error")
-                try:
-                    oldest_processing_file.status = FileStatus.ERROR
-                    session.commit()
-                except Exception as e:
-                    session.rollback()
-                    logger.error(f"Failed to update file status for {oldest_processing_file.path}: {str(e)}")
+                if oldest_processing_file:  # Only try to handle the file if it exists
+                    logger.error(f"Failed to process interrupted file {oldest_processing_file.path}: {str(e)}, marking as error")
+                    try:
+                        oldest_processing_file.status = FileStatus.ERROR
+                        session.commit()
+                    except Exception as e:
+                        session.rollback()
+                        logger.error(f"Failed to update file status for {oldest_processing_file.path}: {str(e)}")
+                else:
+                    logger.error(f"Failed to process interrupted file: {str(e)}")
+                    
     except Exception as e:
         logger.error(f"Failed to process all queued files: {str(e)}")
         raise
@@ -166,6 +253,7 @@ def _process_all_queued_files(session: Session, user_id: str):
     """Process all queued files"""
     try:
         while True:
+            queued_file = None  # Initialize the variable
             try:
                 # Get the files one by one so that in case of queued file changes we get the freshest database data
                 # Get oldest queued file
@@ -181,13 +269,14 @@ def _process_all_queued_files(session: Session, user_id: str):
                     return
         
             except Exception as e:
-                logger.error(f"Failed to process queued file {queued_file.path}: {str(e)}, marking as error")
-                try:
-                    queued_file.status = FileStatus.ERROR
-                    session.commit()
-                except Exception as e:
-                    session.rollback()
-                    logger.error(f"Failed to update file status for {queued_file.path}: {str(e)}")
+                if queued_file:  # Only try to handle the file if it exists
+                    logger.error(f"Failed to process queued file {queued_file.path}: {str(e)}, marking as error")
+                    try:
+                        queued_file.status = FileStatus.ERROR
+                        session.commit()
+                    except Exception as e:
+                        session.rollback()
+                        logger.error(f"Failed to update file status for {queued_file.path}: {str(e)}")
     except Exception as e:
         logger.error(f"Failed to process all queued files: {str(e)}")
         raise
@@ -388,14 +477,6 @@ def _process_single_file(session: Session, file: File, user_id: str):
             session.rollback()
             logger.error(f"Failed to update file status for {file.path}: {str(e)}")
         raise
-
-
-
-
-
-
-
-
 
 def get_queue_status(session: Session) -> dict:
     """Get the current status of the generation queue"""

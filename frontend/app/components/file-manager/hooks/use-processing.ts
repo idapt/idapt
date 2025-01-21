@@ -23,7 +23,7 @@ export function useProcessing() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ files: processFiles }),
+        body: JSON.stringify({ items: processFiles }),
         signal: controller.signal
       });
       
@@ -48,14 +48,16 @@ export function useProcessing() {
   const processFolder = async (folderPath: string, stackIdentifier: string) => {
     const controller = new AbortController();
     try {
-      const response = await fetchWithAuth(`${backend}/api/processing/folder`, {
+      const response = await fetchWithAuth(`${backend}/api/processing`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          folder_path: folderPath,
-          transformations_stack_name_list: [stackIdentifier]
+          items: [{
+            path: folderPath,
+            transformations_stack_name_list: [stackIdentifier]
+          }]
         }),
         signal: controller.signal
       });

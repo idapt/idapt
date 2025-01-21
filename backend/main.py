@@ -87,9 +87,9 @@ if __name__ == "__main__":
             host=host_domain,
             port=api_port,
             reload=True,
-            reload_excludes=['venv', '.venv', 'output', 'config', '__pycache__'],
-            reload_includes=['*.py'],
             reload_dirs=['app'],
+            reload_includes=['*.py'],
+            reload_excludes=['__pycache__'],
             log_level="info",
             ssl_keyfile=ssl_keyfile_path,
             ssl_certfile=ssl_certfile_path

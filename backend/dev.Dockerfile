@@ -49,5 +49,5 @@ COPY --from=backend-dev-build ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 # COPY ./ /backend
 
 
-# Run the backend on startup
-CMD [ "sh", "-c", "python /backend/main.py"]
+# Run the backend on startup in the backend directory for uvicorn reload to work
+CMD [ "sh", "-c", "cd /backend && python main.py"]
