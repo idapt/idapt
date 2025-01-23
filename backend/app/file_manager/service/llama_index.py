@@ -1,17 +1,17 @@
 import os
-import shutil
-from typing import List
 import chromadb
 import logging
 from pathlib import Path
 import json
+from fastapi import HTTPException
 
 from sqlalchemy.orm import Session
-from app.database.models import Datasource, File, FileStatus
+from app.database.models import Datasource, File, FileStatus, Folder
 from app.file_manager.service.db_operations import get_db_folder_files_recursive
 from app.settings.schemas import AppSettings
 from app.settings.service import get_setting
-from app.user.user_path import get_user_app_data_dir
+from app.api.user_path import get_user_app_data_dir
+from app.file_manager.utils import validate_path
 
 from llama_index.core.storage import StorageContext
 from llama_index.core.indices import VectorStoreIndex
@@ -150,6 +150,37 @@ def create_query_tool(
         )
     except Exception as e:
         logger.error(f"Error creating query tool: {str(e)}")
+        raise
+
+# ? Move to file manager ?
+def delete_item_from_llama_index(session: Session, user_id: str, original_path: str):
+    """
+    Delete an item from the llama index
+    If it is a file, delete the file from the llama index
+    If it is a folder, delete all the files in the folder from the llama index
+    """
+    try:
+        # Validate path
+        validate_path(original_path)
+
+        # Check if it's a file
+        file = session.query(File).filter(File.original_path == original_path).first()
+        if file:
+            # Delete llama index data
+            delete_file_llama_index(session=session, user_id=user_id, file=file)
+
+            session.commit()
+            return {"success": True}
+            
+        # If not a file, check if it's a folder
+        folder = session.query(Folder).filter(Folder.original_path == original_path).first()
+        if folder:
+            delete_files_in_folder_recursive_from_llama_index(session=session, user_id=user_id, full_folder_path=folder.path)
+            return {"success": True}
+            
+        raise HTTPException(status_code=404, detail="Item not found")
+    except Exception as e:
+        logger.error(f"Error deleting item from LlamaIndex: {str(e)}")
         raise
 
 def delete_files_in_folder_recursive_from_llama_index(session: Session, user_id: str, full_folder_path: str):

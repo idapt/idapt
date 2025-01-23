@@ -44,7 +44,14 @@ class FolderInfoResponse(BaseModel):
     original_path: str
     uploaded_at: float
     accessed_at: float
+    child_folders: list['FolderInfoResponse'] | None = None
+    child_files: list['FileInfoResponse'] | None = None
 
-class FolderContentsResponse(BaseModel):
-    files: list[FileInfoResponse]
-    folders: list[FolderInfoResponse]
+class UpdateFileProcessingStatusRequest(BaseModel):
+    fs_path: str
+    status: str
+    stacks_to_process: List[str] | None = None
+    stack_being_processed: str | None = None
+    processed_stack: str | None = None
+    error_message: str | None = None
+    erroring_stack: str | None = None

@@ -1,5 +1,11 @@
 from fastapi import Header, Query, HTTPException
 from typing import Optional
+from app.database.utils.service import get_session
+from app.api.user_path import get_user_data_dir
+from sqlalchemy.orm import Session
+import logging
+
+logger = logging.getLogger("uvicorn")
 
 async def get_user_id(
     x_user_id: Optional[str] = Header(None),
@@ -11,3 +17,39 @@ async def get_user_id(
     if user_id:
         return user_id
     raise HTTPException(status_code=401, detail="User ID is required (either in X-User-Id header or user_id query parameter)") 
+
+# Get a session for the file manager database
+def get_file_manager_db_session(user_id: str):
+    db_path = get_user_data_dir(user_id) + "/file_manager.db"
+    with get_session(db_path) as session:
+        # Always initialize default data if needed before yielding the session
+        init_default_database_data_if_needed(session, user_id)
+        yield session
+
+def init_default_database_data_if_needed(session: Session, user_id: str):
+    """
+    Initialize default data if needed
+    """
+    try:
+        # Init default folders
+        from app.file_manager.service.db_operations import create_default_db_filestructure_if_needed
+        create_default_db_filestructure_if_needed(session, user_id)
+        logger.info("Default folders initialized")
+
+        # Init default datasources
+        from app.datasources.service import init_default_datasources_if_needed
+        init_default_datasources_if_needed(session, user_id)
+        logger.info("Default datasources initialized")
+        
+        # Init default processing stacks
+        from app.processing_stacks.service import create_default_processing_stacks_if_needed
+        create_default_processing_stacks_if_needed(session)
+        logger.info("Default processing stacks initialized")
+        
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error initializing default database data: {str(e)}")
+        raise
+    finally:
+        session.close()

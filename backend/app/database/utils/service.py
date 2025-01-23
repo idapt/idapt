@@ -5,27 +5,25 @@ from sqlalchemy.orm import Session, sessionmaker
 from fastapi import HTTPException
 from sqlalchemy import create_engine
 import logging
-from app.database.migration_manager import run_migrations
+from app.database.utils.migration_manager import run_migrations
 import os
-
-from app.database.utils import get_db_path, get_connection_string
 
 logger = logging.getLogger("uvicorn")
 
-def create_session(user_id: str) -> Session:
+def create_session(db_path: str) -> Session:
     """Create a new database session"""
     try:
         # Check if database file exists and create empty one if not
-        if not os.path.exists(get_db_path(user_id)):
+        if not os.path.exists(db_path):
             
             # Create folder for the database
-            db_dir = Path(get_db_path(user_id)).parent
+            db_dir = Path(db_path).parent
             db_dir.mkdir(parents=True, exist_ok=True)
-            with open(get_db_path(user_id), 'w') as f:
+            with open(db_path, 'w') as f:
                 pass
 
         engine = create_engine(
-            get_connection_string(user_id),
+            "sqlite:///" + db_path,
             connect_args={
                 "check_same_thread": False,
                 "timeout": 30  # SQLite busy timeout in seconds
@@ -33,7 +31,7 @@ def create_session(user_id: str) -> Session:
         )
         
         # Run migrations if needed
-        run_migrations(engine, user_id)
+        run_migrations(engine, db_path)
         
         SessionLocal = sessionmaker(
             autocommit=False,
@@ -47,9 +45,9 @@ def create_session(user_id: str) -> Session:
         raise HTTPException(status_code=500, detail=str(e))
 
 @contextmanager
-def get_session(user_id: str) -> Generator[Session, None, None]:
+def get_session(db_path: str) -> Generator[Session, None, None]:
     """Context manager for database sessions"""
-    session = create_session(user_id)
+    session = create_session(db_path)
     try:
         yield session
         session.commit()
@@ -59,7 +57,3 @@ def get_session(user_id: str) -> Generator[Session, None, None]:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         session.close()
-
-def get_db_session(user_id: str):
-    with get_session(user_id) as session:
-        yield session

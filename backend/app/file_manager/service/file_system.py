@@ -6,7 +6,7 @@ import re
 import uuid
 from sqlalchemy.orm import Session
 
-from app.user.user_path import get_user_data_dir
+from app.api.user_path import get_user_data_dir
 from app.database.models import File, Folder
 
 import logging

@@ -161,7 +161,7 @@ export function FileItem({
     if (confirm(`Are you sure you want to delete all processed data for ${name}?`)) {
       try {
         const encodedPath = encodePathSafe(path);
-        const response = await fetchWithAuth(`${backend}/api/processing/processed-data/${encodedPath}`, {
+        const response = await fetchWithAuth(`${backend}/api/file-manager/processed-data/${encodedPath}`, {
           method: 'DELETE'
         });
 

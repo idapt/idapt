@@ -5,7 +5,7 @@ from app.file_manager.service.llama_index import get_docstore_file_path, create_
 from app.processing_stacks.service import get_transformations_for_stack
 from app.ollama_status.service import can_process
 from app.file_manager.utils import validate_path
-from app.processing.schema import ProcessingItem, ProcessingRequest
+from app.processing.schemas import ProcessingItem, ProcessingRequest
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.

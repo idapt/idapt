@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database.models import ProcessingStack, ProcessingStep, ProcessingStackStep
-from app.database.service import get_db_session
-from app.api.utils import get_user_id
+from app.api.utils import get_user_id, get_file_manager_db_session
 from app.processing_stacks.schemas import (
     ProcessingStackCreate,
     ProcessingStackUpdate,
@@ -15,7 +14,9 @@ from app.processing_stacks.schemas import (
 from app.processing_stacks.service import (
     create_processing_stack,
     update_processing_stack,
-    delete_processing_stack
+    delete_processing_stack,
+    get_processing_stacks,
+    get_processing_stack
 )
 
 import logging
@@ -30,7 +31,7 @@ processing_stacks_router = r = APIRouter()
 )
 async def get_processing_steps_route(
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         steps = session.query(ProcessingStep).all()
@@ -54,38 +55,24 @@ async def get_processing_steps_route(
 )
 async def get_processing_stacks_route(
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
-        stacks = session.query(ProcessingStack).all()
-        return [
-            ProcessingStackResponse(
-                identifier=stack.identifier,
-                display_name=stack.display_name,
-                description=stack.description,
-                is_enabled=stack.is_enabled,
-                steps=[
-                    ProcessingStackStepResponse(
-                        id=step.id,
-                        step_identifier=step.step_identifier,
-                        order=step.order,
-                        parameters=step.parameters,
-                        step=ProcessingStepResponse(
-                            identifier=step.step.identifier,
-                            display_name=step.step.display_name,
-                            description=step.step.description,
-                            type=step.step.type,
-                            parameters_schema=step.step.parameters_schema
-                        )
-                    )
-                    for step in sorted(stack.steps, key=lambda x: x.order)
-                ]
-            )
-            for stack in stacks
-        ]
+        return get_processing_stacks(session=session)
     except Exception as e:
         logger.error(f"Error getting processing stacks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@r.get(
+    "/stacks/{stack_identifier}",
+    response_model=ProcessingStackResponse
+)
+async def get_processing_stack_route(
+    stack_identifier: str,
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_file_manager_db_session)
+):
+    return get_processing_stack(session=session, stack_identifier=stack_identifier)
 
 @r.post(
     "/stacks",
@@ -94,7 +81,7 @@ async def get_processing_stacks_route(
 async def create_processing_stack_route(
     stack: ProcessingStackCreate,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         logger.info(f"Creating processing stack {stack.display_name} for user {user_id}")
@@ -113,7 +100,7 @@ async def update_processing_stack_route(
     stack_identifier: str,
     stack_update: ProcessingStackUpdate,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         return update_processing_stack(session=session, stack_identifier=stack_identifier, stack_update=stack_update)
@@ -126,7 +113,7 @@ async def update_processing_stack_route(
 async def delete_processing_stack_route(
     stack_identifier: str,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         delete_processing_stack(session=session, stack_identifier=stack_identifier)

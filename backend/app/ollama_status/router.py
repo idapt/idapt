@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, WebSocket
 from app.ollama_status.service import can_process
-from app.api.utils import get_user_id
+from app.api.utils import get_user_id, get_file_manager_db_session
 from sqlalchemy.orm import Session
-from app.database.service import get_db_session
 import logging
 import asyncio
 
@@ -14,7 +13,7 @@ ollama_status_router = r = APIRouter()
 async def get_ollama_status_route(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_file_manager_db_session),
 ):
     """Get the current status of Ollama model downloads"""
     try:
@@ -32,7 +31,7 @@ async def get_ollama_status_route(
 async def ollama_status_websocket_route(
     websocket: WebSocket,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     """WebSocket endpoint for Ollama status updates"""
     await websocket.accept()

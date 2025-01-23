@@ -2,13 +2,13 @@ from sqlalchemy.orm import Session
 import logging
 from typing import List, Tuple
 
-from app.user.user_path import get_user_data_dir
+from app.api.user_path import get_user_data_dir
 from app.database.models import File, Folder
 
 logger = logging.getLogger("uvicorn")
     
-def create_default_db_filestructure(session: Session, user_id: str):
-    """Create the default filestructure in the database"""
+def create_default_db_filestructure_if_needed(session: Session, user_id: str):
+    """Create the default filestructure in the database if needed"""
     try:
         # Check if user folder exists
         user_folder_fs_path = get_user_data_dir(user_id)

@@ -14,8 +14,7 @@ from app.chat.chat_models import (
 from app.chat.vercel_response import VercelStreamResponse
 from app.engine.engine import get_chat_engine
 from app.engine.query_filter import generate_filters
-from app.database.service import get_db_session
-from app.api.utils import get_user_id
+from app.api.utils import get_file_manager_db_session, get_user_id
 
 chat_router = r = APIRouter()
 
@@ -29,7 +28,7 @@ async def chat_route(
     data: ChatData,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_file_manager_db_session),
 ):
     try:
         logger.info(f"Chat route called for user {user_id}")
@@ -71,7 +70,7 @@ async def chat_route(
 async def chat_request_route(
     data: ChatData,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_file_manager_db_session),
 ) -> Result:
     try:
         logger.info(f"Chat request route called for user {user_id}")

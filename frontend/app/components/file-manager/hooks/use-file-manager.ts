@@ -33,7 +33,7 @@ export function useFileManager() {
         // Fetch folder contents and datasources
         const encodedPath = encodePathSafe(path);
         const [folderResponse, datasourcesResponse] = await Promise.all([
-          fetchWithAuth(`${backend}/api/file-manager/folder/${encodedPath}`),
+          fetchWithAuth(`${backend}/api/file-manager/folder/${encodedPath}?include_child_folders_files_recursively=false`),
           fetchWithAuth(`${backend}/api/datasources`)
         ]);
 
@@ -45,8 +45,8 @@ export function useFileManager() {
           datasourcesResponse.json()
         ]);
 
-        setFiles(folderData.files);
-        setFolders(folderData.folders);
+        setFiles(folderData.child_files);
+        setFolders(folderData.child_folders);
         setDatasources(datasources);
 
         // Set current datasource

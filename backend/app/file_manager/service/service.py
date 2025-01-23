@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -6,12 +7,13 @@ import zipfile
 from io import BytesIO
 import os
 import time
+from typing import List
 
 # The services are already initialized in the main.py file
 from app.file_manager.service.db_operations import get_db_folder_files_recursive, delete_db_folder_recursive
 from app.file_manager.service.file_system import get_path_from_fs_path, get_fs_path_from_path, get_existing_fs_path_from_db, write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_new_fs_path
 from app.file_manager.service.llama_index import delete_file_llama_index
-from app.file_manager.schemas import FileUploadItem, FileDownloadResponse, FolderContentsResponse, FileInfoResponse, FolderInfoResponse, FolderDownloadResponse
+from app.file_manager.schemas import FileUploadItem, FileDownloadResponse, FileInfoResponse, FolderInfoResponse, FolderDownloadResponse
 from app.database.models import FileStatus, File, Folder, Datasource
 from app.file_manager.utils import validate_path, preprocess_base64_file
 
@@ -132,7 +134,7 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> F
         return FileInfoResponse(
             id=file.id,
             name=file.name,
-            path=file.path,
+            path=get_path_from_fs_path(file.path, user_id),
             original_path=file.original_path,
             mime_type=file.mime_type,
             size=file.size,
@@ -153,7 +155,47 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> F
             detail="An unexpected error occurred during file upload"
         )
     
-def get_folder_content(session: Session, user_id: str, original_path: str) -> FolderContentsResponse:
+def get_file_info(session: Session, user_id: str, original_path: str) -> FileInfoResponse:
+    try:
+        # Validate path
+        validate_path(original_path)
+        
+        # Check if datasource exists
+        original_datasource_name = original_path.split('/')[0]
+        datasource = session.query(Datasource).filter(Datasource.name == original_datasource_name).first()
+        if not datasource:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid datasource identifier '{original_datasource_name}'. Create a datasource first or use a valid datasource identifier"
+            )
+        
+        # Get file from database
+        file = session.query(File).filter(File.original_path == original_path).first()
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        return FileInfoResponse(
+            id=file.id,
+            name=file.name,
+            # We are leaving the api so convert the full path to path
+            path=get_path_from_fs_path(file.path, user_id),
+            original_path=file.original_path,
+            mime_type=file.mime_type,
+            size=file.size,
+            uploaded_at=file.uploaded_at.timestamp(),
+            accessed_at=file.accessed_at.timestamp(),
+            file_created_at=file.file_created_at.timestamp(),
+            file_modified_at=file.file_modified_at.timestamp(),
+            stacks_to_process=file.stacks_to_process,
+            processed_stacks=file.processed_stacks,
+            error_message=file.error_message,
+            status=file.status
+        )
+    except Exception as e:
+        logger.error(f"Error getting file info: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get file info")
+    
+def get_folder_info(session: Session, user_id: str, original_path: str, include_child_folders_files_recursively: bool = False) -> FolderInfoResponse:
     try:
         logger.info(f"Getting folder contents for path: {original_path} for user {user_id}")
         
@@ -172,42 +214,47 @@ def get_folder_content(session: Session, user_id: str, original_path: str) -> Fo
         # Convert it to the fs path used by the backend
         fs_path = get_existing_fs_path_from_db(session=session, original_path=original_path)
 
-        # Get folder id from path
-        folder_id = session.query(Folder).filter(Folder.path == fs_path).first().id
-
+        # Get folder from path
+        folder = session.query(Folder).filter(Folder.path == fs_path).first()
+        if not folder:
+            raise HTTPException(status_code=404, detail="Folder not found")
+        
         # Get all folders in this folder
-        folders = session.query(Folder).filter(Folder.parent_id == folder_id).all()
+        child_folders_db = session.query(Folder).filter(Folder.parent_id == folder.id).all()
+        # Get the child folders recursively or not depending on the parameter
+        child_folders=[get_folder_info(session=session, user_id=user_id, original_path=folder.original_path, include_child_folders_files_recursively=include_child_folders_files_recursively) for folder in child_folders_db]
+        
+        # Get files in this folder
+        child_files_db = session.query(File).filter(File.folder_id == folder.id).all()
+        child_files = [FileInfoResponse(
+                id=file.id,
+                name=file.name,
+                # We are leaving the api so convert the full path to path
+                path=get_path_from_fs_path(file.path, user_id),
+                original_path=file.original_path,
+                mime_type=file.mime_type,
+                size=file.size,
+                uploaded_at=file.uploaded_at.timestamp(),
+                accessed_at=file.accessed_at.timestamp(),
+                file_created_at=file.file_created_at.timestamp(),
+                file_modified_at=file.file_modified_at.timestamp(),
+                stacks_to_process=file.stacks_to_process,
+                processed_stacks=file.processed_stacks,
+                error_message=file.error_message,
+                status=file.status
+            ) for file in child_files_db]
 
-        # Get files - for root folder (folder_id is None) or specific folder
-        files = session.query(File).filter(File.folder_id == folder_id).all()
-
-        files = [FileInfoResponse(
-            id=file.id,
-            name=file.name,
-            # We are leaving the api so convert the full path to path
-            path=get_path_from_fs_path(file.path, user_id),
-            original_path=get_path_from_fs_path(file.original_path, user_id),
-            mime_type=file.mime_type,
-            size=file.size,
-            uploaded_at=file.uploaded_at.timestamp(),
-            accessed_at=file.accessed_at.timestamp(),
-            file_created_at=file.file_created_at.timestamp(),
-            file_modified_at=file.file_modified_at.timestamp(),
-            stacks_to_process=file.stacks_to_process,
-            processed_stacks=file.processed_stacks,
-            error_message=file.error_message,
-            status=file.status
-        ) for file in files]
-        folders = [FolderInfoResponse(
+        return FolderInfoResponse(
             id=folder.id,
             name=folder.name,
             # We are leaving the api so convert the full path to path
             path=get_path_from_fs_path(folder.path, user_id),
-            original_path=get_path_from_fs_path(folder.original_path, user_id),
+            original_path=folder.original_path,
             uploaded_at=folder.uploaded_at.timestamp(),
-            accessed_at=folder.accessed_at.timestamp()
-        ) for folder in folders]
-        return FolderContentsResponse(files=files, folders=folders)
+            accessed_at=folder.accessed_at.timestamp(),
+            child_files=child_files,
+            child_folders=child_folders
+        )
     
     except Exception as e:
         logger.error(f"Error getting folder content: {str(e)}")
@@ -452,3 +499,69 @@ async def download_folder(session: Session, original_path: str) -> FolderDownloa
     except Exception as e:
         logger.error(f"Error creating folder zip: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating folder zip: {str(e)}")
+
+def update_file_processing_status(
+        session: Session,
+        fs_path: str,
+        status: str,
+        stacks_to_process: List[str] | None = None,
+        stack_being_processed: str | None = None,
+        processed_stack: str | None = None,
+        erroring_stack: str | None = None,
+        error_message: str | None = None
+    ):
+    """
+    Update the file processing status and related fields in the database based on the parameters given
+    """
+    try:
+        # Get the file from the database
+        file = session.query(File).filter(File.path == fs_path).first()
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # If we set status to queued
+        if status == "QUEUED":
+            # Add the stacks to process to the existing stacks to process json string
+            file_stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
+            for stack_identifier in stacks_to_process:
+                if stack_identifier not in file_stacks_to_process:
+                    file_stacks_to_process.append(stack_identifier)
+            file.stacks_to_process = json.dumps(file_stacks_to_process)
+            file.status = FileStatus.QUEUED
+            session.commit()
+            return
+        elif status == "PROCESSING":
+            file.error_message = None
+            file.status = FileStatus.PROCESSING
+            session.commit()
+            return
+        elif status == "COMPLETED":
+            # Remove the processed stack from stacks to process
+            file_stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
+            if processed_stack and processed_stack in file_stacks_to_process:
+                file_stacks_to_process.remove(processed_stack)
+            file.stacks_to_process = json.dumps(file_stacks_to_process)
+            # Add the processed stack to processed stacks of the file
+            file_processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
+            if processed_stack and processed_stack not in file_processed_stacks:
+                file_processed_stacks.append(processed_stack)
+            file.processed_stacks = json.dumps(file_processed_stacks)
+            file.status = FileStatus.COMPLETED
+            session.commit()
+            return
+        elif status == "ERROR":
+            # Remove the erroring stack from stacks to process
+            file_stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
+            if erroring_stack and erroring_stack in file_stacks_to_process:
+                file_stacks_to_process.remove(erroring_stack)
+            file.stacks_to_process = json.dumps(file_stacks_to_process)
+            file.error_message = error_message
+            file.status = FileStatus.ERROR
+            session.commit()
+            return
+        
+        raise HTTPException(status_code=400, detail="Invalid status")
+
+    except Exception as e:
+        logger.error(f"Error updating file processing status: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update file processing status")

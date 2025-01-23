@@ -2,13 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.responses import Response
 
-from app.file_manager.schemas import FileUploadItem, FolderContentsResponse, FileDownloadResponse, FolderDownloadResponse, FileInfoResponse
-from app.database.models import File, Folder
-from app.file_manager.service.file_system import get_existing_fs_path_from_db
-from app.file_manager.service.service import upload_file, download_file, delete_item, download_folder, get_folder_content
-from app.database.service import get_db_session
-from app.api.utils import get_user_id
+from app.file_manager.schemas import FileUploadItem, FileDownloadResponse, FolderDownloadResponse, FileInfoResponse, FolderInfoResponse, UpdateFileProcessingStatusRequest
+from app.file_manager.service.service import upload_file, download_file, delete_item, download_folder, get_folder_info, get_file_info, update_file_processing_status
+from app.api.utils import get_file_manager_db_session, get_user_id
 from app.file_manager.utils import decode_path_safe
+from app.file_manager.service.llama_index import delete_item_from_llama_index
 
 import logging
 
@@ -25,7 +23,7 @@ file_manager_router = r = APIRouter()
 async def upload_file_route(
     item: FileUploadItem,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_file_manager_db_session),
 ):
     try:
         logger.info(f"Uploading file {item.name} for user {user_id}")
@@ -42,13 +40,15 @@ async def upload_file_route(
 async def delete_route(
     encoded_original_path: str,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_file_manager_db_session),
     original_path: str = Depends(decode_path_safe),
 ):
     try:
         logger.info(f"Deleting item {original_path} for user {user_id}")
 
         await delete_item(session=session, user_id=user_id, original_path=original_path)
+
+        return {"success": True}
         
     except Exception as e:
         logger.error(f"Error deleting item: {str(e)}")
@@ -56,26 +56,47 @@ async def delete_route(
     
 @r.get(
     "/folder/{encoded_original_path}",
-    response_model=FolderContentsResponse,
+    response_model=FolderInfoResponse,
     status_code=status.HTTP_200_OK,
     summary="Get folder contents"
 )
-async def get_folder_contents_route(
+async def get_folder_info_route(
     encoded_original_path: str,
+    include_child_folders_files_recursively: bool = False,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
-    original_path: str = Depends(decode_path_safe)
-) -> FolderContentsResponse:
+    session: Session = Depends(get_file_manager_db_session),
+    original_path: str = Depends(decode_path_safe),
+) -> FolderInfoResponse:
     """Get contents of a folder"""
     try:
 
-        return get_folder_content(session=session, user_id=user_id, original_path=original_path)
+        return get_folder_info(session=session, user_id=user_id, original_path=original_path, include_child_folders_files_recursively=include_child_folders_files_recursively)
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting folder contents: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get folder contents")
+
+@r.get(
+    "/file/{encoded_original_path}",
+    response_model=FileInfoResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get file info"
+)
+async def get_file_info_route(
+    encoded_original_path: str,
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_file_manager_db_session),
+    original_path: str = Depends(decode_path_safe)
+):
+    try:
+        return get_file_info(session=session, user_id=user_id, original_path=original_path)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting file info: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get file info")
 
 @r.get(
     "/file/{encoded_original_path}/download",
@@ -85,7 +106,7 @@ async def get_folder_contents_route(
 async def download_file_route(
     encoded_original_path: str,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_file_manager_db_session),
     original_path: str = Depends(decode_path_safe)
 ):
     try:
@@ -115,7 +136,7 @@ async def download_file_route(
 async def download_folder_route(
     encoded_original_path: str,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_file_manager_db_session),
     original_path: str = Depends(decode_path_safe)
 ):
     try:
@@ -134,3 +155,47 @@ async def download_folder_route(
     except Exception as e:
         logger.error(f"Error downloading folder: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to download folder")
+
+@r.delete("/processed-data/{encoded_original_path}")
+async def delete_processed_data_route(
+    encoded_original_path: str,
+    user_id: str = Depends(get_user_id),
+    session: Session = Depends(get_file_manager_db_session),
+    original_path: str = Depends(decode_path_safe)
+):
+    try:
+        logger.info(f"Deleting processed data for user {user_id} and path {original_path}")
+
+        await delete_item_from_llama_index(session=session, user_id=user_id, original_path=original_path)
+
+        return {"success": True}
+        
+    except Exception as e:
+        logger.error(f"Error deleting processed data: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete processed data")
+
+# Unused for now
+#@r.post("/file/process-callback")
+#async def process_callback_route(
+#    request: UpdateFileProcessingStatusRequest,
+#    user_id: str = Depends(get_user_id),
+#    session: Session = Depends(get_file_manager_db_session),
+#):
+#    try:
+#        logger.info(f"Processing callback for file {request.fs_path} for user {user_id} with status {request.status}")
+#
+#        update_file_processing_status(
+#            session=session,
+#            fs_path=request.fs_path,
+#            status=request.status,
+#            stacks_to_process=request.stacks_to_process,
+#            stack_being_processed=request.stack_being_processed,
+#            processed_stack=request.processed_stack,
+#            error_message=request.error_message,
+#            erroring_stack=request.erroring_stack
+#        )
+#
+#        return {"success": True}
+#    except Exception as e:
+#        logger.error(f"Error processing callback for file {request.fs_path} for user {user_id}: {str(e)}")
+#        raise HTTPException(status_code=500, detail="Failed to process callback")

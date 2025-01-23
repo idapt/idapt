@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database.models import Datasource, Folder
 from app.file_manager.service.service import delete_folder
 from app.file_manager.service.file_system import get_fs_path_from_path, get_new_fs_path
-from app.user.user_path import get_user_data_dir
+from app.api.user_path import get_user_data_dir
 from app.file_manager.service.llama_index import delete_datasource_llama_index_components, delete_files_in_folder_recursive_from_llama_index
 from app.settings.schemas import OllamaEmbedSettings
 
@@ -16,7 +16,7 @@ import re
 
 logger = logging.getLogger("uvicorn")
 
-def init_default_datasources(session: Session, user_id: str):
+def init_default_datasources_if_needed(session: Session, user_id: str):
     """Initialize default datasources if they don't exist"""
     try:
         if not get_datasource(session, "Files"):

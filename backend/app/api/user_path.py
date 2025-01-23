@@ -12,9 +12,3 @@ def get_user_app_data_dir(user_id: Optional[str] = None) -> str:
     if not user_id:
         raise ValueError("User ID is required")
     return str(Path("/data", user_id, ".idapt"))
-
-def get_user_db_path(user_id: Optional[str] = None) -> str:
-    """Get the database path for a specific user"""
-    if not user_id:
-        raise ValueError("User ID is required")
-    return str(Path(get_user_app_data_dir(user_id), "db", "idapt.db")) 

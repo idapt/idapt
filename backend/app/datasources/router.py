@@ -4,8 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from base64 import urlsafe_b64decode
 
-from app.api.utils import get_user_id
-from app.database.service import get_db_session
+from app.api.utils import get_user_id, get_file_manager_db_session
 from app.database.models import Datasource
 from app.datasources.schemas import DatasourceCreate, DatasourceResponse, DatasourceUpdate
 from app.datasources.service import get_datasource, create_datasource, delete_datasource, update_datasource
@@ -20,7 +19,7 @@ datasources_router = APIRouter()
 @datasources_router.get("", response_model=List[DatasourceResponse])
 async def get_datasources_route(
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         logger.info(f"Getting all datasources for user {user_id}")
@@ -43,7 +42,7 @@ async def get_datasources_route(
 async def get_datasource_route(
     encoded_identifier: str,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         logger.info(f"Getting datasource {encoded_identifier} for user {user_id}")
@@ -72,7 +71,7 @@ async def get_datasource_route(
 async def create_datasource_route(
     datasource: DatasourceCreate,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         logger.info(f"Creating datasource {datasource.name} for user {user_id}")
@@ -117,7 +116,7 @@ async def create_datasource_route(
 async def delete_datasource_route(
     encoded_identifier: str,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         logger.info(f"Deleting datasource {encoded_identifier} for user {user_id}")
@@ -137,7 +136,7 @@ async def update_datasource_route(
     encoded_identifier: str,
     update: DatasourceUpdate,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_db_session)
+    session: Session = Depends(get_file_manager_db_session)
 ):
     try:
         logger.info(f"Updating datasource {encoded_identifier} for user {user_id}")

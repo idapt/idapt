@@ -8,8 +8,6 @@ from pathlib import Path
 from filelock import FileLock
 import os
 
-from app.database.utils import get_db_path
-
 logger = logging.getLogger("uvicorn")
 
 def get_alembic_config(engine: Engine) -> Config:
@@ -34,7 +32,7 @@ def check_current_head(engine: Engine) -> bool:
         context = MigrationContext.configure(connection)
         return set(context.get_current_heads()) == set(script.get_heads())
 
-def run_migrations(engine: Engine, user_id: str):
+def run_migrations(engine: Engine, db_path: str):
     """Run database migrations if needed"""
     lock_file = None  # Initialize lock_file variable
     try:
@@ -53,7 +51,7 @@ def run_migrations(engine: Engine, user_id: str):
                 return
                 
         # Only create lock file and use FileLock if we actually need to perform migrations
-        db_folder = Path(get_db_path(user_id)).parent
+        db_folder = Path(db_path).parent
         if not db_folder.exists():
             db_folder.mkdir(parents=True, exist_ok=True)
             
@@ -73,34 +71,6 @@ def run_migrations(engine: Engine, user_id: str):
                 # Stamp with current head
                 command.stamp(alembic_cfg, "head")
                 logger.info("Database initialized and stamped with head revision")
-                
-                # Initialize default data
-                from sqlalchemy.orm import sessionmaker
-                Session = sessionmaker(bind=engine)
-                with Session() as session:
-                    try:
-                        # Init default folders
-                        from app.file_manager.service.db_operations import create_default_db_filestructure
-                        create_default_db_filestructure(session, user_id)
-                        logger.info("Default folders initialized")
-
-                        # Init default datasources
-                        from app.datasources.service import init_default_datasources
-                        init_default_datasources(session, user_id)
-                        logger.info("Default datasources initialized")
-                        
-                        # Init default processing stacks
-                        from app.processing_stacks.service import create_default_processing_stacks
-                        create_default_processing_stacks(session)
-                        logger.info("Default processing stacks initialized")
-                        
-                        session.commit()
-                    except Exception as e:
-                        session.rollback()
-                        logger.error(f"Error initializing default data: {str(e)}")
-                        raise
-                    finally:
-                        session.close()
             
             elif needs_migration:
                 logger.info("Database not up to date, running migrations...")
