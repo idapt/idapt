@@ -2,6 +2,7 @@ import logging
 import re
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from typing import List
 
 from app.settings.model_initialization import init_embedding_model
 from app.constants.file_extensions import TEXT_FILE_EXTENSIONS
@@ -17,23 +18,36 @@ from llama_index.core.extractors import (
 
 logger = logging.getLogger("uvicorn")
 
-def create_default_processing_stacks(session: Session):
+def create_default_processing_stacks_if_needed(session: Session):
     """Create default processing stacks in the database"""
     try:
         # Create processing steps
-        # Sentence splitter step
-        session.add(ProcessingStep(type="node_parser", identifier="sentence_splitter", display_name="Sentence Splitter", description="Splits text into sentences with configurable chunk size and overlap", parameters_schema=SentenceSplitterParameters.model_json_schema()))
-        # Embedding step
-        session.add(ProcessingStep(type="embedding", identifier="embedding", display_name="Embedding", description="Converts text into vector embeddings for semantic search", parameters_schema={}))
-        
-        session.commit()
+        sentence_splitter_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "sentence_splitter").first()
+        if not sentence_splitter_step:
+            step = ProcessingStep(
+                type="node_parser",
+                identifier="sentence_splitter",
+                display_name="Sentence Splitter",
+                description="Splits text into sentences with configurable chunk size and overlap",
+                parameters_schema=SentenceSplitterParameters.model_json_schema()
+            )
+            session.add(step)
+            session.commit()
+            logger.info("Created default processing step 'Sentence Splitter'")
 
+        embedding_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "embedding").first()
+        if not embedding_step:
+            step = ProcessingStep(
+                type="embedding",
+                identifier="embedding",
+                display_name="Embedding",
+                description="Converts text into vector embeddings for semantic search",
+                parameters_schema={}
+            )
+            session.add(step)
+            session.commit()
+            logger.info("Created default processing step 'Embedding'")
         # Text Processing
-        # Try to get the stack from the database
-        text_processing_stack = session.query(ProcessingStack).filter(ProcessingStack.identifier == "text_processing").first()
-        if text_processing_stack:
-            logger.info(f"Text processing stack already exists: {text_processing_stack.display_name}")
-            return
         
         # Create the processing stack
         text_processing_stack_create = ProcessingStackCreate(
@@ -80,26 +94,31 @@ def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> P
         # Generate identifier
         stack_identifier = generate_stack_identifier(stack.display_name)
 
-        # Create the stack
-        stack_to_create = ProcessingStack(
-            identifier=stack_identifier,
-            display_name=stack.display_name,
-            description=stack.description,
-            supported_extensions=stack.supported_extensions,
-            steps=[]
-        )
-        session.add(stack_to_create)
-        session.commit()
-        
-        # Add steps with this function so that validation is done there
-        for step in stack.steps:
-            add_processing_stack_step(
-                session=session,
-                stack_identifier=stack_identifier,
-                step_identifier=step.step_identifier,
-                order=step.order,
-                parameters=step.parameters or {}
+        # Try to get the stack from the database
+        stack_to_create = session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_identifier).first()
+        if stack_to_create:
+            logger.info(f"Processing stack already exists: {stack_to_create.display_name}")
+        else:
+            # Create the stack
+            stack_to_create = ProcessingStack(
+                identifier=stack_identifier,
+                display_name=stack.display_name,
+                description=stack.description,
+                supported_extensions=stack.supported_extensions,
+                steps=[]
             )
+            session.add(stack_to_create)
+            session.commit()
+        
+            # Add steps with this function so that validation is done there
+            for step in stack.steps:
+                add_processing_stack_step(
+                    session=session,
+                    stack_identifier=stack_identifier,
+                    step_identifier=step.step_identifier,
+                    order=step.order,
+                    parameters=step.parameters or {}
+                )
 
         response = ProcessingStackResponse(
             identifier=stack_to_create.identifier,
@@ -203,7 +222,7 @@ def get_processing_stack(session: Session, stack_identifier: str) -> ProcessingS
             display_name=stack.display_name,
             description=stack.description,
             is_enabled=stack.is_enabled,
-            stack_steps=[
+            steps=[
                 ProcessingStackStepResponse(
                     id=stack_step.id,
                     step_identifier=stack_step.step_identifier,
@@ -216,7 +235,7 @@ def get_processing_stack(session: Session, stack_identifier: str) -> ProcessingS
                         type=stack_step.step.type,
                         parameters_schema=stack_step.step.parameters_schema
                     )
-                ) for stack_step in sorted(stack.stack_steps, key=lambda x: x.order)
+                ) for stack_step in sorted(stack.steps, key=lambda x: x.order)
             ]
         )
     except Exception as e:

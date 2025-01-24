@@ -10,7 +10,7 @@ class ProcessingStackCreate(BaseModel):
     display_name: str
     description: Optional[str] = None
     supported_extensions: Optional[List[str]] = None
-    stack_steps: List[ProcessingStackStepCreate]
+    steps: List[ProcessingStackStepCreate]
 
 class ProcessingStepResponse(BaseModel):
     identifier: str
@@ -31,7 +31,7 @@ class ProcessingStackResponse(BaseModel):
     display_name: str
     description: Optional[str] = None
     is_enabled: bool
-    stack_steps: List[ProcessingStackStepResponse]
+    steps: List[ProcessingStackStepResponse]
 
 class ProcessingStackStepUpdate(BaseModel):
     step_identifier: str

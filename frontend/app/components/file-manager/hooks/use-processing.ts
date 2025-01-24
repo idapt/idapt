@@ -2,8 +2,8 @@ import { useClientConfig } from "@/app/components/chat/hooks/use-config";
 import { useApiClient } from "@/app/lib/api-client";
 
 export interface ProcessingFile {
-  path: string;
-  transformations_stack_name_list?: string[];
+  original_path: string;
+  stacks_identifiers_to_queue?: string[];
 }
 
 export function useProcessing() {
@@ -13,9 +13,9 @@ export function useProcessing() {
   const processWithStack = async (files: string[], stackIdentifier: string) => {
     const controller = new AbortController();
     try {
-      const processFiles: ProcessingFile[] = files.map(path => ({
-        path,
-        transformations_stack_name_list: [stackIdentifier]
+      const processFiles: ProcessingFile[] = files.map(original_path => ({
+        original_path,
+        stacks_identifiers_to_queue: [stackIdentifier]
       }));
 
       const response = await fetchWithAuth(`${backend}/api/processing`, {
@@ -55,8 +55,8 @@ export function useProcessing() {
         },
         body: JSON.stringify({
           items: [{
-            path: folderPath,
-            transformations_stack_name_list: [stackIdentifier]
+            original_path: folderPath,
+            stacks_identifiers_to_queue: [stackIdentifier]
           }]
         }),
         signal: controller.signal

@@ -153,7 +153,7 @@ def create_query_tool(
         raise
 
 # ? Move to file manager ?
-def delete_item_from_llama_index(session: Session, user_id: str, original_path: str):
+async def delete_item_from_llama_index(session: Session, user_id: str, original_path: str):
     """
     Delete an item from the llama index
     If it is a file, delete the file from the llama index
@@ -168,8 +168,6 @@ def delete_item_from_llama_index(session: Session, user_id: str, original_path: 
         if file:
             # Delete llama index data
             delete_file_llama_index(session=session, user_id=user_id, file=file)
-
-            session.commit()
             return {"success": True}
             
         # If not a file, check if it's a folder
@@ -252,7 +250,7 @@ def delete_file_llama_index(session: Session, user_id: str, file: File):
         # Get the datasource name from the path
         datasource_identifier = get_datasource_identifier_from_path(file.path)
         datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
-
+        logger.debug(f"datasource_identifier: {datasource_identifier}")
         # Get the datasource vector store and docstore
         vector_store = create_vector_store(datasource.id, user_id)
         doc_store = create_doc_store(datasource_identifier, user_id)
@@ -372,7 +370,7 @@ def delete_file_processing_stack_from_llama_index(session: Session, user_id: str
         #generate_service = GenerateService()
         #generate_service.add_files_to_queue([{
         #    "path": full_new_path,
-        #    "transformations_stack_name_list": ["default"]
+        #    "stacks_identifiers_to_queue": ["default"]
         #}])
 
         # Get the the old ref doc info document

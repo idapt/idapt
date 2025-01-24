@@ -68,10 +68,10 @@ def mark_items_as_queued(session: Session, user_id: str, items: List[ProcessingI
         
         for item in items:
             # Validate path
-            validate_path(item.path)
+            validate_path(item.original_path)
             
             # Check if it's a folder
-            folder = session.query(Folder).filter(Folder.original_path == item.path).first()
+            folder = session.query(Folder).filter(Folder.original_path == item.original_path).first()
             if folder:
                 # Get all files in the folder from the database
                 files = session.query(File).filter(File.path.like(f"{folder.path}%")).all()
@@ -79,23 +79,23 @@ def mark_items_as_queued(session: Session, user_id: str, items: List[ProcessingI
                     mark_file_as_queued(
                         session,
                         file.path,
-                        item.transformations_stack_name_list
+                        item.stacks_identifiers_to_queue
                     )
                 total_files += len(files)
                 continue
                 
             # If not a folder, try as a file
-            file = session.query(File).filter(File.original_path == item.path).first()
+            file = session.query(File).filter(File.original_path == item.original_path).first()
             if file:
                 mark_file_as_queued(
                     session,
                     file.path,
-                    item.transformations_stack_name_list
+                    item.stacks_identifiers_to_queue
                 )
                 total_files += 1
                 continue
 
-            logger.warning(f"File or folder {item.path} not found, skipping")
+            logger.warning(f"File or folder {item.original_path} not found, skipping")
 
         # Start processing thread if needed
         if should_start_processing(session):

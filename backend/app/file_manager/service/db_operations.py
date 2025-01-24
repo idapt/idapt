@@ -13,18 +13,24 @@ def create_default_db_filestructure_if_needed(session: Session, user_id: str):
         # Check if user folder exists
         user_folder_fs_path = get_user_data_dir(user_id)
         user_folder = session.query(Folder).filter(Folder.path == user_folder_fs_path).first()
-        if not user_folder:
-            user_folder = Folder(
-                name=user_id,
-                path=user_folder_fs_path,
-                original_path="",
-                parent_id=None
-            )
-            session.add(user_folder)
-            session.flush()
-            logger.info(f"Created default user folder in database for user {user_id}")
+        if user_folder:
+            return
+        
+        user_folder = Folder(
+            name=user_id,
+            path=user_folder_fs_path,
+            original_path="",
+            parent_id=None
+        )
+        session.add(user_folder)
+        session.flush()
+        logger.info(f"Created default user folder in database for user {user_id}")
 
         session.commit()
+
+        logger.info("Default folders initialized")
+
+            
         
     except Exception as e:
         session.rollback()

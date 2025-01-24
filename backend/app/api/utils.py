@@ -34,17 +34,14 @@ def init_default_database_data_if_needed(session: Session, user_id: str):
         # Init default folders
         from app.file_manager.service.db_operations import create_default_db_filestructure_if_needed
         create_default_db_filestructure_if_needed(session, user_id)
-        logger.info("Default folders initialized")
 
         # Init default datasources
         from app.datasources.service import init_default_datasources_if_needed
         init_default_datasources_if_needed(session, user_id)
-        logger.info("Default datasources initialized")
         
         # Init default processing stacks
         from app.processing_stacks.service import create_default_processing_stacks_if_needed
         create_default_processing_stacks_if_needed(session)
-        logger.info("Default processing stacks initialized")
         
         session.commit()
     except Exception as e:

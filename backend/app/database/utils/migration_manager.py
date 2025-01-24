@@ -12,7 +12,7 @@ logger = logging.getLogger("uvicorn")
 
 def get_alembic_config(engine: Engine) -> Config:
     """Get Alembic config"""
-    script_location = Path(__file__).parent / "alembic"
+    script_location = Path(__file__).parent.parent / "alembic"
     
     if not script_location.exists():
         raise RuntimeError(f"migrations directory not found at {script_location}")

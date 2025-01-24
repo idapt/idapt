@@ -19,21 +19,23 @@ logger = logging.getLogger("uvicorn")
 def init_default_datasources_if_needed(session: Session, user_id: str):
     """Initialize default datasources if they don't exist"""
     try:
-        if not get_datasource(session, "Files"):
-            default_embedding_settings = OllamaEmbedSettings()
+        if get_datasource(session, "Files"):
+            return
+        
+        default_embedding_settings = OllamaEmbedSettings()
                         
-            create_datasource(
-                session=session,
-                user_id=user_id,
-                name="Files",
-                type="files",
-                description="Various files, prefer using another datasource if it seems more relevant",
-                settings_json={},
-                embedding_provider="ollama_embed",
-                embedding_settings_json=json.dumps(default_embedding_settings.model_dump())
-            )
-            logger.info("Created default datasource 'Files'")
-            
+        create_datasource(
+            session=session,
+            user_id=user_id,
+            name="Files",
+            type="files",
+            description="Various files, prefer using another datasource if it seems more relevant",
+            settings_json={},
+            embedding_provider="ollama_embed",
+            embedding_settings_json=json.dumps(default_embedding_settings.model_dump())
+        )        
+        logger.info("Default datasources initialized")
+        
     except Exception as e:
         logger.error(f"Error initializing default datasources: {str(e)}")
         raise
