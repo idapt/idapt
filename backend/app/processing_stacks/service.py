@@ -185,6 +185,44 @@ def update_processing_stack(session: Session, stack_identifier: str, stack_updat
         logger.error(f"Error updating processing stack: {e}")
         raise e
     
+def get_processing_stacks(session: Session) -> List[ProcessingStackResponse]:
+    """Get all processing stacks"""
+    try:
+        stacks = session.query(ProcessingStack).all()
+        return [get_processing_stack(session=session, stack_identifier=stack.identifier) for stack in stacks]
+    except Exception as e:
+        logger.error(f"Error getting processing stacks: {e}")
+        raise e
+    
+def get_processing_stack(session: Session, stack_identifier: str) -> ProcessingStackResponse:
+    """Get a processing stack"""
+    try:
+        stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
+        return ProcessingStackResponse(
+            identifier=stack.identifier,
+            display_name=stack.display_name,
+            description=stack.description,
+            is_enabled=stack.is_enabled,
+            stack_steps=[
+                ProcessingStackStepResponse(
+                    id=stack_step.id,
+                    step_identifier=stack_step.step_identifier,
+                    order=stack_step.order,
+                    parameters=stack_step.parameters,
+                    step=ProcessingStepResponse(
+                        identifier=stack_step.step.identifier,
+                        display_name=stack_step.step.display_name,
+                        description=stack_step.step.description,
+                        type=stack_step.step.type,
+                        parameters_schema=stack_step.step.parameters_schema
+                    )
+                ) for stack_step in sorted(stack.stack_steps, key=lambda x: x.order)
+            ]
+        )
+    except Exception as e:
+        logger.error(f"Error getting processing stack: {e}")
+        raise e
+
 def get_default_parameters(parameters_schema: dict) -> dict:
     """Extract default values from a parameters schema"""
     default_params = {}
