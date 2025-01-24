@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 from sqlalchemy.orm import Session
-from app.database.models import Datasource, Folder
+from app.file_manager.models import Folder
+from app.datasources.models import Datasource
 from app.file_manager.service.service import delete_folder
 from app.file_manager.service.file_system import get_fs_path_from_path, get_new_fs_path
 from app.api.user_path import get_user_data_dir

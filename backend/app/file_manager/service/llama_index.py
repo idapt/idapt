@@ -6,7 +6,8 @@ import json
 from fastapi import HTTPException
 
 from sqlalchemy.orm import Session
-from app.database.models import Datasource, File, FileStatus, Folder
+from app.file_manager.models import File, FileStatus, Folder
+from app.datasources.models import Datasource
 from app.file_manager.service.db_operations import get_db_folder_files_recursive
 from app.settings.schemas import AppSettings
 from app.settings.service import get_setting

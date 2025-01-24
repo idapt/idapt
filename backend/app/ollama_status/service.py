@@ -6,7 +6,7 @@ import httpx
 import time
 from sqlalchemy.orm import Session
 from app.settings.service import get_setting
-from app.database.models import Datasource
+from app.datasources.models import Datasource
 
 logger = logging.getLogger("uvicorn")
 

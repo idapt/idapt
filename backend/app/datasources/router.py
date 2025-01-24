@@ -5,7 +5,7 @@ from typing import List
 from base64 import urlsafe_b64decode
 
 from app.api.utils import get_user_id, get_file_manager_db_session
-from app.database.models import Datasource
+from app.datasources.models import Datasource
 from app.datasources.schemas import DatasourceCreate, DatasourceResponse, DatasourceUpdate
 from app.datasources.service import get_datasource, create_datasource, delete_datasource, update_datasource
 from app.settings.schemas import OllamaEmbedSettings, OpenAIEmbedSettings

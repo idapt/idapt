@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.database.models import ProcessingStack, ProcessingStep, ProcessingStackStep
+from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.api.utils import get_user_id, get_file_manager_db_session
 from app.processing_stacks.schemas import (
     ProcessingStackCreate,

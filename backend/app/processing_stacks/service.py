@@ -6,7 +6,8 @@ from typing import List
 
 from app.settings.model_initialization import init_embedding_model
 from app.constants.file_extensions import TEXT_FILE_EXTENSIONS
-from app.database.models import Datasource, ProcessingStack, ProcessingStep, ProcessingStackStep
+from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
+from app.datasources.models import Datasource
 from app.processing_stacks.schemas import ProcessingStackCreate, ProcessingStackResponse, ProcessingStackStepCreate, SentenceSplitterParameters, ProcessingStackUpdate, ProcessingStackStepUpdate, ProcessingStackStepResponse, ProcessingStepResponse
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.extractors import (
@@ -97,7 +98,8 @@ def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> P
         # Try to get the stack from the database
         stack_to_create = session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_identifier).first()
         if stack_to_create:
-            logger.info(f"Processing stack already exists: {stack_to_create.display_name}")
+            #logger.info(f"Processing stack already exists: {stack_to_create.display_name}")
+            pass
         else:
             # Create the stack
             stack_to_create = ProcessingStack(

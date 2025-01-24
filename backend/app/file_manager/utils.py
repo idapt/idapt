@@ -1,8 +1,6 @@
 from base64 import urlsafe_b64decode
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
 from typing import Tuple
-from app.database.models import Datasource
 import base64
 
 import logging

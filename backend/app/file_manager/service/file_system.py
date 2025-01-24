@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.api.user_path import get_user_data_dir
-from app.database.models import File, Folder
+from app.file_manager.models import File, Folder
 
 import logging
 logger = logging.getLogger('uvicorn')

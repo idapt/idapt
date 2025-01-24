@@ -14,7 +14,8 @@ from app.file_manager.service.db_operations import get_db_folder_files_recursive
 from app.file_manager.service.file_system import get_path_from_fs_path, get_fs_path_from_path, get_existing_fs_path_from_db, write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_new_fs_path
 from app.file_manager.service.llama_index import delete_file_llama_index
 from app.file_manager.schemas import FileUploadItem, FileDownloadResponse, FileInfoResponse, FolderInfoResponse, FolderDownloadResponse
-from app.database.models import FileStatus, File, Folder, Datasource
+from app.file_manager.models import FileStatus, File, Folder
+from app.datasources.models import Datasource
 from app.file_manager.utils import validate_path, preprocess_base64_file
 
 import logging

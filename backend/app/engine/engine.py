@@ -10,7 +10,7 @@ from app.settings.model_initialization import init_llm, init_embedding_model
 from app.file_manager.service.llama_index import create_query_tool, create_vector_store, create_doc_store
 from app.settings.schemas import AppSettings
 from app.settings.service import get_setting
-from app.database.models import Datasource
+from app.datasources.models import Datasource
 
 import logging
 
