@@ -7,7 +7,7 @@ package-mode = false
 generate = "app.engine.generate:generate_datasource"
 
 [tool.poetry.dependencies]
-python = "^3.13,<3.14"
+python = "^3.12,<3.13"
 fastapi = "^0.115.5"
 aiostream = "^0.6.4"
 llama-index-core = "^0.12.11"
@@ -35,7 +35,7 @@ version = "^0.32.1"
 mypy = "^1.13.0"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.12"
 plugins = "pydantic.mypy"
 exclude = [ "tests", "venv", ".venv", "output", "config" ]
 check_untyped_defs = true

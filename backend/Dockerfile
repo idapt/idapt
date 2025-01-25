@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.13-bookworm AS backend-build
+FROM python:3.12-bookworm AS backend-build
 
 # Install Python and required packages
 RUN apt-get update && apt-get install -y \
@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=$POETRY_CACHE_DIR poetry install --without dev --n
 
 
 # Release stage
-FROM python:3.13-slim-bookworm AS release
+FROM python:3.12-slim-bookworm AS release
 
 # Install openssl
 RUN apt-get update && apt-get install -y \
