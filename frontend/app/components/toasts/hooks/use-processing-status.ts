@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useClientConfig } from '@/app/components/chat/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
-
+import { withBackoff } from '@/app/lib/backoff';
 
 interface ProcessingFile {
   name: string;
@@ -19,64 +19,61 @@ export function useProcessingStatus() {
   const { backend } = useClientConfig();
   const { fetchWithAuth } = useApiClient();
   const [status, setStatus] = useState<ProcessingStatus | null>(null);
-  const errorCountRef = useRef(0);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-    if (!backend) return;
-
-    const wsUrl = backend.replace(/^http/, 'ws');
-    const userId = localStorage.getItem('userId');
-    const ws = new WebSocket(`${wsUrl}/api/processing/status/ws?user_id=${userId}`);
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setStatus(data);
-      errorCountRef.current = 0;
-    };
-
-    ws.onclose = () => {
-      // Try to reconnect after 2 seconds
-      reconnectTimeoutRef.current = setTimeout(connect, 2000);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      ws.close();
-    };
-  }, [backend]);
+  const isConnectingRef = useRef(false);
 
   const fetchInitialStatus = useCallback(async () => {
-    try {
-      const response = await fetchWithAuth(`${backend}/api/processing/status`, {
-        signal: new AbortController().signal
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Status response not ok: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setStatus(data);
-      errorCountRef.current = 0;
-    } catch (error) {
-      errorCountRef.current++;
-      if (errorCountRef.current > 3) {
-        setStatus(null);
-      }
+    if (!backend) return;
+    const response = await fetchWithAuth(`${backend}/api/processing/status`);
+    if (!response.ok) {
+      throw new Error(`Status response not ok: ${response.status}`);
     }
+    const data = await response.json();
+    setStatus(data);
+    return data;
   }, [backend, fetchWithAuth]);
 
+  const connect = useCallback(async () => {
+    if (!backend || isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    try {
+      isConnectingRef.current = true;
+      // First verify the backend is available with backoff
+      await withBackoff(fetchInitialStatus);
+
+      const wsUrl = backend.replace(/^http/, 'ws');
+      const userId = localStorage.getItem('userId');
+      const ws = new WebSocket(`${wsUrl}/api/processing/status/ws?user_id=${userId}`);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        setStatus(data);
+      };
+
+      ws.onclose = () => {
+        reconnectTimeoutRef.current = setTimeout(() => {
+          isConnectingRef.current = false;
+          connect();
+        }, 2000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    } catch (error) {
+      isConnectingRef.current = false;
+    }
+  }, [backend, fetchInitialStatus]);
+
   useEffect(() => {
-    // Fetch initial status then connect to WebSocket
-    fetchInitialStatus().then(() => {
-      connect();
-    });
+    connect();
 
     return () => {
+      isConnectingRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -84,9 +81,9 @@ export function useProcessingStatus() {
         wsRef.current.close();
       }
     };
-  }, [connect, fetchInitialStatus]);
+  }, [connect]);
 
   return { status };
-} 
+}
 
 export default useProcessingStatus;

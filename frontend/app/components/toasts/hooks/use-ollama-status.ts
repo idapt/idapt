@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useClientConfig } from '@/app/components/chat/hooks/use-config';
 import { useSettings } from "@/app/components/settings/hooks/use-settings";
 import { useApiClient } from '@/app/lib/api-client';
+import { withBackoff } from '@/app/lib/backoff';
 //import { AppSettings } from '../types/settings';
 
 export function useOllamaStatus() {
@@ -10,49 +11,56 @@ export function useOllamaStatus() {
   const { fetchWithAuth } = useApiClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-    if (!backend) return;
-
-    const wsUrl = backend.replace(/^http/, 'ws');
-    const userId = localStorage.getItem('userId');
-    const ws = new WebSocket(`${wsUrl}/api/ollama-status/ws?user_id=${userId}`);
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setIsDownloading(data.is_downloading);
-    };
-
-    ws.onclose = () => {
-      // Try to reconnect after 2 seconds
-      reconnectTimeoutRef.current = setTimeout(connect, 2000);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      ws.close();
-    };
-  }, [backend]);
+  const isConnectingRef = useRef(false);
 
   const fetchInitialStatus = useCallback(async () => {
-    try {
-      const response = await fetchWithAuth(`${backend}/api/ollama-status`);
-      const data = await response.json();
-      setIsDownloading(data.is_downloading);
-    } catch (error) {
-      setIsDownloading(true);
-    }
+    if (!backend) return;
+    const response = await fetchWithAuth(`${backend}/api/ollama-status`);
+    const data = await response.json();
+    setIsDownloading(data.is_downloading);
+    return data;
   }, [backend, fetchWithAuth]);
 
+  const connect = useCallback(async () => {
+    if (!backend || isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    try {
+      isConnectingRef.current = true;
+      // First verify the backend is available with backoff
+      await withBackoff(fetchInitialStatus);
+
+      const wsUrl = backend.replace(/^http/, 'ws');
+      const userId = localStorage.getItem('userId');
+      const ws = new WebSocket(`${wsUrl}/api/ollama-status/ws?user_id=${userId}`);
+      wsRef.current = ws;
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        setIsDownloading(data.is_downloading);
+      };
+
+      ws.onclose = () => {
+        reconnectTimeoutRef.current = setTimeout(() => {
+          isConnectingRef.current = false;
+          connect();
+        }, 2000);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    } catch (error) {
+      isConnectingRef.current = false;
+    }
+  }, [backend, fetchInitialStatus]);
+
   useEffect(() => {
-    // Fetch initial status then connect to WebSocket
-    fetchInitialStatus().then(() => {
-      connect();
-    });
+    connect();
 
     return () => {
+      isConnectingRef.current = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
@@ -60,7 +68,7 @@ export function useOllamaStatus() {
         wsRef.current.close();
       }
     };
-  }, [connect, fetchInitialStatus]);
+  }, [connect]);
 
   return { isDownloading };
 }
