@@ -24,6 +24,7 @@ alembic = "^1.14.0"
 httpx = "^0.27.2"
 filelock = "^3.16.1"
 sse-starlette = "^2.2.1"
+tree-sitter-languages = "^1.10.2"
 
 [tool.poetry.dependencies.uvicorn]
 extras = [ "standard" ]

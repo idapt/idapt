@@ -50,6 +50,12 @@ class SentenceSplitterParameters(BaseModel):
     chunk_size: int = Field(description="The size of the chunks to split the text into", default=512)
     chunk_overlap: int = Field(description="The overlap of the chunks to split the text into", default=128)
 
+#class CodeSplitterParameters(BaseModel):
+#    chunk_lines: int = Field(description="The number of lines to include in each chunk", default=40)
+#    chunk_lines_overlap: int = Field(description="How many lines of code each chunk overlaps with", default=15)
+#    max_chars: int = Field(description="Maximum number of characters per chunk", default=1500)
+#    language: str = Field(description="The default language to use for code splitting, it will be used if the file extension is not recognized", default="python")
+
 class ProcessingStepType(str, Enum):
     NODE_PARSER = "node_parser"
     NODE_POST_PROCESSOR = "node_post_processor"

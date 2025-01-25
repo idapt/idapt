@@ -1,6 +1,8 @@
 from app.datasources.service import get_datasource_identifier_from_path
+from app.file_manager.service.service import get_file_info
 from app.file_manager.service.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.file_manager.models import File, FileStatus, Folder
+from app.file_manager.schemas import FileInfoResponse
 from app.datasources.models import Datasource
 from app.processing_stacks.models import ProcessingStack
 from app.file_manager.service.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
@@ -286,6 +288,9 @@ def _process_all_queued_files(session: Session, user_id: str):
 def _process_single_file(session: Session, file: File, user_id: str):
     """Process a single file through the ingestion pipeline"""
     try:
+        # Get file response
+        file_response = get_file_info(session, user_id, file.original_path)
+
         # Update status to processing
         file.error_message = None
         file.status = FileStatus.PROCESSING
@@ -381,7 +386,7 @@ def _process_single_file(session: Session, file: File, user_id: str):
                     document.doc_id = f"{original_doc_id}_{stack_identifier}"
 
                     # Get the transformations stack
-                    transformations = get_transformations_for_stack(session, stack_identifier, datasource)
+                    transformations = get_transformations_for_stack(session, stack_identifier, datasource, file_response)
 
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess

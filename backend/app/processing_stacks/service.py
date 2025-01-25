@@ -4,11 +4,13 @@ import json
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+import os
 
 from app.settings.model_initialization import init_embedding_model
-from app.constants.file_extensions import TEXT_FILE_EXTENSIONS
+from app.constants.file_extensions import TEXT_FILE_EXTENSIONS, CODE_FILE_EXTENSIONS
 from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.datasources.models import Datasource
+from app.file_manager.schemas import FileInfoResponse
 from app.processing_stacks.schemas import ProcessingStackCreate, ProcessingStackResponse, ProcessingStackStepCreate, SentenceSplitterParameters, ProcessingStackUpdate, ProcessingStackStepUpdate, ProcessingStackStepResponse, ProcessingStepResponse
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.extractors import (
@@ -17,7 +19,9 @@ from llama_index.core.extractors import (
     SummaryExtractor,
     KeywordExtractor,
 )
-
+from llama_index.core.node_parser.text.token import TokenTextSplitter
+#from llama_index.core.node_parser.text.code import CodeSplitter
+#from app.processing_stacks.utils import get_language_from_extension
 logger = logging.getLogger("uvicorn")
 
 def create_default_processing_stacks_if_needed(session: Session):
@@ -49,6 +53,20 @@ def create_default_processing_stacks_if_needed(session: Session):
             session.add(step)
             session.commit()
             logger.info("Created default processing step 'Embedding'")
+
+        #code_splitter_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "code_splitter").first()
+        #if not code_splitter_step:
+        #    step = ProcessingStep(
+        #        type="node_parser",
+        #        identifier="code_splitter",
+        #        display_name="Code Splitter",
+        #        description="Splits code into chunks using AST parser",
+        #        parameters_schema=CodeSplitterParameters.model_json_schema()
+        #    )
+        #    session.add(step)
+        #    session.commit()
+        #    logger.info("Created default processing step 'Code Splitter'")
+
         # Text Processing
         
         # Create the processing stack
@@ -73,6 +91,31 @@ def create_default_processing_stacks_if_needed(session: Session):
             ]
         )
         create_processing_stack(session=session, stack=text_processing_stack_create)
+
+        # Create code processing stack
+        #code_processing_stack_create = ProcessingStackCreate(
+        #    display_name="Code Processing",
+        #    description="Processing stack for code files",
+        #    supported_extensions=list(CODE_FILE_EXTENSIONS),
+        #    steps=[
+                #ProcessingStackStepCreate(
+                #    step_identifier="code_splitter",
+                #    order=1,
+                #    parameters=CodeSplitterParameters(
+                #        chunk_lines=40,
+                #        chunk_lines_overlap=15,
+                #        max_chars=1500,
+                #        language="python"  # Default language normally not used
+                #    ).model_dump()
+                #),
+                #ProcessingStackStepCreate(
+                #    step_identifier="embedding",
+                #    order=2,
+                #    parameters={}
+                #)
+            #]
+        #)
+        #create_processing_stack(session=session, stack=code_processing_stack_create)
 
         # TODO Add image, video, audio, code processing stacks
 
@@ -369,12 +412,39 @@ def change_processing_stack_step_order(session: Session, stack_identifier: str, 
         logger.error(f"Error changing processing stack step order: {e}")
         raise e
 
-def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource: Datasource):
+def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource: Datasource, file_response: FileInfoResponse):
     """Convert a ProcessingStep and parameters into a LlamaIndex transformer"""
     try:
         match step.identifier:
             case "sentence_splitter":
                 return SentenceSplitter(**parameters)
+            #case "code_splitter":
+            #    # Get file extension from file response
+            #    file_extension = os.path.splitext(file_response.path)[1].lower()
+            #    
+            #    # Try to detect language from extension
+            #    detected_language = get_language_from_extension(file_extension)
+            #    
+            #    if detected_language:
+            #        logger.debug(f"Detected language '{detected_language}' for file extension '{file_extension}'")
+            #        # Create CodeSplitter with detected language and parameters
+            #        #return CodeSplitter.from_defaults(
+            #        #    language=detected_language,
+            #        #    chunk_lines=parameters.get("chunk_lines", 40),
+            #        #    chunk_lines_overlap=parameters.get("chunk_lines_overlap", 15),
+            #        #    max_chars=parameters.get("max_chars", 1500)
+            #        #)
+            #        # TODO: Code splitter always cause init error, so we use a normal text splitter for now
+
+            #    else:
+            #        logger.warning(f"No language detected for extension '{file_extension}' for file '{file_response.original_path}', falling back to sentence splitter")
+            #        # Fall back to sentence splitter for unknown extensions
+            #        return TokenTextSplitter(
+            #            include_metadata=True,
+            #            include_prev_next_rel=True,
+            #            chunk_size=parameters.get("chunk_size", 512),
+            #            chunk_overlap=parameters.get("chunk_overlap", 128)
+            #        )
             case "embedding":
                 return init_embedding_model(datasource.embedding_provider, datasource.embedding_settings)
             case "title_extractor":
@@ -391,7 +461,7 @@ def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource:
         logger.error(f"Error getting transformer for step: {e}")
         raise e
 
-def get_transformations_for_stack(session: Session, stack_identifier: str, datasource: Datasource):
+def get_transformations_for_stack(session: Session, stack_identifier: str, datasource: Datasource, file_response: FileInfoResponse):
     """Get all transformations for a processing stack"""
     try:
         stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
@@ -405,7 +475,7 @@ def get_transformations_for_stack(session: Session, stack_identifier: str, datas
                       .all())
                       
         for stack_step in stack_steps:
-            transformer = get_transformer_for_step(stack_step.step, stack_step.parameters or {}, datasource)
+            transformer = get_transformer_for_step(stack_step.step, stack_step.parameters or {}, datasource, file_response)
             transformations.append(transformer)
             
         return transformations
@@ -469,113 +539,91 @@ def validate_processing_stack_steps(session: Session, steps: List[ProcessingStac
     if embedding_count != 1:
         raise ValueError("Exactly one embedding step is required")
 
-#TRANSFORMATIONS_STACKS = {
-## See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
-## List of avaliable transformations stacks with their name and transformations
-#    "default": [
-#        SentenceSplitter(
-#            chunk_size=512,
-#            chunk_overlap=64,
-#        ),
-#    ],
-#    #"hierarchical": [ # TODO Fix the bug where a relation with a non existing doc id is created and creates issues when querying the index
-#    #    HierarchicalNodeParser.from_defaults(
-#    #        include_metadata=True,
-#    #        chunk_sizes=[1024, 512, 256, 128], # Stella embedding is trained on 512 tokens chunks so for best performance this is the maximum #size, #we also chunk it into The smallest sentences possible to capture as much atomic meaning of the sentence as possible.
-#    #        # When text chunks are too small like under 128 tokens, the embedding model may return null embeddings and we want to avoid that because #it break the search as they can come out on top of the search results
-#    #        chunk_overlap=0
-#    #    ),
-#    #    # Embedding is present at ingestion pipeline level
-#    #],
-#    "titles": [
-#        TitleExtractor(
-#            nodes=5,
-#        ),
-#    ],
-#    "questions": [
-#        QuestionsAnsweredExtractor(
-#            questions=3,
-#        ),
-#    ],
-#    "summary": [
-#        SummaryExtractor(
-#            summaries=["prev", "self"],
-#        ),
-#    ],
-#    "keywords": [
-#        KeywordExtractor(
-#            keywords=10,
-#        ),
-#    ],
-#    # NOTE: Current sentence splitter stacks are not linking each node like the hierarchical node parser does, so if multiple are used they are likely #to generate duplicates nodes at retreival time. Only use one at a time to avoid this. # TODO Fix hierarchical node parser
-#    "sentence-splitter-2048": [
-#        SentenceSplitter(
-#            chunk_size=2048,
-#            chunk_overlap=256,
-#        ),
-#    ],
-#    "sentence-splitter-1024": [
-#        SentenceSplitter(
-#            chunk_size=1024,
-#            chunk_overlap=128,
-#        ),
-#    ],
-#    "sentence-splitter-512": [
-#        SentenceSplitter(
-#            chunk_size=512,
-#            chunk_overlap=64,
-#        ),
-#    ],
-#    "sentence-splitter-256": [
-#        SentenceSplitter(
-#            chunk_size=256,
-#            chunk_overlap=0,
-#        ),
-#    ],
-#    "sentence-splitter-128": [
-#        SentenceSplitter(
-#            chunk_size=128,
-#            chunk_overlap=0,
-#        ),
-#    ],
-#    "image": [
-#        #ImageDescriptionExtractor(
-#        #    
-#        #),
-#        #ImageEXIFExtractor(
-#        #    
-#        #),
-#    ],
-#    "video": [
-#        #VideoDescriptionExtractor(
-#        #    
-#        #),
-#        #VideoTranscriptionExtractor(
-#        #    
-#        #),
-#        #VideoEXIFExtractor(
-#        #    
-#        #),
-#    ],
-#    "audio": [
-#        #AudioTranscriptionExtractor(
-#        #    
-#        #),
-#        #AudioEXIFExtractor(
-#        #    
-#        #),
-#    ],
-#    "code": [
-#        #CodeExtractor(
-#        #    
-#        #),
-#    ],
-#    #"entities": [
-#    #    EntityExtractor(prediction_threshold=0.5),
-#    #],
-#    #"zettlekasten": [
-#    #    ZettlekastenExtractor(
-#    #        similar_notes_top_k=5
-#    #    ),
-#    #],
-#}
+def get_language_from_extension(file_extension: str) -> str | None:
+    """Map file extension to tree-sitter language name"""
+    extension_to_language = {
+        # Web Technologies
+        ".js": "javascript",
+        ".jsx": "javascript",
+        ".ts": "typescript",
+        ".tsx": "typescript",
+        ".html": "html",
+        ".css": "css",
+        
+        # Systems Programming
+        ".c": "c",
+        ".h": "c",
+        ".cpp": "cpp",
+        ".hpp": "cpp",
+        ".cc": "cpp",
+        ".cxx": "cpp",
+        ".rs": "rust",
+        ".go": "go",
+        
+        # JVM Languages
+        ".java": "java",
+        ".scala": "scala",
+        ".kt": "kotlin",
+        
+        # .NET Languages
+        ".cs": "c_sharp",
+        
+        # Scripting Languages
+        ".py": "python",
+        ".rb": "ruby",
+        ".php": "php",
+        ".pl": "perl",
+        ".sh": "bash",
+        ".bash": "bash",
+        ".lua": "lua",
+        ".r": "r",
+        ".jl": "julia",
+        
+        # Query Languages
+        ".sql": "sql",
+        ".sqlite": "sql",
+        ".graphql": "ql",
+        ".gql": "ql",
+        
+        # Configuration & Data
+        ".json": "json",
+        ".yaml": "yaml",
+        ".yml": "yaml",
+        ".toml": "toml",
+        ".hcl": "hcl",
+        ".dockerfile": "dockerfile",
+        ".mod": "go_mod",
+        
+        # Functional Languages
+        ".hs": "haskell",
+        ".ml": "ocaml",
+        ".mli": "ocaml",
+        ".ex": "elixir",
+        ".exs": "elixir",
+        ".elm": "elm",
+        ".cl": "commonlisp",
+        ".lisp": "commonlisp",
+        ".el": "elisp",
+        
+        # Scientific Computing
+        ".f90": "fortran",
+        ".f95": "fortran",
+        ".f03": "fortran",
+        ".f08": "fortran",
+        ".f": "fixed_form_fortran",
+        ".for": "fixed_form_fortran",
+        ".f77": "fixed_form_fortran",
+        
+        # Mobile Development
+        ".swift": "swift",
+        ".m": "objc",
+        ".mm": "objc",
+        
+        # Other
+        ".erl": "erlang",
+        ".hack": "hack",
+        ".dot": "dot",
+        ".makefile": "make",
+        ".mk": "make",
+    }
+    return extension_to_language.get(file_extension.lower())
