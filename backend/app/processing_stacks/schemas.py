@@ -60,3 +60,8 @@ class ProcessingStepType(str, Enum):
     NODE_PARSER = "node_parser"
     NODE_POST_PROCESSOR = "node_post_processor"
     EMBEDDING = "embedding"
+
+class TokenSplitterParameters(BaseModel):
+    chunk_size: int = Field(description="The token chunk size for each chunk", default=1024)
+    chunk_overlap: int = Field(description="The token overlap of each chunk when splitting", default=20)
+    separator: str = Field(description="Default separator for splitting into words", default=" ")

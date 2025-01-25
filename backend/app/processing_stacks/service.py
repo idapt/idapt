@@ -11,7 +11,18 @@ from app.constants.file_extensions import TEXT_FILE_EXTENSIONS, CODE_FILE_EXTENS
 from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.datasources.models import Datasource
 from app.file_manager.schemas import FileInfoResponse
-from app.processing_stacks.schemas import ProcessingStackCreate, ProcessingStackResponse, ProcessingStackStepCreate, SentenceSplitterParameters, ProcessingStackUpdate, ProcessingStackStepUpdate, ProcessingStackStepResponse, ProcessingStepResponse
+from app.processing_stacks.schemas import (
+    ProcessingStackCreate, 
+    ProcessingStackResponse, 
+    ProcessingStackStepCreate, 
+    SentenceSplitterParameters,
+    TokenSplitterParameters,
+    #CodeSplitterParameters,
+    ProcessingStackUpdate, 
+    ProcessingStackStepUpdate, 
+    ProcessingStackStepResponse, 
+    ProcessingStepResponse
+)
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.extractors import (
     TitleExtractor,
@@ -54,6 +65,19 @@ def create_default_processing_stacks_if_needed(session: Session):
             session.commit()
             logger.info("Created default processing step 'Embedding'")
 
+        token_splitter_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "token_splitter").first()
+        if not token_splitter_step:
+            step = ProcessingStep(
+                type="node_parser",
+                identifier="token_splitter",
+                display_name="Token Splitter",
+                description="Splits text into chunks based on token count with configurable chunk size and overlap",
+                parameters_schema=TokenSplitterParameters.model_json_schema()
+            )
+            session.add(step)
+            session.commit()
+            logger.info("Created default processing step 'Token Splitter'")
+
         #code_splitter_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "code_splitter").first()
         #if not code_splitter_step:
         #    step = ProcessingStep(
@@ -93,11 +117,20 @@ def create_default_processing_stacks_if_needed(session: Session):
         create_processing_stack(session=session, stack=text_processing_stack_create)
 
         # Create code processing stack
-        #code_processing_stack_create = ProcessingStackCreate(
-        #    display_name="Code Processing",
-        #    description="Processing stack for code files",
-        #    supported_extensions=list(CODE_FILE_EXTENSIONS),
-        #    steps=[
+        code_processing_stack_create = ProcessingStackCreate(
+            display_name="Code Processing",
+            description="Processing stack for code files",
+            supported_extensions=list(CODE_FILE_EXTENSIONS),
+            steps=[
+                ProcessingStackStepCreate(
+                    step_identifier="token_splitter",
+                    order=1,
+                    parameters=TokenSplitterParameters(
+                        chunk_size=1024,
+                        chunk_overlap=20,
+                        separator=" "
+                    ).model_dump()
+                ),
                 #ProcessingStackStepCreate(
                 #    step_identifier="code_splitter",
                 #    order=1,
@@ -108,14 +141,14 @@ def create_default_processing_stacks_if_needed(session: Session):
                 #        language="python"  # Default language normally not used
                 #    ).model_dump()
                 #),
-                #ProcessingStackStepCreate(
-                #    step_identifier="embedding",
-                #    order=2,
-                #    parameters={}
-                #)
-            #]
-        #)
-        #create_processing_stack(session=session, stack=code_processing_stack_create)
+                ProcessingStackStepCreate(
+                    step_identifier="embedding",
+                    order=2,
+                    parameters={}
+                )
+            ]
+        )
+        create_processing_stack(session=session, stack=code_processing_stack_create)
 
         # TODO Add image, video, audio, code processing stacks
 
@@ -445,6 +478,14 @@ def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource:
             #            chunk_size=parameters.get("chunk_size", 512),
             #            chunk_overlap=parameters.get("chunk_overlap", 128)
             #        )
+            case "token_splitter":
+                return TokenTextSplitter(
+                    chunk_size=parameters.get("chunk_size", 1024),
+                    chunk_overlap=parameters.get("chunk_overlap", 20),
+                    separator=parameters.get("separator", " "),
+                    include_metadata=True,
+                    include_prev_next_rel=True
+                )
             case "embedding":
                 return init_embedding_model(datasource.embedding_provider, datasource.embedding_settings)
             case "title_extractor":
