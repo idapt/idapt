@@ -3,7 +3,9 @@ from app.ollama_status.service import can_process
 from app.api.utils import get_user_id, get_file_manager_db_session
 from sqlalchemy.orm import Session
 import logging
-import asyncio
+from app.api.websocket import StatusWebSocket
+from fastapi import WebSocketDisconnect
+
 
 logger = logging.getLogger("uvicorn")
 
@@ -27,6 +29,7 @@ async def get_ollama_status_route(
         # Return a http 500 error with the error message
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @r.websocket("/ws")
 async def ollama_status_websocket_route(
     websocket: WebSocket,
@@ -34,24 +37,19 @@ async def ollama_status_websocket_route(
     session: Session = Depends(get_file_manager_db_session)
 ):
     """WebSocket endpoint for Ollama status updates"""
-    await websocket.accept()
+    async def get_status():
+        is_downloading = not await can_process(session, False)
+        return {"is_downloading": is_downloading}
     
-    prev_status = None
-    try:
-        while True:
-            # Check status every 2 seconds
-            current_status = not await can_process(session, False)
-            
-            # Only send if status changed
-            if current_status != prev_status:
-                await websocket.send_json({"is_downloading": current_status})
-                prev_status = current_status
-            
-            await asyncio.sleep(2)
-    except Exception as e:
-        logger.error(f"Error in ollama_status_websocket: {str(e)}")
-    finally:
+    status_ws = StatusWebSocket(websocket, get_status)
+    await status_ws.accept()
+    
+    async with status_ws.status_loop():
         try:
-            await websocket.close()
-        except:
-            pass
+            while True:
+                await websocket.receive_text()
+        except WebSocketDisconnect as e:
+            if e.code not in (1000, 1001, 1012):  # Normal close codes
+                logger.error(f"WebSocket disconnected with code {e.code}")
+        except Exception as e:
+            logger.error(f"Unexpected error in ollama_status_websocket: {str(e)}")

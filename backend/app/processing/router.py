@@ -3,10 +3,12 @@ import logging
 from sqlalchemy.orm import Session
 import asyncio
 from fastapi import WebSocket
+from fastapi import WebSocketDisconnect
 
 from app.processing.service import get_queue_status, mark_items_as_queued
 from app.processing.schemas import ProcessingRequest
 from app.api.utils import get_user_id, get_file_manager_db_session
+from app.api.websocket import StatusWebSocket
 
 logger = logging.getLogger("uvicorn")
 
@@ -51,6 +53,7 @@ async def get_processing_status_route(
         logger.error(f"Error in get_generation_status_route: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @r.websocket("/status/ws")
 async def processing_status_websocket(
     websocket: WebSocket,
@@ -58,24 +61,15 @@ async def processing_status_websocket(
     session: Session = Depends(get_file_manager_db_session),
 ):
     """WebSocket endpoint for processing status updates"""
-    await websocket.accept()
+    status_ws = StatusWebSocket(websocket, lambda: get_queue_status(session))
+    await status_ws.accept()
     
-    prev_status = None
-    try:
-        while True:
-            # Check status every 2 seconds
-            current_status = get_queue_status(session)
-            
-            # Only send if status changed
-            if current_status != prev_status:
-                await websocket.send_json(current_status)
-                prev_status = current_status
-            
-            await asyncio.sleep(2)
-    except Exception as e:
-        logger.error(f"Error in processing_status_websocket: {str(e)}")
-    finally:
+    async with status_ws.status_loop():
         try:
-            await websocket.close()
-        except:
-            pass
+            while True:
+                await websocket.receive_text()
+        except WebSocketDisconnect as e:
+            if e.code not in (1000, 1001, 1012):  # Normal close codes
+                logger.error(f"WebSocket disconnected with code {e.code}")
+        except Exception as e:
+            logger.error(f"Unexpected error in processing_status_websocket: {str(e)}")
