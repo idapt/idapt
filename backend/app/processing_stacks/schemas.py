@@ -9,9 +9,9 @@ class ProcessingStackStepCreate(BaseModel):
 
 class ProcessingStackCreate(BaseModel):
     display_name: str
-    description: Optional[str] = None
-    supported_extensions: Optional[List[str]] = None
-    steps: List[ProcessingStackStepCreate]
+    description: Optional[str] = ""
+    supported_extensions: Optional[List[str]] = []
+    steps: Optional[List[ProcessingStackStepCreate]] = []
 
 class ProcessingStepResponse(BaseModel):
     identifier: str
@@ -30,7 +30,8 @@ class ProcessingStackStepResponse(BaseModel):
 class ProcessingStackResponse(BaseModel):
     identifier: str
     display_name: str
-    description: Optional[str] = None
+    description: Optional[str] = ""
+    supported_extensions: List[str]
     is_enabled: bool
     steps: List[ProcessingStackStepResponse]
 
@@ -41,31 +42,7 @@ class ProcessingStackStepUpdate(BaseModel):
 
 class ProcessingStackUpdate(BaseModel):
     steps: List[ProcessingStackStepUpdate]
-    supported_extensions: Optional[List[str]] = None
-
-    @field_validator('steps')
-    def validate_steps_order(cls, steps):
-        if not steps:
-            return steps
-            
-        # Check if first step is node parser
-        if steps[0].step_identifier != "node_parser" and steps[0].step_identifier != "embedding":
-            raise ValueError("First step must be a node parser or embedding")
-            
-        # Check if last step is embedding
-        if steps[-1].step_identifier != "embedding":
-            raise ValueError("Last step must be an embedding")
-            
-        # Count node parsers and embeddings
-        parser_count = sum(1 for step in steps if step.step_identifier == "node_parser")
-        embedding_count = sum(1 for step in steps if step.step_identifier == "embedding")
-        
-        if parser_count != 1:
-            raise ValueError("Exactly one node parser is required")
-        if embedding_count != 1:
-            raise ValueError("Exactly one embedding step is required")
-            
-        return steps
+    supported_extensions: List[str]
 
 # Processing step parameters
 # TODO: Move to a separate file

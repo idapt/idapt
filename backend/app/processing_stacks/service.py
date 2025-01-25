@@ -1,5 +1,6 @@
 import logging
 import re
+import json
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from typing import List
@@ -101,12 +102,12 @@ def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> P
             #logger.info(f"Processing stack already exists: {stack_to_create.display_name}")
             pass
         else:
-            # Create the stack
+            # Create the database stack
             stack_to_create = ProcessingStack(
                 identifier=stack_identifier,
                 display_name=stack.display_name,
                 description=stack.description,
-                supported_extensions=stack.supported_extensions,
+                supported_extensions=json.dumps(stack.supported_extensions),
                 steps=[]
             )
             session.add(stack_to_create)
@@ -125,6 +126,7 @@ def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> P
         response = ProcessingStackResponse(
             identifier=stack_to_create.identifier,
             display_name=stack_to_create.display_name,
+            supported_extensions=json.loads(stack_to_create.supported_extensions),
             description=stack_to_create.description,
             is_enabled=stack_to_create.is_enabled,
             steps=[ ProcessingStackStepResponse(
@@ -157,21 +159,51 @@ def update_processing_stack(session: Session, stack_identifier: str, stack_updat
         if not db_stack:
             raise HTTPException(status_code=404, detail="Stack not found")
         
-        # Update supported extensions if provided
-        if stack_update.supported_extensions is not None:
-            db_stack.supported_extensions = stack_update.supported_extensions
+        # Validate steps
+        if stack_update.steps:
+            # Try to get the steps from the database
+            parser_count = 0
+            embedding_count = 0
+            for stack_step in stack_update.steps:
+                db_step = session.query(ProcessingStep).filter_by(identifier=stack_step.step_identifier).first()
+                # If the step is not found, raise an error
+                if not db_step:
+                    raise ValueError(f"Step not found: {stack_step.step_identifier}")
+                
+                # Make sure the first stack step is of type node parser or embedding
+                if stack_step.order == 1 and db_step.type not in ["node_parser", "embedding"]:
+                    raise ValueError(f"First step must be a node parser or embedding")
+                
+                # Make sure the last stack step is of type embedding
+                if stack_step.order == len(stack_update.steps) and db_step.type != "embedding":
+                    raise ValueError(f"Last step must be an embedding")
+                
+                # Count node parsers and embeddings
+                if db_step.type == "node_parser":
+                    parser_count += 1
+                elif db_step.type == "embedding":
+                    embedding_count += 1
+            
+            # Check if the counts are correct
+            if parser_count != 1:
+                raise ValueError("Exactly one node parser is required")
+            if embedding_count != 1:
+                raise ValueError("Exactly one embedding step is required")
+            
+        # Update supported extensions
+        db_stack.supported_extensions = json.dumps(stack_update.supported_extensions)
         
         # Delete existing steps
         session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier).delete()
         
         # Add new steps
-        for step in stack_update.steps:
+        for stack_step in stack_update.steps:
             add_processing_stack_step(
                 session=session,
                 stack_identifier=stack_identifier,
-                step_identifier=step.step_identifier,
-                order=step.order,
-                parameters=step.parameters or {}
+                step_identifier=stack_step.step_identifier,
+                order=stack_step.order,
+                parameters=stack_step.parameters or {}
             )
         
         session.commit()
@@ -181,6 +213,7 @@ def update_processing_stack(session: Session, stack_identifier: str, stack_updat
         return ProcessingStackResponse(
             identifier=updated_stack.identifier,
             display_name=updated_stack.display_name,
+            supported_extensions=json.loads(updated_stack.supported_extensions),
             description=updated_stack.description,
             is_enabled=updated_stack.is_enabled,
             steps=[
@@ -223,6 +256,7 @@ def get_processing_stack(session: Session, stack_identifier: str) -> ProcessingS
             identifier=stack.identifier,
             display_name=stack.display_name,
             description=stack.description,
+            supported_extensions=json.loads(stack.supported_extensions),
             is_enabled=stack.is_enabled,
             steps=[
                 ProcessingStackStepResponse(

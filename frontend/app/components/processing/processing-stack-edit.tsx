@@ -26,6 +26,7 @@ import { useClientConfig } from '@/app/components/chat/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
 import { ProcessingStepSelect } from './processing-step-select';
 import { ParameterEditor } from './parameter-editor';
+import { FileExtensionsInput } from './file-extensions-input';
 
 interface ProcessingStackEditProps {
   stack: ProcessingStack;
@@ -101,18 +102,16 @@ function SortableStep({
 
 export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }: ProcessingStackEditProps) {
   const [steps, setSteps] = useState<ProcessingStackStep[]>(stack.steps);
-  const [extensions, setExtensions] = useState(stack.supported_extensions?.join(', ') || '');
+  const [extensions, setExtensions] = useState<string[]>(stack.supported_extensions || []);
   const { backend } = useClientConfig();
   const { fetchWithAuth } = useApiClient();
 
   const handleSave = async () => {
     const controller = new AbortController();
     try {
-      const extensionList = extensions
-        .split(',')
-        .map(ext => ext.trim())
-        .filter(ext => ext)
-        .map(ext => ext.startsWith('.') ? ext : `.${ext}`);
+      const extensionList = extensions.map(ext => 
+        ext.startsWith('.') ? ext : `.${ext}`
+      );
 
       const response = await fetchWithAuth(`${backend}/api/stacks/stacks/${stack.identifier}`, {
         method: 'PUT',
@@ -348,27 +347,23 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
             availableSteps={availableSteps} 
             onStepSelect={handleAddStep}
           />
-          <Button variant="destructive" onClick={handleDelete}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Stack
-          </Button>
         </div>
-        <Button onClick={handleSave}>
-          <Save className="h-4 w-4 mr-2" />
-          Save Changes
-        </Button>
       </div>
 
-      <div>
-        <label className="text-sm font-medium">Supported File Extensions</label>
-        <Input
-          value={extensions}
-          onChange={(e) => setExtensions(e.target.value)}
-          placeholder="e.g. .pdf, .txt, .md"
-        />
-        <p className="text-sm text-muted-foreground mt-1">
-          Separate extensions with commas
-        </p>
+      <FileExtensionsInput
+        value={extensions}
+        onChange={setExtensions}
+      />
+
+    <div className="flex justify-between items-center"> 
+      <Button variant="destructive" onClick={handleDelete}>
+        <Trash2 className="h-4 w-4 mr-2" />
+        Delete Stack
+      </Button>
+      <Button onClick={handleSave}>
+        <Save className="h-4 w-4 mr-2" />
+        Save Changes
+        </Button>
       </div>
     </div>
   );
