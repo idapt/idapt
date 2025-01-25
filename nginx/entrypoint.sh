@@ -59,10 +59,15 @@ if [ -n "$(find /nginx-certs-source -type f \( -name '*.crt' -o -name '*.key' -o
 # Else if there is no user provided ssl certificates, create a self signed certificate with infinite validity using openssl
 else
     echo "No user provided ssl certificates found"
-    echo "Creating self signed ssl certificate with infinite validity using openssl"
-    # Create the letsencrypt folder if it doesn't exist
-    mkdir -p /etc/letsencrypt/live/$HOST_DOMAIN
-    openssl req -x509 -newkey rsa:4096 -keyout /etc/letsencrypt/live/$HOST_DOMAIN/privkey.pem -out /etc/letsencrypt/live/$HOST_DOMAIN/fullchain.pem -days 365000 -nodes -subj "/CN=$HOST_DOMAIN"
+    # If there is existing self signed certificate at the intended location, don't generate new ones, it will make it so that we dont need to accept the warning in the browser each time we update the container
+    if [ ! -f /etc/letsencrypt/live/$HOST_DOMAIN/fullchain.pem ]; then
+        echo "Creating self signed ssl certificate with infinite validity using openssl"
+        # Create the letsencrypt folder if it doesn't exist
+        mkdir -p /etc/letsencrypt/live/$HOST_DOMAIN
+        openssl req -x509 -newkey rsa:4096 -keyout /etc/letsencrypt/live/$HOST_DOMAIN/privkey.pem -out /etc/letsencrypt/live/$HOST_DOMAIN/fullchain.pem -days 365000 -nodes -subj "/CN=$HOST_DOMAIN"
+    else
+        echo "Self signed ssl certificate already exists at the intended location"
+    fi
 fi
 
 
