@@ -10,7 +10,7 @@ class ProcessingStep(Base):
     identifier = Column(String, primary_key=True)
     display_name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    type = Column(String, nullable=False)  # 'node_parser', 'extractor', 'embedding'
+    type = Column(String, nullable=False)  # 'node_parser', 'node_post_processor', 'embedding'
     parameters_schema = Column(JSON, nullable=False)  # JSON schema defining available parameters
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now())

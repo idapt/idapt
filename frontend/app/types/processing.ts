@@ -5,11 +5,13 @@ export interface ProcessingStepParameter {
   default?: any;
 }
 
+export type ProcessingStepType = 'node_parser' | 'node_post_processor' | 'embedding';
+
 export interface ProcessingStep {
   identifier: string;
   display_name: string;
   description?: string;
-  type: string;
+  type: ProcessingStepType;
   parameters_schema: Record<string, any>;
 }
 

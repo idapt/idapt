@@ -160,6 +160,36 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
       return;
     }
 
+    const activeStep = steps.find(s => s.id === active.id);
+    const overStep = steps.find(s => s.id === over.id);
+
+    if (!activeStep || !overStep) return;
+
+    // Prevent moving node parser from first position
+    if (activeStep.step.type === 'node_parser' && over.id !== steps[0].id) {
+      window.alert('Node parser must remain the first step');
+      return;
+    }
+
+    // Prevent moving anything before node parser
+    if (steps[0].step.type === 'node_parser' && active.id !== steps[0].id && over.id === steps[0].id) {
+      window.alert('Cannot move steps before node parser');
+      return;
+    }
+
+    // Prevent moving embedding from last position
+    if (activeStep.step.type === 'embedding' && over.id !== steps[steps.length - 1].id) {
+      window.alert('Embedding must remain the last step');
+      return;
+    }
+
+    // Prevent moving anything after embedding
+    const embeddingIndex = steps.findIndex(s => s.step.type === 'embedding');
+    if (embeddingIndex !== -1 && active.id !== steps[embeddingIndex].id && over.id === steps[embeddingIndex].id) {
+      window.alert('Cannot move steps after embedding');
+      return;
+    }
+
     setSteps((items) => {
       const oldIndex = items.findIndex((item) => item.id === active.id);
       const newIndex = items.findIndex((item) => item.id === over.id);
@@ -181,7 +211,46 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
     });
   };
 
+  const validateStepAddition = (newStep: ProcessingStep, currentSteps: ProcessingStackStep[]): string | null => {
+    // Check for node_parser - must be first and only one
+    if (newStep.type === 'node_parser') {
+      if (currentSteps.length > 0 && currentSteps[0].step.type !== 'node_parser') {
+        return 'Node parser must be the first step in the stack';
+      }
+      if (currentSteps.some(s => s.step.type === 'node_parser')) {
+        return 'Only one node parser is allowed per stack';
+      }
+    }
+
+    // Check for embedding - must be last and only one
+    if (newStep.type === 'embedding') {
+      if (currentSteps.some(s => s.step.type === 'embedding')) {
+        return 'Only one embedding step is allowed per stack';
+      }
+      // If there are other steps after where this would be inserted
+      if (currentSteps.length > currentSteps.length) {
+        return 'Embedding step must be the last step in the stack';
+      }
+    }
+
+    // Node post processors can be added anywhere between parser and embedding
+    if (newStep.type === 'node_post_processor') {
+      const hasEmbedding = currentSteps.some(s => s.step.type === 'embedding');
+      if (hasEmbedding && currentSteps[currentSteps.length - 1].step.type === 'embedding') {
+        return 'Cannot add post processor after embedding step';
+      }
+    }
+
+    return null;
+  };
+
   const handleAddStep = (step: ProcessingStep) => {
+    const validationError = validateStepAddition(step, steps);
+    if (validationError) {
+      window.alert(validationError);
+      return;
+    }
+
     const newStep: ProcessingStackStep = {
       id: Math.max(0, ...steps.map(s => s.id)) + 1,
       step,
@@ -189,7 +258,26 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
       order: steps.length + 1,
       parameters: {},
     };
-    setSteps([...steps, newStep]);
+
+    // If it's a node parser, add it to the beginning
+    if (step.type === 'node_parser') {
+      setSteps([newStep, ...steps.map(s => ({ ...s, order: s.order + 1 }))]);
+    }
+    // If it's an embedding, add it to the end
+    else if (step.type === 'embedding') {
+      setSteps([...steps, newStep]);
+    }
+    // For post processors, add them before any embedding step
+    else {
+      const embeddingIndex = steps.findIndex(s => s.step.type === 'embedding');
+      if (embeddingIndex === -1) {
+        setSteps([...steps, newStep]);
+      } else {
+        const newSteps = [...steps];
+        newSteps.splice(embeddingIndex, 0, newStep);
+        setSteps(newSteps.map((s, i) => ({ ...s, order: i + 1 })));
+      }
+    }
   };
 
   const handleDelete = async () => {

@@ -406,7 +406,34 @@ def delete_processing_stack(session: Session, stack_identifier: str) -> bool:
         logger.error(f"Error deleting processing stack: {e}")
         raise e
 
-
+def validate_processing_stack_steps(session: Session, steps: List[ProcessingStackStepCreate]) -> None:
+    if not steps:
+        raise ValueError("At least one step is required")
+        
+    # Get all steps from database to check their types
+    step_types = {
+        step.identifier: step.type 
+        for step in session.query(ProcessingStep).filter(
+            ProcessingStep.identifier.in_([s.step_identifier for s in steps])
+        ).all()
+    }
+    
+    # Validate first step is node parser
+    if step_types.get(steps[0].step_identifier) != "node_parser":
+        raise ValueError("First step must be a node parser")
+        
+    # Validate last step is embedding
+    if step_types.get(steps[-1].step_identifier) != "embedding":
+        raise ValueError("Last step must be an embedding")
+        
+    # Count node parsers and embeddings
+    parser_count = sum(1 for s in steps if step_types.get(s.step_identifier) == "node_parser")
+    embedding_count = sum(1 for s in steps if step_types.get(s.step_identifier) == "embedding")
+    
+    if parser_count != 1:
+        raise ValueError("Exactly one node parser is required")
+    if embedding_count != 1:
+        raise ValueError("Exactly one embedding step is required")
 
 #TRANSFORMATIONS_STACKS = {
 ## See https://docs.llamaindex.ai/en/stable/examples/retrievers/auto_merging_retriever/ for more details on the hierarchical node parser
