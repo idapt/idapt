@@ -123,7 +123,7 @@ def sanitize_name(name: str) -> str:
     """Sanitize a path name"""
     return re.sub(r'[^a-zA-Z0-9-_.]', '_', name)
 
-def get_new_fs_path(original_path: str, user_id: str, session: Session, last_path_part_is_file : bool = True) -> str:
+def get_new_fs_path(original_path: str, session: Session, last_path_part_is_file : bool = True) -> str:
     """
     Sanitizes a path and ensures uniqueness for both original and fs paths.
     If the path exists in the database, it returns the existing path for consistency.
@@ -223,7 +223,7 @@ def get_new_fs_path(original_path: str, user_id: str, session: Session, last_pat
                 return str(current_sanitized_path) 
                 
         # If we reach this point, something went wrong
-        raise HTTPException(status_code=400, detail=f"Failed to sanitize path: {str(current_sanitized_path)}")
+        raise HTTPException(status_code=400, detail=f"Failed to get new fs path for {original_path} !")
         
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to sanitize path: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to get new fs path for {original_path}: {str(e)}")

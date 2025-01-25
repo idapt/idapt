@@ -11,7 +11,7 @@ from typing import List
 
 # The services are already initialized in the main.py file
 from app.file_manager.service.db_operations import get_db_folder_files_recursive, delete_db_folder_recursive
-from app.file_manager.service.file_system import get_path_from_fs_path, get_fs_path_from_path, get_existing_fs_path_from_db, write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_new_fs_path
+from app.file_manager.service.file_system import get_path_from_fs_path, get_existing_fs_path_from_db, write_file_filesystem, read_file_filesystem, delete_file_filesystem, rename_file_filesystem, delete_folder_filesystem, get_new_fs_path
 from app.file_manager.service.llama_index import delete_file_llama_index
 from app.file_manager.schemas import FileUploadItem, FileDownloadResponse, FileInfoResponse, FolderInfoResponse, FolderDownloadResponse
 from app.file_manager.models import FileStatus, File, Folder
@@ -63,8 +63,8 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> F
             #This will create or get the folders if they already exist by original path and if not it will create them minding existing ones
             fs_path = get_new_fs_path(
                 item.original_path, 
-                user_id, 
-                session
+                session,
+                last_path_part_is_file=True
             )
         # If the path already exists and an http error 400 error is raised, get the full path with get_existing_fs_path instead
         except HTTPException as e:
@@ -365,7 +365,7 @@ async def delete_file(session: Session, user_id: str, fs_path: str):
         raise
 
 async def delete_folder(session: Session, user_id: str, fs_path: str):
-    # TODO Make more robust to avoid partial deletion
+    # TODO Make more robust to avoid partial deletion by implementing a trash folder and moving the files to it and restoring them in case of an error
     try:
         logger.info(f"Deleting folder: {fs_path}")
 

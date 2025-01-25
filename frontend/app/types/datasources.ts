@@ -3,10 +3,10 @@ export interface Datasource {
   identifier: string;
   name: string;
   type: string;
-  description?: string;
-  settings?: any;
-  embedding_provider?: string;
-  embedding_settings?: any;
+  description: string;
+  settings_json: string;
+  embedding_provider: string;
+  embedding_settings_json: string;
   created_at: number;
   updated_at: number;
 }
@@ -14,7 +14,7 @@ export interface Datasource {
 export interface CreateDatasourceRequest {
   name: string;
   type: string;
-  settings: Record<string, any>;
+  settings_json?: string;
   embedding_provider: string;
-  embedding_settings: Record<string, any>;
+  embedding_settings_json?: string;
 }

@@ -38,6 +38,15 @@ class OpenAIEmbedSettings(SettingBase):
     model: str = "text-embedding-3-large"
     api_key: str = ""
 
+def get_embedding_provider_class(provider: str):
+    match provider:
+        case "ollama_embed":
+            return OllamaEmbedSettings
+        case "openai_embed":
+            return OpenAIEmbedSettings
+        case _:
+            raise ValueError(f"Unsupported embedding provider: {provider}")
+
 # Provider-specific settings
 class AnthropicLLMSettings(SettingBase):
     identifier: str = "anthropic_llm"

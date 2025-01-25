@@ -10,7 +10,6 @@ import { useState, useEffect } from "react";
 import { useClientConfig } from "@/app/components/chat/hooks/use-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { Datasource } from "@/app/types/datasources";
-import { encodePathSafe } from "@/app/components/file-manager/utils/path-encoding";
 import { Textarea } from "@/app/components/ui/textarea";
 import { useApiClient } from "@/app/lib/api-client";
 import { useProcessingStacks } from "@/app/components/processing/hooks/use-processing-stacks";
@@ -24,9 +23,9 @@ import {
   SelectValue,
 } from "@/app/components/ui/select";
 import { Input } from "@/app/components/ui/input";
-import { EMBEDDING_MODEL_OPTIONS, EMBEDDING_PROVIDER_OPTIONS } from "@/app/types/settings";
-
+import { EMBEDDING_MODEL_OPTIONS, EMBEDDING_PROVIDER_OPTIONS, OllamaEmbedSettings, OpenAIEmbedSettings } from "@/app/types/settings";
 import { isCustomModel } from "@/app/components/file-manager/create-datasource-dialog";
+import { parseEmbeddingSettings } from "@/app/lib/embedding-settings";
 
 interface DatasourceItemProps {
   datasource: Datasource;
@@ -44,12 +43,15 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
   const { stacks } = useProcessingStacks();
   const { processFolder, processWithStack } = useProcessing();
   const [embeddingProvider, setEmbeddingProvider] = useState(datasource.embedding_provider);
-  const [embeddingModel, setEmbeddingModel] = useState(datasource.embedding_settings.model);
+  const embeddingSettings = parseEmbeddingSettings(datasource.embedding_provider, datasource.embedding_settings_json);
+  const [embeddingModel, setEmbeddingModel] = useState(embeddingSettings.model);
   const [customModel, setCustomModel] = useState("");
   const [ollamaHost, setOllamaHost] = useState(
-    datasource.embedding_settings.host || "http://host.docker.internal:11434"
+    embeddingSettings.identifier === "ollama_embed" ? (embeddingSettings as OllamaEmbedSettings).host : "http://host.docker.internal:11434"
   );
-  const [openAIKey, setOpenAIKey] = useState(datasource.embedding_settings.api_key || "");
+  const [openAIKey, setOpenAIKey] = useState(
+    embeddingSettings.identifier === "openai_embed" ? (embeddingSettings as OpenAIEmbedSettings).api_key : ""
+  );
 
   useEffect(() => {
     setDescription(datasource.description || '');
@@ -97,7 +99,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
           break;
       }
 
-      const response = await fetchWithAuth(`${backend}/api/datasources/${encodePathSafe(datasource.identifier)}`, {
+      const response = await fetchWithAuth(`${backend}/api/datasources/${datasource.identifier}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +107,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
         body: JSON.stringify({
           description,
           embedding_provider: embeddingProvider,
-          embedding_settings: embeddingSettings
+          embedding_settings_json: JSON.stringify(embeddingSettings)
         })
       });
       
@@ -126,8 +128,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
   const handleDelete = async () => {
     if (confirm(`Are you sure you want to delete datasource "${datasource.name}"?`)) {
         try {
-            const encodedIdentifier = encodePathSafe(datasource.identifier);
-            const response = await fetchWithAuth(`${backend}/api/datasources/${encodedIdentifier}`, {
+            const response = await fetchWithAuth(`${backend}/api/datasources/${datasource.identifier}`, {
                 method: 'DELETE'
             });
             

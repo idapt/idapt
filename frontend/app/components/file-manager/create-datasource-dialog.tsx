@@ -90,11 +90,11 @@ export function CreateDatasourceDialog({ open, onClose, onCreated }: CreateDatas
         },
         body: JSON.stringify({
           name: name.trim(),
-          description: description,
           type: 'files',
+          description: description,
           settings: {},
           embedding_provider: embeddingProvider,
-          embedding_settings: embeddingSettings
+          embedding_settings_json: JSON.stringify(embeddingSettings)
         })
       });
 
