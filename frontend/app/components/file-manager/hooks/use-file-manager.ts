@@ -1,5 +1,5 @@
 import { File, Folder } from '@/app/types/files';
-import { Datasource } from '@/app/types/datasources';
+import { DatasourceResponse } from '@/app/types/datasources';
 import { useCallback, useEffect, useState } from 'react';
 import { useClientConfig } from '../../chat/hooks/use-config';
 import { encodePathSafe } from '@/app/components/file-manager/utils/path-encoding';
@@ -11,8 +11,8 @@ export function useFileManager() {
   const [currentPath, setCurrentPath] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [datasources, setDatasources] = useState<Datasource[]>([]);
-  const [currentDatasource, setCurrentDatasource] = useState<Datasource | undefined>();
+  const [datasources, setDatasources] = useState<DatasourceResponse[]>([]);
+  const [currentDatasource, setCurrentDatasource] = useState<DatasourceResponse | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +53,7 @@ export function useFileManager() {
         const pathParts = path.split('/').filter(Boolean);
         if (pathParts.length > 0) {
           const datasourceIdentifier = pathParts[0];
-          const currentDatasource = datasources.find((d: Datasource) => d.identifier === datasourceIdentifier);
+          const currentDatasource = datasources.find((d: DatasourceResponse) => d.identifier === datasourceIdentifier);
           setCurrentDatasource(currentDatasource);
         }
       }

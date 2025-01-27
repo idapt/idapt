@@ -1,12 +1,10 @@
-import json
-from fastapi import BackgroundTasks
 import logging
-from app.settings.schemas import AppSettings, OllamaLLMSettings, OllamaEmbedSettings
+from app.settings.schemas import OllamaLLMSettings, OllamaEmbedSettings, SettingResponse, AppSettings
 import httpx
 import time
 from sqlalchemy.orm import Session
 from app.settings.service import get_setting
-from app.datasources.models import Datasource
+from app.settings.models import Setting
 
 logger = logging.getLogger("uvicorn")
 
@@ -69,32 +67,34 @@ async def can_process(session: Session, download_models: bool = True) -> bool:
     """Check if Ollama models are ready for processing"""
     try:
         # TODO Also check for other models
-        # Get all datasources
-        datasources = session.query(Datasource).all()
+        # Get all embedding settings that have the schema_identifier "ollama_embed"
+        embedding_settings = session.query(Setting).filter(Setting.schema_identifier == "ollama_embed").all()
         # Check if any datasource is using ollama
-        for datasource in datasources:
-            if datasource.embedding_provider == "ollama_embed":
-                ollama_embed_settings : OllamaEmbedSettings = OllamaEmbedSettings(**json.loads(datasource.embedding_settings))
-                # Check if the ollama server is reachable
-                if not await is_ollama_server_reachable(ollama_embed_settings.host):
-                    # We can't process files if the ollama server is not reachable, skip this processing request
-                    #logger.error("Ollama server is not reachable, skipping processing request")
-                    return False
-                if not await _check_ollama_model(ollama_embed_settings.host, ollama_embed_settings.model):
-                    logger.info(f"Model {ollama_embed_settings.model} not found, downloading...")
-                    if download_models:
-                        await _download_ollama_model(ollama_embed_settings.host, ollama_embed_settings.model)
-                        # Check again if the model is installed
-                        if not await _check_ollama_model(ollama_embed_settings.host, ollama_embed_settings.model):
-                            logger.error(f"Model {ollama_embed_settings.model} still not found after downloading")
-                            return False
-                    else:
+        for embedding_setting in embedding_settings:
+            ollama_embed_settings : OllamaEmbedSettings = OllamaEmbedSettings.model_validate_json(embedding_setting.value_json)
+            # Check if the ollama server is reachable
+            if not await is_ollama_server_reachable(ollama_embed_settings.host):
+                # We can't process files if the ollama server is not reachable, skip this processing request
+                #logger.error("Ollama server is not reachable, skipping processing request")
+                return False
+            if not await _check_ollama_model(ollama_embed_settings.host, ollama_embed_settings.model):
+                logger.info(f"Model {ollama_embed_settings.model} not found, downloading...")
+                if download_models:
+                    await _download_ollama_model(ollama_embed_settings.host, ollama_embed_settings.model)
+                    # Check again if the model is installed
+                    if not await _check_ollama_model(ollama_embed_settings.host, ollama_embed_settings.model):
+                        logger.error(f"Model {ollama_embed_settings.model} still not found after downloading")
                         return False
+                else:
+                    return False
                     
         # Check llm model
-        app_settings : AppSettings = get_setting(session, "app")
-        if app_settings.llm_model_provider == "ollama_llm":
-            ollama_llm_settings : OllamaLLMSettings = get_setting(session, "ollama_llm")
+        app_settings_response : SettingResponse = get_setting(session, "app")
+        app_settings : AppSettings = AppSettings.model_validate_json(app_settings_response.value_json)
+        # Get the llm setting
+        llm_setting : SettingResponse = get_setting(session, app_settings.llm_setting_identifier)
+        if llm_setting.schema_identifier == "ollama_llm":
+            ollama_llm_settings : OllamaLLMSettings = OllamaLLMSettings.model_validate_json(llm_setting.value_json)
             # Check if the ollama server is reachable
             if not await is_ollama_server_reachable(ollama_llm_settings.host):
                 # We can't process files if the ollama server is not reachable, skip this processing request

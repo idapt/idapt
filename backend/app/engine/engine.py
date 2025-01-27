@@ -1,5 +1,6 @@
 from typing import List
 import os
+import json
 
 from llama_index.core.agent.react import ReActAgent, ReActChatFormatter
 from llama_index.core.callbacks import CallbackManager
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 #from app.engine.tools import ToolFactory
 from app.settings.model_initialization import init_llm, init_embedding_model
 from app.file_manager.service.llama_index import create_query_tool, create_vector_store, create_doc_store
-from app.settings.schemas import AppSettings
+from app.settings.schemas import SettingResponse, AppSettings
 from app.settings.service import get_setting
 from app.datasources.models import Datasource
 
@@ -30,18 +31,25 @@ def get_chat_engine(session: Session,
         # Used to display the index events in the steps ui
         callback_manager = CallbackManager(handlers=event_handlers or [])
 
+        # Get the app settings
+        app_setting_response : SettingResponse = get_setting(session, "app")
+        app_setting : AppSettings = AppSettings.model_validate_json(app_setting_response.value_json)
+        # Get the llm provider from the settings
+        llm_provider_setting : SettingResponse = get_setting(session, app_setting.llm_setting_identifier)
         # Init the llm from the app settings
-        llm = init_llm(session)
+        llm = init_llm(llm_provider_setting.schema_identifier, llm_provider_setting.value_json, app_setting_response.value_json)
 
         # Get the datasources tools
         if datasource_identifier:
             # Get the corresponding datasource
             datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
             # Get the vector store and doc store from the datasource identifier
-            vector_store = create_vector_store(datasource.id, user_id)
+            vector_store = create_vector_store(datasource.identifier, user_id)
             doc_store = create_doc_store(datasource.identifier, user_id)
+            # Get the embedding model setting for the datasource
+            embedding_model_setting = get_setting(session, datasource.embedding_setting_identifier)
             # Init the embedding model from the app settings
-            embed_model = init_embedding_model(datasource.embedding_provider, datasource.embedding_settings)
+            embed_model = init_embedding_model(embedding_model_setting.schema_identifier, embedding_model_setting.value_json)
             # Get specific datasource tool
             tool = create_query_tool(session, datasource.identifier, vector_store, doc_store, embed_model, llm)
             tools.append(tool)
@@ -50,10 +58,12 @@ def get_chat_engine(session: Session,
             datasources = session.query(Datasource).all()
             for datasource in datasources:
                 # Get the vector store and doc store from the datasource identifier
-                vector_store = create_vector_store(datasource.id, user_id)
+                vector_store = create_vector_store(datasource.identifier, user_id)
                 doc_store = create_doc_store(datasource.identifier, user_id)
+                # Get the embedding model setting for the datasource
+                embedding_model_setting = get_setting(session, datasource.embedding_setting_identifier)
                 # Init the embedding model from the app settings
-                embed_model = init_embedding_model(datasource.embedding_provider, datasource.embedding_settings)
+                embed_model = init_embedding_model(embedding_model_setting.schema_identifier, embedding_model_setting.value_json)
                 # Get specific datasource tool
                 tool = create_query_tool(
                     session=session, 
@@ -83,10 +93,8 @@ def get_chat_engine(session: Session,
         current_dir = os.path.dirname(os.path.abspath(__file__))
         prompt_file_path = os.path.join(current_dir, "react_agent_system_prompt.md")
         react_agent_and_system_prompt = open(prompt_file_path, "r").read()
-        # Get the app settings
-        app_settings : AppSettings = get_setting(session, "app")
-    
-        react_agent_and_system_prompt = app_settings.system_prompt + "\n\n" + react_agent_and_system_prompt
+
+        react_agent_and_system_prompt = app_setting.system_prompt + "\n\n" + react_agent_and_system_prompt
 
         return ReActAgent.from_llm(
             # Use the initialized llm
@@ -94,7 +102,7 @@ def get_chat_engine(session: Session,
             tools=tools,
             callback_manager=callback_manager,
             verbose=True,
-            max_iterations=app_settings.max_iterations,
+            max_iterations=app_setting.max_iterations,
             react_chat_formatter=ReActChatFormatter(
                 system_header=react_agent_and_system_prompt,
                 context=""

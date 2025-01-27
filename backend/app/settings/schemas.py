@@ -1,146 +1,117 @@
 from pydantic import BaseModel
-from typing import Literal, Optional
+from typing import Literal, Optional, Dict, Type
+
+class CreateSettingRequest(BaseModel):
+    schema_identifier: str
+
+class UpdateSettingRequest(BaseModel):
+    values_to_update_json: str
+
+class SettingResponse(BaseModel):
+    identifier: str
+    schema_identifier: str
+    setting_schema_json: str
+    value_json: str
 
 class SettingBase(BaseModel):
-    identifier: str
-    display_name: str
-    description: Optional[str] = None
+
+    def update_value(self, new_values: dict):
+        """
+        New values are a dictionary of key-value pairs to update in the current setting value
+        """
+        # Validate the new new_values format
+        if not isinstance(new_values, dict):
+            raise ValueError("New values must be a dictionary of key-value pairs to update in the current setting value")
+        # For each key in the new value, update the corresponding field in the current setting value
+        for key, value in new_values.items():
+            # Check if the key exists in the current setting value
+            if hasattr(self, key):
+                # Update the field in the current setting value
+                setattr(self, key, value)
+            else:
+                raise ValueError(f"Invalid key: {key}")
+
 
 # LLM Settings
 class OllamaLLMSettings(SettingBase):
-    identifier: str = "ollama_llm"
-    display_name: str = "Ollama LLM"
-    description: str = "Ollama LLM provider settings"
-    model: str = "llama3.1:8b"
+    model: Literal["llama3.1:8b", "mistral:7b", "mixtral:8x7b", "phi:latest", "custom"] = "llama3.1:8b"
     host: str = "http://host.docker.internal:11434"
     request_timeout: float = 300
 
-class OllamaEmbedSettings(SettingBase):
-    identifier: str = "ollama_embed"
-    display_name: str = "Ollama Embeddings"
-    description: str = "Ollama embedding provider settings"
-    model: str = "bge-m3"
-    host: str = "http://host.docker.internal:11434"
-    request_timeout: float = 60
-
 class OpenAILLMSettings(SettingBase):
-    identifier: str = "openai_llm"
-    display_name: str = "OpenAI LLM"
-    description: str = "OpenAI LLM provider settings"
-    model: str = "gpt-3.5-turbo"
+    model: Literal["gpt-4-turbo-preview", "gpt-4", "gpt-3.5-turbo", "custom"] = "gpt-3.5-turbo"
     api_key: str = ""
     max_tokens: Optional[int] = None
 
-class OpenAIEmbedSettings(SettingBase):
-    identifier: str = "openai_embed"
-    display_name: str = "OpenAI Embeddings"
-    description: str = "OpenAI embedding provider settings"
-    model: str = "text-embedding-3-large"
-    api_key: str = ""
-
-def get_embedding_provider_class(provider: str):
-    match provider:
-        case "ollama_embed":
-            return OllamaEmbedSettings
-        case "openai_embed":
-            return OpenAIEmbedSettings
-        case _:
-            raise ValueError(f"Unsupported embedding provider: {provider}")
-
 # Provider-specific settings
 class AnthropicLLMSettings(SettingBase):
-    identifier: str = "anthropic_llm"
     display_name: str = "Anthropic LLM"
     description: str = "Anthropic LLM provider settings"
-    model: str = "claude-3-sonnet"
+    model: Literal["claude-3-sonnet", "claude-3-haiku", "claude-2.1", "custom"] = "claude-3-sonnet"
     api_key: str = ""
 
 class GroqLLMSettings(SettingBase):
-    identifier: str = "groq_llm"
-    display_name: str = "Groq LLM"
-    description: str = "Groq LLM provider settings"
-    model: str = "mixtral-8x7b-v0.1"
+    model: Literal["mixtral-8x7b-v0.1", "llama2-70b-v2-q4_0", "custom"] = "mixtral-8x7b-v0.1"
     api_key: str = ""
 
 class GeminiLLMSettings(SettingBase):
-    identifier: str = "gemini_llm"
-    display_name: str = "Gemini LLM"
-    description: str = "Gemini LLM provider settings"
-    model: str = "gemini-pro"
+    model: Literal["gemini-pro", "gemini-pro-vision", "custom"] = "gemini-pro"
     api_key: str = ""
 
-class GeminiEmbedSettings(SettingBase):
-    identifier: str = "gemini_embed"
-    display_name: str = "Gemini Embeddings"
-    description: str = "Gemini Embeddings provider settings"
-    model: str = "embedding-001"
-    api_key: str = ""
 
 class MistralLLMSettings(SettingBase):
-    identifier: str = "mistral_llm"
-    display_name: str = "Mistral LLM"
-    description: str = "Mistral LLM provider settings"
-    model: str = "mistral-medium"
-    api_key: str = ""
-
-class MistralEmbedSettings(SettingBase):
-    identifier: str = "mistral_embed"
-    display_name: str = "Mistral Embeddings"
-    description: str = "Mistral Embeddings provider settings"
-    model: str = "mistral-embed"
+    model: Literal["mistral-tiny", "mistral-small", "mistral-medium", "custom"] = "mistral-medium"
     api_key: str = ""
 
 class AzureOpenAILLMSettings(SettingBase):
-    identifier: str = "azure-openai_llm"
-    display_name: str = "Azure OpenAI LLM"
-    description: str = "Azure OpenAI LLM provider settings"
-    model: str = "gpt-4"
-    api_key: str = ""
-    endpoint: str = ""
-    api_version: str = ""
-    deployment_name: str = ""
-
-class AzureOpenAIEmbedSettings(SettingBase):
-    identifier: str = "azure-openai_embed"
-    display_name: str = "Azure OpenAI Embeddings"
-    description: str = "Azure OpenAI Embeddings provider settings"
-    model: str = "text-embedding-ada-002"
+    model: Literal["gpt-4", "gpt-35-turbo", "custom"] = "gpt-4"
     api_key: str = ""
     endpoint: str = ""
     api_version: str = ""
     deployment_name: str = ""
 
 class TGILLMSettings(SettingBase):
-    identifier: str = "tgi_llm"
-    display_name: str = "Text Generation Inference LLM"
-    description: str = "Text Generation Inference LLM provider settings"
-    model: str = "llama3.1"
+    model: Literal["llama3.1", "mistral", "mixtral", "custom"] = "llama3.1"
     host: str = ""
     request_timeout: float = 500
 
+
+# Embeddings settings
+class OllamaEmbedSettings(SettingBase):
+    model: Literal["Losspost/stella_en_1.5b_v5", "bge-m3", "nomic-embed-text", "custom"] = "bge-m3"
+    host: str = "http://host.docker.internal:11434"
+    request_timeout: float = 60
+
+class OpenAIEmbedSettings(SettingBase):
+    model: Literal["text-embedding-3-large", "text-embedding-3-small", "custom"] = "text-embedding-3-small"
+    api_key: str = ""
+
+class GeminiEmbedSettings(SettingBase):
+    model: Literal["embedding-001", "custom"] = "embedding-001"
+    api_key: str = ""
+
+
 class FastEmbedEmbedSettings(SettingBase):
-    identifier: str = "fastembed_embed"
-    display_name: str = "FastEmbed Embeddings"
-    description: str = "FastEmbed embedding provider settings"
-    embedding_model: str = "all-MiniLM-L6-v2"
+    embedding_model: Literal["all-MiniLM-L6-v2", "paraphrase-multilingual-mpnet-base-v2", "custom"] = "all-MiniLM-L6-v2"
+
+class MistralEmbedSettings(SettingBase):
+    model: Literal["mistral-embed", "custom"] = "mistral-embed"
+    api_key: str = ""
+
+class AzureOpenAIEmbedSettings(SettingBase):
+    model: Literal["text-embedding-ada-002", "custom"] = "text-embedding-ada-002"
+    api_key: str = ""
+    endpoint: str = ""
+    api_version: str = ""
+    deployment_name: str = ""
+
 
 class TEIEmbedSettings(SettingBase):
-    identifier: str = "tei_embed"
-    display_name: str = "Text Embeddings Inference Embeddings"
-    description: str = "Text Embeddings Inference embedding provider settings"
-    embedding_model: str = "nvidia/NV-Embed-v2"
+    embedding_model: Literal["nvidia/NV-Embed-v2", "BAAI/bge-base-en-v1.5", "custom"] = "nvidia/NV-Embed-v2"
     embedding_host: str = ""
 
 class AppSettings(SettingBase):
-    identifier: str = "app"
-    display_name: str = "App"
-    description: str = "General app settings"
-
-    llm_model_provider: Literal[
-        "ollama_llm", "openai_llm", 
-        "text-generation-inference", "anthropic_llm", "groq_llm", 
-        "gemini_llm", "mistral_llm", "azure-openai_llm"
-    ] = "ollama_llm"
+    llm_setting_identifier: str = "default_ollama_llm" # Default to ollama_llm for first init
     
     # General settings
     top_k: int = 15
@@ -155,3 +126,26 @@ class AppSettings(SettingBase):
         "When the user is talking at the first person, he is talking about himself. Use the tool to get personal information needed to answer.\n"
         "In your final answer strictly answer to the user question, do not go off topic or talk about tools used.\n"
     )
+
+# Used to get the model class for a setting via the schema_identifier
+SETTING_CLASSES: Dict[str, Type[SettingBase]] = {
+    # App Settings
+    "app": AppSettings,
+    # LLM Settings
+    "ollama_llm": OllamaLLMSettings,
+    "openai_llm": OpenAILLMSettings,
+    "anthropic_llm": AnthropicLLMSettings,
+    "groq_llm": GroqLLMSettings,
+    "gemini_llm": GeminiLLMSettings,
+    "mistral_llm": MistralLLMSettings,
+    "azure-openai_llm": AzureOpenAILLMSettings,
+    "tgi_llm": TGILLMSettings,
+    # Embedding Settings
+    "ollama_embed": OllamaEmbedSettings,
+    "openai_embed": OpenAIEmbedSettings,
+    "azure_openai_embed": AzureOpenAIEmbedSettings,
+    "mistral_embed": MistralEmbedSettings,
+    "gemini_embed": GeminiEmbedSettings,
+    "tei_embed": TEIEmbedSettings,
+    "fastembed_embed": FastEmbedEmbedSettings,
+}

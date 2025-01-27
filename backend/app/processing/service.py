@@ -1,4 +1,4 @@
-from app.datasources.service import get_datasource_identifier_from_path
+from app.datasources.utils import get_datasource_identifier_from_path
 from app.file_manager.service.service import get_file_info
 from app.file_manager.service.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.file_manager.models import File, FileStatus, Folder
@@ -9,6 +9,7 @@ from app.file_manager.service.llama_index import get_docstore_file_path, create_
 from app.processing_stacks.service import get_transformations_for_stack
 from app.ollama_status.service import can_process
 from app.file_manager.utils import validate_path
+from app.settings.service import get_setting
 from app.processing.schemas import ProcessingItem, ProcessingRequest
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
@@ -19,7 +20,7 @@ Settings.embed_model = None
 from llama_index.core.ingestion import IngestionPipeline, DocstoreStrategy
 from llama_index.core.readers import SimpleDirectoryReader
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from typing import List
 from sqlalchemy.orm import Session
@@ -320,12 +321,12 @@ def _process_single_file(session: Session, file: File, user_id: str):
                 logger.info(f"Processing stack {stack_identifier} for file {file.path}")
                 
                 # Create the ingestion pipeline for the datasource
-                vector_store = create_vector_store(datasource.id, user_id)
-                doc_store = create_doc_store(datasource_identifier, user_id)
+                vector_store = create_vector_store(datasource.identifier, user_id)
+                doc_store = create_doc_store(datasource.identifier, user_id)
 
                 # Create the ingestion pipeline for the datasource
                 ingestion_pipeline = IngestionPipeline(
-                    name=f"ingestion_pipeline_{datasource_identifier}",
+                    name=f"ingestion_pipeline_{datasource.identifier}",
                     docstore=doc_store,
                     vector_store=vector_store,
                     docstore_strategy=DocstoreStrategy.UPSERTS,
@@ -385,8 +386,11 @@ def _process_single_file(session: Session, file: File, user_id: str):
                     # Modify the doc id to append the transformation stack at the end so that they are treated as different documents by the docstore upserts and are managable independently of each other
                     document.doc_id = f"{original_doc_id}_{stack_identifier}"
 
+                    # Get the embedding settings for this datasource
+                    embedding_settings_response = get_setting(session, datasource.embedding_setting_identifier)
+
                     # Get the transformations stack
-                    transformations = get_transformations_for_stack(session, stack_identifier, datasource, file_response)
+                    transformations = get_transformations_for_stack(session, stack_identifier, datasource, file_response, embedding_settings_response)
 
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess
@@ -516,7 +520,7 @@ def should_start_processing(session: Session) -> bool:
             return True
 
         # If the file has been processing for more than 10 minutes, start start the processing because it is probably stuck/ the app has restarted and processing background task has not been restarted
-        if oldest_processing_file.processing_started_at < datetime.now() - datetime.timedelta(seconds=600):
+        if oldest_processing_file.processing_started_at < datetime.now() - timedelta(seconds=600):
             logger.info(f"Processing file {oldest_processing_file.path} is stuck, starting processing")
             return True
 

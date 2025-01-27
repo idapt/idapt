@@ -4,15 +4,15 @@ import { FileItem } from "@/app/components/file-manager/file-item";
 import { DatasourceItem } from "@/app/components/file-manager/datasource-item";
 
 import { File, Folder } from "@/app/types/files";
-import { Datasource } from "@/app/types/datasources";
+import { DatasourceResponse } from "@/app/types/datasources";
 
 interface FileListProps {
   files: File[];
   folders: Folder[];
-  datasources?: Datasource[];
+  datasources?: DatasourceResponse[];
   viewMode: 'grid' | 'list';
   onFolderClick: (path: string) => void;
-  onDatasourceClick?: (datasource: Datasource) => void;
+  onDatasourceClick?: (datasource: DatasourceResponse) => void;
   onUploadComplete: () => void;
 }
 
@@ -29,7 +29,7 @@ export function FileList({
     <div className={viewMode === 'grid' ? "grid grid-cols-4 gap-4 p-4" : "space-y-1 p-4"}>
       {datasources?.map((datasource) => (
         <DatasourceItem
-          key={`datasource-${datasource.id}`}
+          key={`datasource-${datasource.identifier}`}
           datasource={datasource}
           onClick={() => onDatasourceClick?.(datasource)}
           onRefresh={onUploadComplete}

@@ -2,11 +2,11 @@
 
 import { ChevronRight, Home, Database } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
-import { Datasource } from "@/app/types/datasources";
+import { DatasourceResponse } from "@/app/types/datasources";
 
 interface FilePathProps {
   currentPath: string;
-  currentDatasource?: Datasource;
+  currentDatasource?: DatasourceResponse;
   onNavigate: (folder_path: string) => void;
 }
 

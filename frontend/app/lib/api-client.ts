@@ -24,5 +24,5 @@ export function useApiClient() {
     };
   }, [userId]);
 
-  return { fetchWithAuth };
+  return { fetchWithAuth, userId };
 } 

@@ -7,6 +7,7 @@ from typing import List
 import os
 
 from app.settings.model_initialization import init_embedding_model
+from app.settings.schemas import SettingResponse
 from app.constants.file_extensions import TEXT_FILE_EXTENSIONS, CODE_FILE_EXTENSIONS
 from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.datasources.models import Datasource
@@ -445,7 +446,7 @@ def change_processing_stack_step_order(session: Session, stack_identifier: str, 
         logger.error(f"Error changing processing stack step order: {e}")
         raise e
 
-def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource: Datasource, file_response: FileInfoResponse):
+def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource: Datasource, file_response: FileInfoResponse, embedding_settings_response: SettingResponse):
     """Convert a ProcessingStep and parameters into a LlamaIndex transformer"""
     try:
         match step.identifier:
@@ -487,7 +488,7 @@ def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource:
                     include_prev_next_rel=True
                 )
             case "embedding":
-                return init_embedding_model(datasource.embedding_provider, datasource.embedding_settings)
+                return init_embedding_model(embedding_settings_response.schema_identifier, embedding_settings_response.value_json)
             case "title_extractor":
                 return TitleExtractor(**parameters)
             case "questions_extractor":
@@ -502,7 +503,7 @@ def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource:
         logger.error(f"Error getting transformer for step: {e}")
         raise e
 
-def get_transformations_for_stack(session: Session, stack_identifier: str, datasource: Datasource, file_response: FileInfoResponse):
+def get_transformations_for_stack(session: Session, stack_identifier: str, datasource: Datasource, file_response: FileInfoResponse, embedding_settings_response: SettingResponse):
     """Get all transformations for a processing stack"""
     try:
         stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
@@ -516,7 +517,7 @@ def get_transformations_for_stack(session: Session, stack_identifier: str, datas
                       .all())
                       
         for stack_step in stack_steps:
-            transformer = get_transformer_for_step(stack_step.step, stack_step.parameters or {}, datasource, file_response)
+            transformer = get_transformer_for_step(stack_step.step, stack_step.parameters or {}, datasource, file_response, embedding_settings_response)
             transformations.append(transformer)
             
         return transformations

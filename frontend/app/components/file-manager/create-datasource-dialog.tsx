@@ -5,24 +5,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { Input } from "@/app/components/ui/input";
 import { Button } from "@/app/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/app/components/ui/select";
 import { Textarea } from "@/app/components/ui/textarea";
-import { useClientConfig } from "@/app/components/chat/hooks/use-config";
-
-import { useApiClient } from "@/app/lib/api-client";
-
-import { 
-  EMBEDDING_PROVIDER_OPTIONS, 
-  EMBEDDING_MODEL_OPTIONS
-} from "@/app/types/settings";
-
+import { useDatasources } from "./hooks/use-datasources";
 
 interface CreateDatasourceDialogProps {
   open: boolean;
@@ -30,22 +14,11 @@ interface CreateDatasourceDialogProps {
   onCreated: () => void;
 }
 
-// Helper function to check if a model is custom
-export const isCustomModel = (provider: string, modelName: string): boolean => {
-  const predefinedModels = EMBEDDING_MODEL_OPTIONS[provider as keyof typeof EMBEDDING_MODEL_OPTIONS] || [];
-  return !predefinedModels.includes(modelName) || modelName === "custom";
-};
-
 export function CreateDatasourceDialog({ open, onClose, onCreated }: CreateDatasourceDialogProps) {
-  const { backend } = useClientConfig();
-  const { fetchWithAuth } = useApiClient();
+  const { createDatasource } = useDatasources();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [embeddingProvider, setEmbeddingProvider] = useState("ollama_embed");
-  const [embeddingModel, setEmbeddingModel] = useState(EMBEDDING_MODEL_OPTIONS.ollama_embed[0]);
-  const [customModel, setCustomModel] = useState("");
-  const [ollamaHost, setOllamaHost] = useState("http://host.docker.internal:11434");
-  const [openAIKey, setOpenAIKey] = useState("");
+  const [embeddingSettingIdentifier, setEmbeddingSettingIdentifier] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,52 +29,11 @@ export function CreateDatasourceDialog({ open, onClose, onCreated }: CreateDatas
       setLoading(true);
       setError(null);
 
-      let embeddingSettings;
-      const selectedModel = customModel || embeddingModel;
-
-      switch (embeddingProvider) {
-        case "ollama_embed":
-          embeddingSettings = {
-            identifier: "ollama_embed",
-            display_name: "Ollama Embeddings",
-            description: "Ollama embedding provider settings",
-            model: selectedModel,
-            host: ollamaHost,
-            request_timeout: 60
-          };
-          break;
-        case "openai_embed":
-          embeddingSettings = {
-            identifier: "openai_embed",
-            display_name: "OpenAI Embeddings",
-            description: "OpenAI embedding provider settings",
-            model: selectedModel,
-            api_key: openAIKey
-          };
-          break;
-        default:
-          throw new Error(`Unsupported embedding provider: ${embeddingProvider}`);
-      }
-
-      const response = await fetchWithAuth(`${backend}/api/datasources`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          type: 'files',
-          description: description,
-          settings: {},
-          embedding_provider: embeddingProvider,
-          embedding_settings_json: JSON.stringify(embeddingSettings)
-        })
+      await createDatasource({
+        name: name.trim(),
+        type: 'files',
+        description: description,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to create datasource');
-      }
 
       onCreated();
       onClose();
@@ -139,85 +71,13 @@ export function CreateDatasourceDialog({ open, onClose, onCreated }: CreateDatas
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Embedding Provider</label>
-            <Select
-              value={embeddingProvider}
-              onValueChange={setEmbeddingProvider}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select embedding provider" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {EMBEDDING_PROVIDER_OPTIONS.map((provider) => (
-                    <SelectItem key={provider} value={provider}>
-                      {provider}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <label className="text-sm font-medium">Embedding Setting Identifier</label>
+            <Input
+              value={embeddingSettingIdentifier}
+              onChange={(e) => setEmbeddingSettingIdentifier(e.target.value)}
+              placeholder="Enter embedding setting identifier"
+            />
           </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Embedding Model</label>
-            <Select
-              value={isCustomModel(embeddingProvider, embeddingModel) ? "custom" : embeddingModel}
-              onValueChange={(value) => {
-                if (value === "custom") {
-                  setEmbeddingModel("custom");
-                } else {
-                  setEmbeddingModel(value);
-                  setCustomModel("");
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select embedding model" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {EMBEDDING_MODEL_OPTIONS[embeddingProvider].map((model) => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-
-            {isCustomModel(embeddingProvider, embeddingModel) && (
-              <Input
-                className="mt-2"
-                placeholder="Enter custom model name"
-                value={customModel}
-                onChange={(e) => setCustomModel(e.target.value)}
-              />
-            )}
-          </div>
-
-          {embeddingProvider === "ollama_embed" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ollama Host</label>
-              <Input
-                value={ollamaHost}
-                onChange={(e) => setOllamaHost(e.target.value)}
-                placeholder="Enter Ollama host URL"
-              />
-            </div>
-          )}
-
-          {embeddingProvider === "openai_embed" && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">OpenAI API Key</label>
-              <Input
-                type="password"
-                value={openAIKey}
-                onChange={(e) => setOpenAIKey(e.target.value)}
-                placeholder="Enter OpenAI API key"
-              />
-            </div>
-          )}
 
           {error && (
             <p className="text-sm text-red-500 mt-1">{error}</p>

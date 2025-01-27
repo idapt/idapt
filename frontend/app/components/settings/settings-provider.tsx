@@ -1,14 +1,17 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode } from "react";
-import { useSettings as useSettingsAPI } from "@/app/components/settings/hooks/use-settings";
+import { useSettingsAPI } from "@/app/components/settings/hooks/use-settings";
 
 interface SettingsContextType {
   isOpen: boolean;
   openSettings: () => void;
   closeSettings: () => void;
-  getProviderSettings: ReturnType<typeof useSettingsAPI>['getProviderSettings'];
-  updateProviderSettings: ReturnType<typeof useSettingsAPI>['updateProviderSettings'];
+  getSetting: ReturnType<typeof useSettingsAPI>['getSetting'];
+  getAllSettings: ReturnType<typeof useSettingsAPI>['getAllSettings'];
+  updateSetting: ReturnType<typeof useSettingsAPI>['updateSetting'];
+  createSetting: ReturnType<typeof useSettingsAPI>['createSetting'];
+  deleteSetting: ReturnType<typeof useSettingsAPI>['deleteSetting'];
   isLoading: boolean;
 }
 
@@ -33,7 +36,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useSettings() {
+export function useSettingsContext() {
   const context = useContext(SettingsContext);
   if (context === undefined) {
     throw new Error("useSettings must be used within a SettingsProvider");

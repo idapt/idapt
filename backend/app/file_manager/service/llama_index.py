@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.file_manager.models import File, FileStatus, Folder
 from app.datasources.models import Datasource
 from app.file_manager.service.db_operations import get_db_folder_files_recursive
-from app.settings.schemas import AppSettings
+from app.settings.schemas import AppSettings, SettingResponse
 from app.settings.service import get_setting
 from app.api.user_path import get_user_app_data_dir
 from app.file_manager.utils import validate_path
@@ -30,10 +30,10 @@ from llama_index.core.base.embeddings.base import BaseEmbedding
 logger = logging.getLogger("uvicorn")
 
 # Private methods for creating components
-def create_vector_store(datasource_id: int, user_id: str) -> ChromaVectorStore:
+def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVectorStore:
     try:
         # Create the embeddings directory if it doesn't exist
-        datasource_embeddings_dir = Path(get_vector_store_folder_path(datasource_id, user_id))
+        datasource_embeddings_dir = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "embeddings"
 
         # Create the parent directory if it doesn't exist
         datasource_embeddings_dir.mkdir(parents=True, exist_ok=True)
@@ -46,8 +46,8 @@ def create_vector_store(datasource_id: int, user_id: str) -> ChromaVectorStore:
                 allow_reset=True
             )
         )
-        # Create a Chroma collection using the database ID
-        collection_name = f"datasource_{datasource_id}"
+        # Create a Chroma collection using a generic name because there is limitation on collection names
+        collection_name = f"chroma_collection"
         chroma_collection = client.get_or_create_collection(name=collection_name)
         # Create a Chroma vector store
         vector_store = ChromaVectorStore.from_collection(
@@ -58,8 +58,8 @@ def create_vector_store(datasource_id: int, user_id: str) -> ChromaVectorStore:
         logger.error(f"Error creating vector store: {str(e)}")
         raise
 
-def get_vector_store_folder_path(datasource_id: int, user_id: str) -> str:
-    return f"{get_user_app_data_dir(user_id)}/embeddings/datasource_{datasource_id}"
+def get_llama_index_datasource_folder_path(datasource_identifier: str, user_id: str) -> str:
+    return f"{get_user_app_data_dir(user_id)}/processed/{datasource_identifier}"
 
 def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocumentStore:
     try:
@@ -108,7 +108,8 @@ def create_query_tool(
         )
 
         # Get the app settings
-        app_settings : AppSettings = get_setting(session, "app")
+        app_settings_response : SettingResponse = get_setting(session, "app")
+        app_settings : AppSettings = AppSettings.model_validate_json(app_settings_response.value_json)
     
         retriever = VectorIndexRetriever(
             index=index,
@@ -199,10 +200,10 @@ def delete_files_in_folder_recursive_from_llama_index(session: Session, user_id:
         logger.error(f"Error deleting files in folder from LlamaIndex: {str(e)}")
         raise
 
-def delete_datasource_llama_index_components(datasource_identifier: str, datasource_id: int, user_id: str):
+def delete_datasource_llama_index_components(datasource_identifier: str, user_id: str):
     try:        
         # Get the paths
-        vector_store_path = get_vector_store_folder_path(datasource_id, user_id)
+        vector_store_path = get_llama_index_datasource_folder_path(datasource_identifier, user_id) / "embeddings"
         docstore_file = get_docstore_file_path(datasource_identifier, user_id)
         
         # First close any open ChromaDB connections
@@ -247,14 +248,13 @@ def delete_file_llama_index(session: Session, user_id: str, file: File):
         if file.status == FileStatus.PROCESSING:
             raise Exception(f"File {file.path} is currently being processed, please wait for it to finish or cancel the processing before deleting it")
 
-        from app.datasources.service import get_datasource_identifier_from_path
+        from app.datasources.utils import get_datasource_identifier_from_path
         # Get the datasource name from the path
         datasource_identifier = get_datasource_identifier_from_path(file.path)
         datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
-        logger.debug(f"datasource_identifier: {datasource_identifier}")
         # Get the datasource vector store and docstore
-        vector_store = create_vector_store(datasource.id, user_id)
-        doc_store = create_doc_store(datasource_identifier, user_id)
+        vector_store = create_vector_store(datasource.identifier, user_id)
+        doc_store = create_doc_store(datasource.identifier, user_id)
 
         # Delete each ref_doc_id from the vector store and docstore
         # Parse the json ref_doc_ids as a list
@@ -306,14 +306,14 @@ def delete_file_processing_stack_from_llama_index(session: Session, user_id: str
             logger.warning(f"No ref_doc_ids found for file: {fs_path}")
             return
 
-        from app.datasources.service import get_datasource_identifier_from_path
+        from app.datasources.utils import get_datasource_identifier_from_path
         # Get the datasource name from the path
         datasource_identifier = get_datasource_identifier_from_path(fs_path)
         datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
 
         # Get the datasource vector store and docstore
-        vector_store = create_vector_store(datasource.id, user_id)
-        doc_store = create_doc_store(datasource_identifier, user_id)
+        vector_store = create_vector_store(datasource.identifier, user_id)
+        doc_store = create_doc_store(datasource.identifier, user_id)
 
         # Delete each ref_doc_id from the vector store and docstore
         # Parse the json ref_doc_ids as a list

@@ -31,13 +31,17 @@ def init_default_database_data_if_needed(session: Session, user_id: str):
     Initialize default data if needed
     """
     try:
+        # Init default settings
+        from app.settings.service import init_default_settings_if_needed
+        init_default_settings_if_needed(session, user_id)
+
         # Init default folders
         from app.file_manager.service.db_operations import create_default_db_filestructure_if_needed
         create_default_db_filestructure_if_needed(session, user_id)
 
         # Init default datasources
         from app.datasources.service import init_default_datasources_if_needed
-        init_default_datasources_if_needed(session, user_id)
+        init_default_datasources_if_needed(session)
         
         # Init default processing stacks
         from app.processing_stacks.service import create_default_processing_stacks_if_needed

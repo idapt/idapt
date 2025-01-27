@@ -2,10 +2,10 @@
 
 import { SettingsButton } from "@/app/components/settings/settings-button";
 import { SettingsDialog } from "@/app/components/settings/settings-dialog";
-import { useSettings } from "@/app/components/settings/settings-provider";
+import { useSettingsContext } from "@/app/components/settings/settings-provider";
 
 export function Settings() {
-  const { isOpen, openSettings, closeSettings } = useSettings();
+  const { isOpen, openSettings, closeSettings } = useSettingsContext();
     
   return (
     <>

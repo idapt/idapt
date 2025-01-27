@@ -50,13 +50,12 @@ async def create_datasource_route(
     datasource: DatasourceCreate,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session)
-):
+) -> None:
     try:
         logger.info(f"Creating datasource {datasource.name} for user {user_id}")
 
         create_datasource(
             session=session,
-            user_id=user_id,
             datasource_create=datasource
         )
         return {"message": "Datasource created successfully"}
@@ -69,7 +68,7 @@ async def delete_datasource_route(
     identifier: str,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session)
-):
+) -> None:
     try:
         logger.info(f"Deleting datasource {identifier} for user {user_id}")
         await delete_datasource(session, user_id, identifier)
@@ -84,7 +83,7 @@ async def update_datasource_route(
     update: DatasourceUpdate,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session)
-):
+) -> None:
     try:
         logger.info(f"Updating datasource {identifier} for user {user_id}")
         
