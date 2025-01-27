@@ -1,7 +1,7 @@
 def get_datasource_identifier_from_path(path: str) -> str:
     """Get the datasource identifier from a path"""
     try:
-        # Extract datasource name from path (first component after /data/)
+        # Extract datasource name from path (second component after /data/)
         path_parts = path.split("/")
         data_index = path_parts.index("data")
         if data_index + 2 >= len(path_parts):

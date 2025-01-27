@@ -80,11 +80,13 @@ def create_datasource(
         fs_datasource_path = get_new_fs_path(original_path=datasource_create.name, session=session, last_path_part_is_file=False)
         # Get the created root folder for the datasource
         datasource_folder = session.query(Folder).filter(Folder.path == fs_datasource_path).first()
+        # Extract the folder fs_name from its fs path last element and use it as datasource identifier
+        datasource_identifier = fs_datasource_path.split("/")[-1]
         
         # Create datasource
         datasource = Datasource(
             # Extract the fs datasource folder name and use it as identifier
-            identifier=datasource_folder.name,
+            identifier=datasource_identifier,
             name=datasource_create.name,
             type=datasource_create.type,
             description=datasource_create.description,
