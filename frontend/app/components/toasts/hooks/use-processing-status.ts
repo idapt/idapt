@@ -17,7 +17,7 @@ interface ProcessingStatus {
 
 export function useProcessingStatus() {
   const { backend } = useClientConfig();
-  const { fetchWithAuth } = useApiClient();
+  const { fetchWithAuth, userId } = useApiClient();
   const [status, setStatus] = useState<ProcessingStatus | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -45,7 +45,6 @@ export function useProcessingStatus() {
       await withBackoff(fetchInitialStatus);
 
       const wsUrl = backend.replace(/^http/, 'ws');
-      const userId = localStorage.getItem('userId');
       const ws = new WebSocket(`${wsUrl}/api/processing/status/ws?user_id=${userId}`);
       wsRef.current = ws;
 

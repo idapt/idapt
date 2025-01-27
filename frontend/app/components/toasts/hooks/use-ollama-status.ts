@@ -1,14 +1,12 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useClientConfig } from '@/app/components/chat/hooks/use-config';
-import { useSettings } from "@/app/components/settings/hooks/use-settings";
 import { useApiClient } from '@/app/lib/api-client';
 import { withBackoff } from '@/app/lib/backoff';
-//import { AppSettings } from '../types/settings';
 
 export function useOllamaStatus() {
   const { backend } = useClientConfig();
   const [isDownloading, setIsDownloading] = useState(false);
-  const { fetchWithAuth } = useApiClient();
+  const { fetchWithAuth, userId } = useApiClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isConnectingRef = useRef(false);
@@ -32,7 +30,6 @@ export function useOllamaStatus() {
       await withBackoff(fetchInitialStatus);
 
       const wsUrl = backend.replace(/^http/, 'ws');
-      const userId = localStorage.getItem('userId');
       const ws = new WebSocket(`${wsUrl}/api/ollama-status/ws?user_id=${userId}`);
       wsRef.current = ws;
 
