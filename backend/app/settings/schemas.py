@@ -34,7 +34,7 @@ class SettingBase(BaseModel):
 
 # LLM Settings
 class OllamaLLMSettings(SettingBase):
-    model: Literal["llama3.1:8b", "mistral:7b", "mixtral:8x7b", "phi:latest", "custom"] = "llama3.1:8b"
+    model: str = "deepseek-r1:8b" #Literal["llama3.1:8b", "mistral:7b", "mixtral:8x7b", "phi:latest", "custom"] = "llama3.1:8b"
     host: str = "http://host.docker.internal:11434"
     request_timeout: float = 300
 
@@ -78,9 +78,9 @@ class TGILLMSettings(SettingBase):
 
 # Embeddings settings
 class OllamaEmbedSettings(SettingBase):
-    model: Literal["Losspost/stella_en_1.5b_v5", "bge-m3", "nomic-embed-text", "custom"] = "bge-m3"
+    model: str = "bge-m3" #Literal["Losspost/stella_en_1.5b_v5", "bge-m3", "nomic-embed-text", "custom"] = "bge-m3"
     host: str = "http://host.docker.internal:11434"
-    request_timeout: float = 60
+    request_timeout: float = 300
 
 class OpenAIEmbedSettings(SettingBase):
     model: Literal["text-embedding-3-large", "text-embedding-3-small", "custom"] = "text-embedding-3-small"

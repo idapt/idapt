@@ -121,7 +121,7 @@ async def trigger_download_and_wait_for_ollama_models_to_be_downloaded(session: 
     """Wait for Ollama models to be ready"""
     while True:
         # Check if we need to wait for Ollama models without pulling them if they don't exist
-        if await can_process(session):
+        if await can_process(session, True):
             return
         
         logger.info("Waiting for Ollama models to be ready before processing files...")
