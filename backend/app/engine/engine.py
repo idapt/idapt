@@ -89,13 +89,6 @@ def get_chat_engine(session: Session,
         #configured_tools: List[BaseTool] = ToolFactory.from_env()
         #tools.extend(configured_tools)
 
-        # Get the directory where the current module (engine.py) is located
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        prompt_file_path = os.path.join(current_dir, "react_agent_system_prompt.md")
-        react_agent_and_system_prompt = open(prompt_file_path, "r").read()
-
-        react_agent_and_system_prompt = app_setting.system_prompt + "\n\n" + react_agent_and_system_prompt
-
         return ReActAgent.from_llm(
             # Use the initialized llm
             llm=llm,
@@ -103,9 +96,9 @@ def get_chat_engine(session: Session,
             callback_manager=callback_manager,
             verbose=True,
             max_iterations=app_setting.max_iterations,
-            react_chat_formatter=ReActChatFormatter(
-                system_header=react_agent_and_system_prompt,
-                context=""
+            react_chat_formatter=ReActChatFormatter.from_defaults(
+                #system_header=react_agent_prompt, #Use the default system header react
+                context=app_setting.system_prompt # Give the app setting system prompt as base context for the chat formatter
             )
         )
     except Exception as e:
