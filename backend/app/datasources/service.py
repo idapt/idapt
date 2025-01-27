@@ -22,8 +22,8 @@ logger = logging.getLogger("uvicorn")
 def init_default_datasources_if_needed(session: Session):
     """Initialize default datasources if they don't exist"""
     try:
-        
-        if session.query(Datasource).filter(Datasource.name == "Files").first():
+        # If there is no existing datasource create one, otherwise dont as the user explicitly deleted it, it will be recreated only if there are no other datasources
+        if session.query(Datasource).count() != 0:
             return
         # Get the last embedding setting created from the database that ends with "_embed"
         last_embedding_setting = session.query(Setting).filter(Setting.identifier.endswith("_embed")).first()
@@ -58,23 +58,23 @@ def create_datasource(
         if session.query(Datasource).filter(Datasource.name == datasource_create.name).first():
             raise ValueError(f"Datasource with name '{datasource_create.name}' already exists")
         
-        if not datasource_create.embedding_setting_identifier.endswith("_embed"):
-            raise ValueError(f"Embedding setting with identifier '{datasource_create.embedding_setting_identifier}' is not of type '_embed'")
-        
-        # Check if embedding setting exists and is an embedding setting / schema finish with "_embed"
+        # If no embedding setting is provided, use the last one with the schema_identifier ending with "_embed"
         embedding_setting_identifier = None
-        if datasource_create.embedding_setting_identifier:
-            # Get the setting
-            embedding_setting = session.query(Setting).filter(Setting.identifier == datasource_create.embedding_setting_identifier).first()
-            if not embedding_setting:
-                raise ValueError(f"Embedding setting with identifier '{datasource_create.embedding_setting_identifier}' does not exist")
-            embedding_setting_identifier = datasource_create.embedding_setting_identifier
-        else:
-            #Get the first one with the schema_identifier ending with "_embed"
+        if not datasource_create.embedding_setting_identifier:
             embedding_setting = session.query(Setting).filter(Setting.schema_identifier.endswith("_embed")).first()
             if not embedding_setting:
                 raise ValueError(f"No embedding setting with schema_identifier ending with '_embed' found, create one first")
             embedding_setting_identifier = embedding_setting.identifier
+        # If an embedding setting is provided
+        else:
+            # Check if the embedding setting identifier ends with "_embed"
+            if not datasource_create.embedding_setting_identifier.endswith("_embed"):
+                raise ValueError(f"Embedding setting with identifier '{datasource_create.embedding_setting_identifier}' is not of type '_embed'")
+            # Check if the embedding setting exists
+            embedding_setting = session.query(Setting).filter(Setting.identifier == datasource_create.embedding_setting_identifier).first()
+            if not embedding_setting:
+                raise ValueError(f"Embedding setting with identifier '{datasource_create.embedding_setting_identifier}' does not exist")
+            embedding_setting_identifier = datasource_create.embedding_setting_identifier
 
         # If the path already exists, the get_new_fs_path will append an uuid and get an unique path for it and create the required folders in the database
         fs_datasource_path = get_new_fs_path(original_path=datasource_create.name, session=session, last_path_part_is_file=False)
