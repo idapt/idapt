@@ -110,15 +110,15 @@ async def delete_datasource(session: Session, user_id: str, identifier: str) -> 
 
         # Store root folder reference before nullifying it
         folder = session.query(Folder).filter(Folder.id == datasource.folder_id).first()
-        if not folder:
-            raise Exception("Datasource has no root folder")
-        
-        # First remove the root_folder reference from datasource to allow deletion of all files and folders of this datasource
-        datasource.root_folder_id = None
-        session.flush()
-        
-        # Then try to delete all files and folders using the stored path
-        await delete_folder(session, user_id, folder.path)
+        if folder:
+            # First remove the root_folder reference from datasource to allow deletion of all files and folders of this datasource
+            datasource.root_folder_id = None
+            session.flush()
+            
+            # Then try to delete all files and folders using the stored path
+            await delete_folder(session, user_id, folder.path)
+        else:
+            logger.warning("Datasource has no root folder, still deleting it but this should not happen")
 
         # Delete the llama index components for this datasource
         delete_datasource_llama_index_components(datasource.identifier, user_id)
@@ -187,7 +187,7 @@ async def update_datasource(session: Session, user_id: str, identifier: str, dat
             # Get root folder of datasource
             folder = session.query(Folder).filter(Folder.id == datasource.folder_id).first()
             if not folder:
-                raise Exception("Datasource has no root folder")
+                raise Exception("Datasource has no root folder, try to delete and recreate it")
             # Delete the files in the folder from llama index
             delete_files_in_folder_recursive_from_llama_index(session, user_id, folder.path)
             # Delete the datasource llama index components

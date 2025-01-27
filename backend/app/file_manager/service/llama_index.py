@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 import json
 from fastapi import HTTPException
+import shutil
 
 from sqlalchemy.orm import Session
 from app.file_manager.models import File, FileStatus, Folder
@@ -64,7 +65,7 @@ def get_llama_index_datasource_folder_path(datasource_identifier: str, user_id: 
 def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocumentStore:
     try:
         # Create the docstore directory if it doesn't exist
-        docstore_file = Path(get_docstore_file_path(datasource_identifier, user_id))
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "docstores" / f"docstore.json"
         docstore_file.parent.mkdir(parents=True, exist_ok=True)
 
         docstore = None
@@ -81,9 +82,6 @@ def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocument
     except Exception as e:
         logger.error(f"Error creating doc store: {str(e)}")
         raise
-
-def get_docstore_file_path(datasource_identifier: str, user_id: str) -> str:
-    return f"{get_user_app_data_dir(user_id)}/docstores/datasource_{datasource_identifier}.json"
 
 def create_query_tool(
     session: Session, 
@@ -203,13 +201,12 @@ def delete_files_in_folder_recursive_from_llama_index(session: Session, user_id:
 def delete_datasource_llama_index_components(datasource_identifier: str, user_id: str):
     try:        
         # Get the paths
-        vector_store_path = get_llama_index_datasource_folder_path(datasource_identifier, user_id) / "embeddings"
-        docstore_file = get_docstore_file_path(datasource_identifier, user_id)
+        datasource_embeddings_dir = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "embeddings"
         
         # First close any open ChromaDB connections
         try:
             client = chromadb.PersistentClient(
-                path=str(vector_store_path),
+                path=str(datasource_embeddings_dir),
                 settings=chromadb.Settings( # Need to be the same settings as the one used to create the vector store
                     anonymized_telemetry=False,
                     allow_reset=True
@@ -220,6 +217,16 @@ def delete_datasource_llama_index_components(datasource_identifier: str, user_id
         except Exception as e:
             logger.warning(f"Error closing ChromaDB connection: {str(e)}")
 
+        # Delete the datasource llama index directory
+        #llama_index_datasource_folder_path = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id))
+        #if os.path.exists(llama_index_datasource_folder_path):
+        #    try:
+        #        shutil.rmtree(llama_index_datasource_folder_path, ignore_errors=True)
+        #        logger.info(f"Deleted datasource llama index directory: {llama_index_datasource_folder_path}")
+        #    except Exception as e:
+        #        logger.error(f"Error deleting datasource llama index directory: {str(e)}")
+        #        raise
+
         # Delete the entire vector store directory
         # Known bug where recreating it lead to read permission errors https://github.com/langchain-ai/langchain/issues/14872
         #if os.path.exists(vector_store_path):
@@ -229,7 +236,9 @@ def delete_datasource_llama_index_components(datasource_identifier: str, user_id
         #    except Exception as e:
         #        logger.error(f"Error deleting vector store directory: {str(e)}")
         #        raise
-            
+
+
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "docstores" / f"docstore.json"
         # Delete the docstore file
         if os.path.exists(docstore_file):
             try:
@@ -291,7 +300,8 @@ def delete_file_llama_index(session: Session, user_id: str, file: File):
         session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
-        doc_store.persist(persist_path=get_docstore_file_path(datasource_identifier, user_id))
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource.identifier, user_id)) / "docstores" / f"docstore.json"
+        doc_store.persist(persist_path= str(docstore_file))
 
     except Exception as e:
         session.rollback()
@@ -343,7 +353,8 @@ def delete_file_processing_stack_from_llama_index(session: Session, user_id: str
                 session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
-        doc_store.persist(persist_path=get_docstore_file_path(datasource_identifier, user_id))
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource.identifier, user_id)) / "docstores" / f"docstore.json"
+        doc_store.persist(persist_path=str(docstore_file))
         
     except Exception as e:
         logger.error(f"Error deleting file processing stack from LlamaIndex: {str(e)}")

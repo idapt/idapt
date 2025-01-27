@@ -5,7 +5,7 @@ from app.file_manager.models import File, FileStatus, Folder
 from app.file_manager.schemas import FileInfoResponse
 from app.datasources.models import Datasource
 from app.processing_stacks.models import ProcessingStack
-from app.file_manager.service.llama_index import get_docstore_file_path, create_vector_store, create_doc_store
+from app.file_manager.service.llama_index import get_llama_index_datasource_folder_path, create_vector_store, create_doc_store
 from app.processing_stacks.service import get_transformations_for_stack
 from app.ollama_status.service import can_process
 from app.file_manager.utils import validate_path
@@ -23,6 +23,7 @@ from llama_index.core.readers import SimpleDirectoryReader
 from datetime import datetime, timedelta
 import os
 from typing import List
+from pathlib import Path
 from sqlalchemy.orm import Session
 import json
 import threading
@@ -439,7 +440,8 @@ def _process_single_file(session: Session, file: File, user_id: str):
                 #ingestion_pipeline.persist(f"/data/.idapt/output/pipeline_storage_{datasource_identifier}")
 
                 # Needed for now as SimpleDocumentStore is not persistent
-                doc_store.persist(persist_path=get_docstore_file_path(datasource_identifier, user_id))
+                docstore_file = Path(get_llama_index_datasource_folder_path(datasource.identifier, user_id)) / "docstores" / f"docstore.json"
+                doc_store.persist(persist_path=str(docstore_file))
 
                 # Get the processed stacks from json
                 processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
