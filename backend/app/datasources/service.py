@@ -1,8 +1,7 @@
-from pathlib import Path
 from sqlalchemy.orm import Session
 from typing import List
+import json
 
-from app.api.user_path import get_user_data_dir
 from app.file_manager.models import Folder
 from app.file_manager.service.service import delete_folder
 from app.file_manager.service.file_system import get_new_fs_path
@@ -10,7 +9,6 @@ from app.file_manager.service.llama_index import delete_datasource_llama_index_c
 from app.datasources.schemas import DatasourceResponse, DatasourceUpdate, DatasourceCreate
 from app.datasources.utils import validate_name
 from app.datasources.models import Datasource, DatasourceType
-from app.settings.schemas import SETTING_CLASSES
 from app.settings.models import Setting
 
 import logging
@@ -184,21 +182,38 @@ async def update_datasource(session: Session, user_id: str, identifier: str, dat
         embedding_setting = session.query(Setting).filter(Setting.identifier == datasource_update.embedding_setting_identifier).first()
         if not embedding_setting:
             raise Exception(f"Embedding setting not found: {datasource_update.embedding_setting_identifier}")
-        # If the provider has changed, delete the llama index components
+        # If the provider has changed
         if datasource.embedding_setting_identifier != datasource_update.embedding_setting_identifier:
-            # Get root folder of datasource
-            folder = session.query(Folder).filter(Folder.id == datasource.folder_id).first()
-            if not folder:
-                raise Exception("Datasource has no root folder, try to delete and recreate it")
-            # Delete the files in the folder from llama index
-            delete_files_in_folder_recursive_from_llama_index(session, user_id, folder.path)
-            # Delete the datasource llama index components
-            delete_datasource_llama_index_components(datasource.identifier, user_id)
+            # Get the old embedding setting
+            old_embedding_setting = session.query(Setting).filter(Setting.identifier == datasource.embedding_setting_identifier).first()
+            if not old_embedding_setting:
+                raise Exception(f"Old embedding setting not found: {datasource.embedding_setting_identifier}")
+            # Get the old embedding model
+            old_embedding_model = json.loads(old_embedding_setting.value_json).get("model", "failed_model_get_string")
+            # Get the new embedding model
+            new_embedding_model = json.loads(embedding_setting.value_json).get("model", "failed_model_get_string")
+            # If the embedding model has not changed, keep the processed llama index data
+            if old_embedding_model == new_embedding_model and old_embedding_model != "failed_model_get_string" and new_embedding_model != "failed_model_get_string":
+                logger.info(f"Embedding model has not changed, keeping processed llama index data: {old_embedding_model} == {new_embedding_model}")
+            # If the embedding model has changed, delete the processed llama index data
+            else:
+                logger.info(f"Embedding model has changed, deleting processed llama index data: {old_embedding_model} != {new_embedding_model}")
+                # Get root folder of datasource
+                folder = session.query(Folder).filter(Folder.id == datasource.folder_id).first()
+                if not folder:
+                    raise Exception("Datasource has no root folder, try to delete and recreate it")
+                # Delete the files in the folder from llama index
+                delete_files_in_folder_recursive_from_llama_index(session, user_id, folder.path)
+                # Delete the datasource llama index components
+                delete_datasource_llama_index_components(datasource.identifier, user_id)
+                logger.info(f"Deleted processed llama index data for datasource {datasource.identifier} and embedding model {old_embedding_model}")
             # New one will be created when first files are processed with it
             datasource.embedding_setting_identifier = datasource_update.embedding_setting_identifier
 
-        # Update description in database
-        datasource.description = datasource_update.description
+        if datasource_update.description:
+            # Update description in database
+            datasource.description = datasource_update.description
+
         session.commit()
     
     except Exception as e:
