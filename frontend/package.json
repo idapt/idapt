@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "generate": "tsx app/api/chat/engine/generate.ts"
+    "generate": "tsx app/api/chat/engine/generate.ts",
+    "generate-client": "NODE_TLS_REJECT_UNAUTHORIZED=0 openapi-ts -i https://localhost:9004/openapi.json -o app/client -c @hey-api/client-fetch"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -42,6 +43,8 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@hey-api/client-fetch": "^0.7.2",
+    "@hey-api/openapi-ts": "^0.63.0",
     "@types/highlight.js": "^9.12.4",
     "@types/node": "22.10.7",
     "@types/react": "^19.0.7",
