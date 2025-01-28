@@ -27,14 +27,14 @@ class ImageGeneratorToolOutput(BaseModel):
 
 class ImageGeneratorTool:
     _IMG_OUTPUT_FORMAT = "webp"
-    _IMG_OUTPUT_DIR = "/data/.idapt/output/tools"
+    _IMG_OUTPUT_DIR = "output/tools"
     _IMG_GEN_API = "https://api.stability.ai/v2beta/stable-image/generate/core"
 
     def __init__(self, api_key: str = None):
         if not api_key:
             api_key = os.getenv("STABILITY_API_KEY")
         self._api_key = api_key
-        self.fileserver_url_prefix = "http://localhost:8000/api/files"
+        self.fileserver_url_prefix = os.getenv("FILESERVER_URL_PREFIX")
         if self._api_key is None:
             raise ValueError(
                 "STABILITY_API_KEY key is required to run image generator. Get it here: https://platform.stability.ai/account/keys"
@@ -55,7 +55,7 @@ class ImageGeneratorTool:
         output_path = os.path.join(self._IMG_OUTPUT_DIR, filename)
         with open(output_path, "wb") as f:
             f.write(image_data)
-        url = f"http://localhost:8000/api/files{self._IMG_OUTPUT_DIR}/{filename}"
+        url = f"{os.getenv('FILESERVER_URL_PREFIX')}/{self._IMG_OUTPUT_DIR}/{filename}"
         logger.info(f"Saved image to {output_path}.\nURL: {url}")
         return url
 
@@ -98,7 +98,7 @@ class ImageGeneratorTool:
                 image_url=image_url,
             )
         except Exception as e:
-            logger.error(f"Error in image generator: {e}")
+            logger.exception(e, exc_info=True)
             return ImageGeneratorToolOutput(
                 is_success=False,
                 error_message=str(e),

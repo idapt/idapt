@@ -64,7 +64,7 @@ class VercelStreamResponse(StreamingResponse):
                         is_stream_started = True
                         # Stream a blank message to start displaying the response in the UI
                         yield cls.convert_text("")
-                        logger.info("Streaming response started")
+
                     yield output
         except Exception:
             logger.exception("Error in stream response")
@@ -166,10 +166,9 @@ class VercelStreamResponse(StreamingResponse):
 
     @staticmethod
     async def _generate_next_questions(chat_history: List[Message], response: str):
-        #questions = await NextQuestionSuggestion.suggest_next_questions(
-        #    chat_history, response
-        #)
-        questions = []
+        questions = await NextQuestionSuggestion.suggest_next_questions(
+            chat_history, response
+        )
         if questions:
             return {
                 "type": "suggested_questions",

@@ -1,3 +1,4 @@
+# Legacy, unused
 import logging
 from typing import Any
 

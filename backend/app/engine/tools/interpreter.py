@@ -4,8 +4,8 @@ import os
 import uuid
 from typing import List, Optional
 
-from app.chat.file import DocumentFile, save_file
-from e2b_code_interpreter import CodeInterpreter
+from app.services.file import DocumentFile, FileService
+from e2b_code_interpreter import Sandbox
 from e2b_code_interpreter.models import Logs
 from llama_index.core.tools import FunctionTool
 from pydantic import BaseModel
@@ -29,13 +29,13 @@ class E2BToolOutput(BaseModel):
 
 
 class E2BCodeInterpreter:
-    output_dir = "/data/.idapt/output/tools"
-    uploaded_files_dir = "/data/.idapt/output/uploaded"
+    output_dir = "output/tools"
+    uploaded_files_dir = "output/uploaded"
 
     def __init__(self, api_key: Optional[str] = None):
         if api_key is None:
             api_key = os.getenv("E2B_API_KEY")
-        filesever_url_prefix = "http://localhost:8000/api/files"
+        filesever_url_prefix = os.getenv("FILESERVER_URL_PREFIX")
         if not api_key:
             raise ValueError(
                 "E2B_API_KEY key is required to run code interpreter. Get it here: https://e2b.dev/docs/getting-started/api-key"
@@ -61,7 +61,7 @@ class E2BCodeInterpreter:
         Lazily initialize the interpreter.
         """
         logger.info(f"Initializing interpreter with {len(sandbox_files)} files")
-        self.interpreter = CodeInterpreter(api_key=self.api_key)
+        self.interpreter = Sandbox(api_key=self.api_key)
         if len(sandbox_files) > 0:
             for file_path in sandbox_files:
                 file_name = os.path.basename(file_path)
@@ -78,7 +78,7 @@ class E2BCodeInterpreter:
         # Output from e2b doesn't have a name. Create a random name for it.
         filename = f"e2b_file_{uuid.uuid4()}.{ext}"
 
-        document_file = save_file(
+        document_file = FileService.save_file(
             buffer, file_name=filename, save_dir=self.output_dir
         )
 
@@ -122,6 +122,7 @@ class E2BCodeInterpreter:
                             )
                         )
         except Exception as error:
+            logger.exception(error, exc_info=True)
             logger.error("Error when parsing output from E2b interpreter tool", error)
 
         return output
@@ -158,11 +159,11 @@ class E2BCodeInterpreter:
         if self.interpreter is None:
             self._init_interpreter(sandbox_files)
 
-        if self.interpreter and self.interpreter.notebook:
+        if self.interpreter:
             logger.info(
-                f"\n{'='*50}\n> Running following AI-generated code:\n{code}\n{'='*50}"
+                f"\n{'=' * 50}\n> Running following AI-generated code:\n{code}\n{'=' * 50}"
             )
-            exec = self.interpreter.notebook.exec_cell(code)
+            exec = self.interpreter.run_code(code)
 
             if exec.error:
                 error_message = f"The code failed to execute successfully. Error: {exec.error}. Try to fix the code and run again."

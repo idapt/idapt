@@ -9,6 +9,20 @@ from llama_index.core.settings import Settings
 
 logger = logging.getLogger("uvicorn")
 
+NEXT_QUESTION_PROMPT = ""
+# """You're a helpful assistant! Your task is to suggest the next question that user might ask. 
+#Here is the conversation history
+#---------------------
+#{conversation}
+#---------------------
+#Given the conversation history, please give me 3 questions that you might ask next!
+#Your answer should be wrapped in three sticks which follows the following format:
+#```
+#|<question 1>
+#|<question 2>
+#|<question 3>
+#```"""
+
 
 class NextQuestionSuggestion:
     """
@@ -18,35 +32,20 @@ class NextQuestionSuggestion:
 
     @classmethod
     def get_configured_prompt(cls) -> Optional[str]:
-        prompt = """You're a helpful assistant! Your task is to suggest the next question that user might ask. 
-Here is the conversation history
----------------------
-{conversation}
----------------------
-Given the conversation history, please give me 3 questions that you might ask next!
-Your answer should be wrapped in three sticks which follows the following format:
-```
-<question 1>
-<question 2>
-<question 3>
-```"""
-        if not prompt:
+        prompt = NEXT_QUESTION_PROMPT
+        if not prompt or prompt == "":
             return None
         return PromptTemplate(prompt)
 
     @classmethod
     async def suggest_next_questions_all_messages(
         cls,
-        llm,
         messages: List[Message],
     ) -> Optional[List[str]]:
         """
         Suggest the next questions that user might ask based on the conversation history
         Return None if suggestion is disabled or there is an error
         """
-
-        # For now remove this as we need to use user specific llm and this is not stateless
-        return None
         prompt_template = cls.get_configured_prompt()
         if not prompt_template:
             return None
@@ -75,20 +74,21 @@ Your answer should be wrapped in three sticks which follows the following format
             return None
 
     @classmethod
-    def _extract_questions(cls, text: str) -> List[str]:
+    def _extract_questions(cls, text: str) -> List[str] | None:
         content_match = re.search(r"```(.*?)```", text, re.DOTALL)
-        content = content_match.group(1) if content_match else ""
-        return content.strip().split("\n")
+        content = content_match.group(1) if content_match else None
+        if not content:
+            return None
+        return [q.strip() for q in content.split("\n") if q.strip()]
 
     @classmethod
     async def suggest_next_questions(
         cls,
         chat_history: List[Message],
         response: str,
-        llm,
     ) -> List[str]:
         """
         Suggest the next questions that user might ask based on the chat history and the last response
         """
         messages = chat_history + [Message(role="assistant", content=response)]
-        return await cls.suggest_next_questions_all_messages(llm, messages)
+        return await cls.suggest_next_questions_all_messages(messages)

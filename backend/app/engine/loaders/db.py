@@ -1,9 +1,8 @@
 import logging
-import os
-import yaml
 from typing import List
+
 from pydantic import BaseModel
-from app.database.service import get_connection_string
+
 logger = logging.getLogger("uvicorn")
 
 
@@ -12,19 +11,7 @@ class DBLoaderConfig(BaseModel):
     queries: List[str]
 
 
-def get_db_documents(configs: List[DBLoaderConfig] = None):
-    if configs is None:
-        # Load the YAML configuration
-        with open('backend/config/loaders.yaml', 'r') as file:
-            config = yaml.safe_load(file)
-
-        # Substitute the environment variable for the DB URI
-        db_uri = get_connection_string()
-        configs = [
-            DBLoaderConfig(uri=db_uri, queries=db_config.get('queries', []))
-            for db_config in config.get('db', [])
-        ]
-
+def get_db_documents(configs: list[DBLoaderConfig]):
     try:
         from llama_index.readers.database import DatabaseReader
     except ImportError:
@@ -41,4 +28,4 @@ def get_db_documents(configs: List[DBLoaderConfig] = None):
             documents = loader.load_data(query=query)
             docs.extend(documents)
 
-    return docs
+    return documents
