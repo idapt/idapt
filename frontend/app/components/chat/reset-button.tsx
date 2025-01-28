@@ -4,11 +4,13 @@ import { Plus } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { useChat } from "ai/react";
 import { useClientConfig } from "@/app/components/chat/hooks/use-config";
+import { useUser } from "@/app/contexts/user-context";
 
 export function ResetButton() {
   const { backend } = useClientConfig();
+  const { userId } = useUser();
   const { reload } = useChat({
-    api: `${backend}/api/chat`,
+    api: `${backend}/api/chat?user_id=${userId}`,
   });
 
   const handleReset = () => {

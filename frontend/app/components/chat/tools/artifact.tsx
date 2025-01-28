@@ -10,10 +10,9 @@ import {
 } from "@/app/components/ui/collapsible";
 import { cn } from "@/app/components/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
-import Markdown from "@/app/components/chat/chat-message/markdown";
+import { Markdown } from "@/app/components/chat/custom/markdown";
 import { useClientConfig } from "@/app/components/chat/hooks/use-config";
 import { useCopyToClipboard } from "@/app/components/chat/hooks/use-copy-to-clipboard";
-import { useApiClient } from "@/app/lib/api-client";
 
 // detail information to execute code
 export type CodeArtifact = {
@@ -30,12 +29,17 @@ export type CodeArtifact = {
   files?: string[];
 };
 
+type OutputUrl = {
+  url: string;
+  filename: string;
+};
+
 type ArtifactResult = {
   template: string;
   stdout: string[];
   stderr: string[];
   runtimeError?: { name: string; value: string; tracebackRaw: string[] };
-  outputUrls: Array<{ url: string; filename: string }>;
+  outputUrls: OutputUrl[];
   url: string;
 };
 
@@ -52,7 +56,6 @@ export function Artifact({
   const [openOutputPanel, setOpenOutputPanel] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const { backend } = useClientConfig();
-  const { fetchWithAuth } = useApiClient();
 
   const handleOpenOutput = async () => {
     setOpenOutputPanel(true);
@@ -64,7 +67,7 @@ export function Artifact({
     try {
       setSandboxCreating(true);
 
-      const response = await fetchWithAuth(`${backend}/api/sandbox`, {
+      const response = await fetch(`${backend}/api/sandbox`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -274,11 +277,7 @@ function CodeSandboxPreview({ url }: { url: string }) {
   );
 }
 
-function InterpreterOutput({
-  outputUrls,
-}: {
-  outputUrls: Array<{ url: string; filename: string }>;
-}) {
+function InterpreterOutput({ outputUrls }: { outputUrls: OutputUrl[] }) {
   return (
     <ul className="flex flex-col gap-2 mt-4">
       {outputUrls.map((url) => (

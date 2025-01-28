@@ -1,7 +1,7 @@
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Textarea } from '../ui/textarea';
-import { Switch } from '../ui/switch';
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import { Textarea } from "@/app/components/ui/textarea";
+import { Switch } from "@/app/components/ui/switch";
 
 interface ParameterEditorProps {
   schema: Record<string, any>;

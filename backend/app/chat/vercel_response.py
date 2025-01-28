@@ -22,6 +22,7 @@ class VercelStreamResponse(StreamingResponse):
 
     TEXT_PREFIX = "0:"
     DATA_PREFIX = "8:"
+    ERROR_PREFIX = "3:"
 
     def __init__(
         self,
@@ -53,17 +54,26 @@ class VercelStreamResponse(StreamingResponse):
         # Merge the chat response generator and the event generator
         combine = stream.merge(chat_response_generator, event_generator)
         is_stream_started = False
-        async with combine.stream() as streamer:
-            async for output in streamer:
-                if not is_stream_started:
-                    is_stream_started = True
-                    # Stream a blank message to start displaying the response in the UI
-                    yield cls.convert_text("")
+        try:
+            async with combine.stream() as streamer:
+                async for output in streamer:
+                    if await request.is_disconnected():
+                        break
 
-                yield output
-
-                if await request.is_disconnected():
-                    break
+                    if not is_stream_started:
+                        is_stream_started = True
+                        # Stream a blank message to start displaying the response in the UI
+                        yield cls.convert_text("")
+                        logger.info("Streaming response started")
+                    yield output
+        except Exception:
+            logger.exception("Error in stream response")
+            yield cls.convert_error(
+                "An unexpected error occurred while processing your request, preventing the creation of a final answer. Please try again."
+            )
+        finally:
+            # Ensure event handler is marked as done even if connection breaks
+            event_handler.is_done = True
 
     @classmethod
     async def _event_generator(cls, event_handler: EventCallbackHandler):
@@ -90,21 +100,20 @@ class VercelStreamResponse(StreamingResponse):
         result = await response
 
         # Once we got a source node, start a background task to download the files (if needed)
-        if result.source_nodes:
-            cls._process_response_nodes(result.source_nodes, background_tasks)
+        cls._process_response_nodes(result.source_nodes, background_tasks)
 
-            # Yield the source nodes
-            yield cls.convert_data(
-                {
-                    "type": "sources",
-                    "data": {
-                        "nodes": [
-                            SourceNodes.from_source_node(node).model_dump()
-                            for node in result.source_nodes
-                        ]
-                    },
-                }
-            )
+        # Yield the source nodes
+        yield cls.convert_data(
+            {
+                "type": "sources",
+                "data": {
+                    "nodes": [
+                        SourceNodes.from_source_node(node).model_dump()
+                        for node in result.source_nodes
+                    ]
+                },
+            }
+        )
 
         final_response = ""
         async for token in result.async_response_gen():
@@ -112,11 +121,11 @@ class VercelStreamResponse(StreamingResponse):
             yield cls.convert_text(token)
 
         # Generate next questions if next question prompt is configured
-        #question_data = await cls._generate_next_questions(
-        #    chat_data.messages, final_response
-        #)
-        #if question_data:
-        #    yield cls.convert_data(question_data)
+        question_data = await cls._generate_next_questions(
+            chat_data.messages, final_response
+        )
+        if question_data:
+            yield cls.convert_data(question_data)
 
         # the text_generator is the leading stream, once it's finished, also finish the event stream
         event_handler.is_done = True
@@ -131,6 +140,11 @@ class VercelStreamResponse(StreamingResponse):
     def convert_data(cls, data: dict):
         data_str = json.dumps(data)
         return f"{cls.DATA_PREFIX}[{data_str}]\n"
+
+    @classmethod
+    def convert_error(cls, error: str):
+        error_str = json.dumps(error)
+        return f"{cls.ERROR_PREFIX}{error_str}\n"
 
     @staticmethod
     def _process_response_nodes(
@@ -152,9 +166,10 @@ class VercelStreamResponse(StreamingResponse):
 
     @staticmethod
     async def _generate_next_questions(chat_history: List[Message], response: str):
-        questions = await NextQuestionSuggestion.suggest_next_questions(
-            chat_history, response
-        )
+        #questions = await NextQuestionSuggestion.suggest_next_questions(
+        #    chat_history, response
+        #)
+        questions = []
         if questions:
             return {
                 "type": "suggested_questions",

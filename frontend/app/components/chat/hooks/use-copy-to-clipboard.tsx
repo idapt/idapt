@@ -10,13 +10,14 @@ export function useCopyToClipboard({
   timeout = 2000,
 }: useCopyToClipboardProps) {
   const [isCopied, setIsCopied] = React.useState<Boolean>(false);
+  const [isClient, setIsClient] = React.useState(false);
 
-  const copyToClipboard = (value: string) => {
-    if (typeof window === "undefined" || !navigator.clipboard?.writeText) {
-      return;
-    }
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
-    if (!value) {
+  const copyToClipboard = React.useCallback((value: string) => {
+    if (!isClient || !value || !navigator.clipboard?.writeText) {
       return;
     }
 
@@ -27,7 +28,7 @@ export function useCopyToClipboard({
         setIsCopied(false);
       }, timeout);
     });
-  };
+  }, [isClient, timeout]);
 
   return { isCopied, copyToClipboard };
 }
