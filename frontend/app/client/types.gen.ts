@@ -5,6 +5,10 @@ export type AgentAnnotation = {
     text: string;
 };
 
+export type AllSettingsResponse = {
+    data: Array<SettingResponse>;
+};
+
 export type AnnotationInput = {
     type: string;
     data: AnnotationFileDataInput | Array<string> | AgentAnnotation | ArtifactAnnotation;
@@ -169,6 +173,10 @@ export type MessageOutput = {
  */
 export type MessageRole = 'system' | 'user' | 'assistant' | 'function' | 'tool' | 'chatbot' | 'model';
 
+export type OllamaStatusResponse = {
+    is_downloading: boolean;
+};
+
 export type ProcessingItem = {
     original_path: string;
     stacks_identifiers_to_queue: Array<string>;
@@ -223,6 +231,11 @@ export type ProcessingStackStepUpdate = {
 export type ProcessingStackUpdate = {
     steps: Array<ProcessingStackStepUpdate>;
     supported_extensions: Array<string>;
+};
+
+export type ProcessingStatusResponse = {
+    status: 'pending' | 'processing' | 'completed' | 'failed';
+    message: string | null;
 };
 
 export type ProcessingStepResponse = {
@@ -513,7 +526,7 @@ export type GetAllSettingsRouteApiSettingsGetResponses = {
     /**
      * Successful Response
      */
-    200: Array<SettingResponse>;
+    200: AllSettingsResponse;
 };
 
 export type GetAllSettingsRouteApiSettingsGetResponse = GetAllSettingsRouteApiSettingsGetResponses[keyof GetAllSettingsRouteApiSettingsGetResponses];
@@ -908,8 +921,10 @@ export type ProcessingRouteApiProcessingPostResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ProcessingStatusResponse;
 };
+
+export type ProcessingRouteApiProcessingPostResponse = ProcessingRouteApiProcessingPostResponses[keyof ProcessingRouteApiProcessingPostResponses];
 
 export type GetProcessingStatusRouteApiProcessingStatusGetData = {
     body?: never;
@@ -936,8 +951,10 @@ export type GetProcessingStatusRouteApiProcessingStatusGetResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ProcessingStatusResponse;
 };
+
+export type GetProcessingStatusRouteApiProcessingStatusGetResponse = GetProcessingStatusRouteApiProcessingStatusGetResponses[keyof GetProcessingStatusRouteApiProcessingStatusGetResponses];
 
 export type GetProcessingStepsRouteApiStacksStepsGetData = {
     body?: never;
@@ -1148,8 +1165,10 @@ export type GetOllamaStatusRouteApiOllamaStatusGetResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: OllamaStatusResponse;
 };
+
+export type GetOllamaStatusRouteApiOllamaStatusGetResponse = GetOllamaStatusRouteApiOllamaStatusGetResponses[keyof GetOllamaStatusRouteApiOllamaStatusGetResponses];
 
 export type HealthRouteApiHealthGetData = {
     body?: never;

@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { ProcessingStack, ProcessingStep } from '@/app/types/processing';
+import { ProcessingStack, ProcessingStep } from '@/app/components/processing/processing';
 import { useProcessingStacks } from '@/app/components/processing/hooks/use-processing-stacks';
 //import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { Settings2, Plus } from 'lucide-react';

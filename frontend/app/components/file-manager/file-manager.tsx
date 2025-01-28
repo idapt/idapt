@@ -8,8 +8,8 @@ import { FilePath } from "@/app/components/file-manager/file-path";
 import { useFileUpload } from "@/app/components/file-manager/hooks/use-file-upload";
 import { useFolderUpload } from "@/app/components/file-manager/hooks/use-folder-upload";
 import { useFileManager } from "@/app/components/file-manager/hooks/use-file-manager";
-import { DatasourceResponse } from "@/app/types/datasources";
 import { CreateDatasourceDialog } from "@/app/components/file-manager/create-datasource-dialog";
+import { DatasourceResponse } from "@/app/client";
 
 export function FileManager() {
   const {

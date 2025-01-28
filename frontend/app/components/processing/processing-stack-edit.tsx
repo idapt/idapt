@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ProcessingStack, ProcessingStep, ProcessingStackStep } from '@/app/types/processing';
+import { ProcessingStack, ProcessingStep, ProcessingStackStep } from '@/app/components/processing/processing';
 import {
   DndContext,
   closestCenter,
@@ -22,11 +22,15 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X, Save, Trash2, Settings2 } from 'lucide-react';
-import { useClientConfig } from '@/app/components/chat/hooks/use-config';
+import { useUser } from '@/app/contexts/user-context';
 import { useApiClient } from '@/app/lib/api-client';
 import { ProcessingStepSelect } from './processing-step-select';
 import { ParameterEditor } from './parameter-editor';
 import { FileExtensionsInput } from './file-extensions-input';
+import { 
+  updateProcessingStackRouteApiStacksStacksStackIdentifierPut,
+  deleteProcessingStackRouteApiStacksStacksStackIdentifierDelete
+} from '@/app/client';
 
 interface ProcessingStackEditProps {
   stack: ProcessingStack;
@@ -103,46 +107,28 @@ function SortableStep({
 export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }: ProcessingStackEditProps) {
   const [steps, setSteps] = useState<ProcessingStackStep[]>(stack.steps);
   const [extensions, setExtensions] = useState<string[]>(stack.supported_extensions || []);
-  const { backend } = useClientConfig();
-  const { fetchWithAuth } = useApiClient();
+  const { userId } = useUser();
+  const client = useApiClient();
 
   const handleSave = async () => {
-    const controller = new AbortController();
     try {
-      const extensionList = extensions.map(ext => 
-        ext.startsWith('.') ? ext : `.${ext}`
-      );
-
-      const response = await fetchWithAuth(`${backend}/api/stacks/stacks/${stack.identifier}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      await updateProcessingStackRouteApiStacksStacksStackIdentifierPut({
+        client,
+        path: { stack_identifier: stack.identifier },
+        query: { user_id: userId },
+        body: {
           steps: steps.map((step, index) => ({
-            step_identifier: step.step_identifier,
-            order: index + 1,
-            parameters: step.parameters
+            ...step,
+            order: index + 1
           })),
-          supported_extensions: extensionList
-        }),
-        signal: controller.signal
+          supported_extensions: extensions
+        }
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to update stack');
-      }
-
       onSave();
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return;
-      }
       console.error('Failed to save stack:', error);
-      window.alert((error as Error).message || 'Failed to update stack');
+      window.alert((error as Error).message || 'Failed to save stack');
     }
-    return () => controller.abort();
   };
 
   const sensors = useSensors(
@@ -284,27 +270,17 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
       return;
     }
 
-    const controller = new AbortController();
     try {
-      const response = await fetchWithAuth(`${backend}/api/stacks/stacks/${stack.identifier}`, {
-        method: 'DELETE',
-        signal: controller.signal
+      await deleteProcessingStackRouteApiStacksStacksStackIdentifierDelete({
+        client,
+        path: { stack_identifier: stack.identifier },
+        query: { user_id: userId }
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to delete stack');
-      }
-
       onDelete();
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return;
-      }
       console.error('Failed to delete stack:', error);
       window.alert((error as Error).message || 'Failed to delete stack');
     }
-    return () => controller.abort();
   };
 
   const handleParametersChange = (stepId: number, parameters: Record<string, any>) => {

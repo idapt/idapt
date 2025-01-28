@@ -3,12 +3,12 @@
 import { FileItem } from "@/app/components/file-manager/file-item";
 import { DatasourceItem } from "@/app/components/file-manager/datasource-item";
 
-import { File, Folder } from "@/app/types/files";
-import { DatasourceResponse } from "@/app/types/datasources";
+import { FileInfoResponse, FolderInfoResponse } from "@/app/client";
+import { DatasourceResponse } from "@/app/client";
 
 interface FileListProps {
-  files: File[];
-  folders: Folder[];
+  files: FileInfoResponse[];
+  folders: FolderInfoResponse[];
   datasources?: DatasourceResponse[];
   viewMode: 'grid' | 'list';
   onFolderClick: (path: string) => void;
@@ -55,15 +55,15 @@ export function FileList({
           id={file.id}
           name={file.name}
           type="file"
-          size={file.size}
+          size={file.size?.toString()}
           modified={file.uploaded_at.toString()}
           accessed={file.uploaded_at.toString()}
           path={file.original_path}
-          mimeType={file.mime_type}
-          stacks_to_process={file.stacks_to_process}
-          processed_stacks={file.processed_stacks}
+          mimeType={file.mime_type ?? undefined}
+          stacks_to_process={file.stacks_to_process ?? undefined}
+          processed_stacks={file.processed_stacks ?? undefined}
           status={file.status}
-          error_message={file.error_message}
+          error_message={file.error_message ?? undefined}
           onRefresh={onUploadComplete}
           viewMode={viewMode}
         />

@@ -1,55 +1,24 @@
-import { useState, useRef, useCallback } from 'react';
-import { useClientConfig } from '../../chat/hooks/use-config';
+import { useState } from 'react';
 import { useApiClient } from '@/app/lib/api-client';
-
-interface FileUploadItem {
-  original_path: string;
-  base64_content: string;
-  name: string;
-  file_created_at: number;
-  file_modified_at: number;
-}
+import { FileUploadItem, uploadFileRouteApiFileManagerUploadFilePost } from '@/app/client';
+import { useUser } from '@/app/contexts/user-context';
 
 export function useFiles() {
-  const { backend } = useClientConfig();
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const shouldCancelAllRef = useRef(false);
+  const client = useApiClient();
+  const { userId } = useUser();
   const [isUploading, setIsUploading] = useState(false);
-  const { fetchWithAuth } = useApiClient();
 
-  const cancelAllUploads = useCallback(() => {
-    shouldCancelAllRef.current = true;
-    abortControllerRef.current?.abort();
-  }, []);
-  
   const uploadFileApi = async (uploadItem: FileUploadItem) => {
     try {
       setIsUploading(true);
       
-      // Create new abort controller for this upload
-      abortControllerRef.current = new AbortController();
-      
-      // Check if we should cancel before starting
-      if (shouldCancelAllRef.current) {
-        throw new DOMException('Upload cancelled', 'AbortError');
-      }
-
-      const response = await fetchWithAuth(`${backend}/api/file-manager/upload-file`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(uploadItem),
-        signal: abortControllerRef.current.signal
+      await uploadFileRouteApiFileManagerUploadFilePost({
+        client,
+        body: uploadItem,
+        query: { user_id: userId }
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to upload ${uploadItem.name}`);
-      }
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        throw error; // Re-throw abort errors to handle them in the upload hook
-      }
+      console.error('Upload error:', error);
       throw error;
     } finally {
       setIsUploading(false);
@@ -58,7 +27,6 @@ export function useFiles() {
 
   return {
     uploadFileApi,
-    isUploading,
-    cancelAllUploads
+    isUploading
   };
 }

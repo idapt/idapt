@@ -1,36 +1,39 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useClientConfig } from '@/app/components/chat/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
-import { ProcessingStack, ProcessingStep } from '@/app/types/processing';
+import { 
+  getProcessingStacksRouteApiStacksStacksGet,
+  getProcessingStepsRouteApiStacksStepsGet,
+  ProcessingStackResponse, 
+  ProcessingStepResponse
+} from '@/app/client';
+import { useUser } from '@/app/contexts/user-context';
 
 export function useProcessingStacks() {
-  const { backend } = useClientConfig();
-  const { fetchWithAuth } = useApiClient();
-  const [stacks, setStacks] = useState<ProcessingStack[]>([]);
-  const [steps, setSteps] = useState<ProcessingStep[]>([]);
+  const client = useApiClient();
+  const { userId } = useUser();
+  const [stacks, setStacks] = useState<ProcessingStackResponse[]>([]);
+  const [steps, setSteps] = useState<ProcessingStepResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchStacks = useCallback(async () => {
     try {
-      const response = await fetchWithAuth(`${backend}/api/stacks/stacks`);
-      const data = await response.json();
-      setStacks(Array.isArray(data) ? data : []);
+      const response = await getProcessingStacksRouteApiStacksStacksGet({ client, query: { user_id: userId } });
+      setStacks(response.data || []);
     } catch (error) {
       console.error('Failed to fetch processing stacks:', error);
       setStacks([]);
     }
-  }, [backend, fetchWithAuth]);
+  }, [client]);
 
   const fetchSteps = useCallback(async () => {
     try {
-      const response = await fetchWithAuth(`${backend}/api/stacks/steps`);
-      const data = await response.json();
-      setSteps(Array.isArray(data) ? data : []);
+      const response = await getProcessingStepsRouteApiStacksStepsGet({ client, query: { user_id: userId } });
+      setSteps(response.data || []);
     } catch (error) {
       console.error('Failed to fetch processing steps:', error);
       setSteps([]);
     }
-  }, [backend, fetchWithAuth]);
+  }, [client]);
 
   useEffect(() => {
     Promise.all([fetchStacks(), fetchSteps()]).finally(() => setLoading(false));

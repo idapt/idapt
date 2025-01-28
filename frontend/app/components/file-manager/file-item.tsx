@@ -9,14 +9,22 @@ import {
 } from "@radix-ui/react-dropdown-menu";
 
 import { useState } from "react";
-import { useClientConfig } from "@/app/components/chat/hooks/use-config";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
 import { encodePathSafe } from "@/app/components/file-manager/utils/path-encoding";
 import { useDeletionToast } from "@/app/components/file-manager/hooks/use-deletion-toast";
-import { useApiClient } from "@/app/lib/api-client";
+import { useApiClient } from '@/app/lib/api-client';
+import { useUser } from "@/app/contexts/user-context";
 import { useProcessingStacks } from '@/app/components/processing/hooks/use-processing-stacks';
 import { useProcessing } from '@/app/components/file-manager/hooks/use-processing';
+import {
+  downloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGet,
+  downloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGet,
+  deleteRouteApiFileManagerEncodedOriginalPathDelete,
+  deleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDelete
+  // renameFileRouteApiFileManagerFilePathRenamePost,
+  // renameFolderRouteApiFileManagerFolderPathRenamePost
+} from '@/app/client';
 
 interface FileItemProps {
   id: number;
@@ -53,14 +61,14 @@ export function FileItem({
   onRefresh,
   viewMode = 'list'
 }: FileItemProps) {
-  const { backend } = useClientConfig();
   const { stacks } = useProcessingStacks();
   const { processWithStack, processFolder } = useProcessing();
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(name);
   const [showDetails, setShowDetails] = useState(false);
   const { startDeletion, completeDeletion, failDeletion } = useDeletionToast();
-  const { fetchWithAuth } = useApiClient();
+  const client = useApiClient();
+  const { userId } = useUser();
 
   const handleClick = (e: React.MouseEvent) => {
     // Check if the click came from the dropdown menu or its children
@@ -75,59 +83,73 @@ export function FileItem({
   };
 
   const handleDownload = async () => {
-    const encodedPath = encodePathSafe(path);
-    const response = await fetchWithAuth(`${backend}/api/file-manager/${type}/${encodedPath}/download`, {
-      method: 'GET',
-    });
-    
-    // Download the file or folder zip with the right file or folder name
-    if (!response.ok) {
-      throw new Error('Download failed');
+    try {
+      const encodedPath = encodePathSafe(path);
+      
+      // Use fetch directly to get the raw response // TODO: Use API client
+      const url = type === 'folder' 
+        ? `/api/file-manager/folder/${encodedPath}/download?user_id=${userId}`
+        : `/api/file-manager/file/${encodedPath}/download?user_id=${userId}`;
+      
+      const response = await fetch(url);
+  
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+  
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = type === 'folder' ? name + '.zip' : name;
+      
+      try {
+        document.body.appendChild(a);
+        a.click();
+      } finally {
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(a);
+      }
+    } catch (error) {
+      console.error('Download failed:', error);
+      alert('Failed to download item');
     }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    // Use original name with .zip extension for folders
-    a.download = type === 'folder' ? `${name}.zip` : name;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
   };
+  
 
   const handleDelete = async () => {
     if (!path) return;
     
     if (confirm(`Are you sure you want to delete ${name}?`)) {
-        try {
-            const deletionId = startDeletion(name, path);
-            const encodedPath = encodePathSafe(path);
-            const response = await fetchWithAuth(`${backend}/api/file-manager/${encodedPath}`, {
-                method: 'DELETE'
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                if (response.status === 409) {
-                    alert('This item is currently being processed and cannot be deleted. Please try again once processing is complete.');
-                    failDeletion(deletionId);
-                    return;
-                }
-                throw new Error(error.detail || 'Delete failed');
-            }
-
-            completeDeletion(deletionId);
-            onRefresh?.();
-        } catch (error) {
-            console.error('Delete failed:', error);
-            alert(error instanceof Error ? error.message : 'Failed to delete item');
-        }
+      try {
+        const deletionId = startDeletion(name, path);
+        const encodedPath = encodePathSafe(path);
+        const response = await deleteRouteApiFileManagerEncodedOriginalPathDelete({
+          client,
+          path: { encoded_original_path: encodedPath },
+          query: {
+            user_id: userId
+          }
+        });
+        if (!response.response.ok) {
+          const error = await response.response.json();
+          if (response.response.status === 409) {
+              alert('This item is currently being processed and cannot be deleted. Please try again once processing is complete.');
+              failDeletion(deletionId);
+              return;
+          }
+          throw new Error(error.detail || 'Delete failed');
+      }
+        completeDeletion(deletionId);
+        onRefresh?.();
+      } catch (error) {
+        console.error('Delete failed:', error);
+        alert(error instanceof Error ? error.message : 'Failed to delete item');
+      }
     }
   };
 
-  const handleRename = async () => {
+  /*const handleRename = async () => {
     if (!path || newName === name) {
       setIsRenaming(false);
       return;
@@ -135,12 +157,12 @@ export function FileItem({
 
     try {
       const encodedPath = encodePathSafe(path);
-      const response = await fetchWithAuth(`${backend}/api/file-manager/${type}/${encodedPath}/rename`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const response = await renameFileRouteApiFileManagerFileEncodedOriginalPathRenamePost({
+        client,
+        body: {
           new_name: newName
-        }),
+        },
+        path: { encoded_original_path: encodedPath }
       });
 
       if (response.ok) {
@@ -153,7 +175,7 @@ export function FileItem({
       console.error('Rename failed:', error);
       alert('Failed to rename item');
     }
-  };
+  };*/
 
   const handleDeleteProcessedData = async () => {
     if (!path) return;
@@ -161,11 +183,15 @@ export function FileItem({
     if (confirm(`Are you sure you want to delete all processed data for ${name}?`)) {
       try {
         const encodedPath = encodePathSafe(path);
-        const response = await fetchWithAuth(`${backend}/api/file-manager/processed-data/${encodedPath}`, {
-          method: 'DELETE'
+        const response = await deleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDelete({
+          client,
+          path: { encoded_original_path: encodedPath },
+          query: {
+            user_id: userId
+          }
         });
 
-        if (!response.ok) {
+        if (!response.response.ok) {
           throw new Error('Failed to delete processed data');
         }
 

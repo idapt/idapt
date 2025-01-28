@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { useClientConfig } from '@/app/components/chat/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
+import { createProcessingStackRouteApiStacksStacksPost } from '@/app/client';
+import { useUser } from '@/app/contexts/user-context';
 
 interface ProcessingStackCreateProps {
   isOpen: boolean;
@@ -14,28 +15,22 @@ interface ProcessingStackCreateProps {
 export function ProcessingStackCreate({ isOpen, onClose, onCreated }: ProcessingStackCreateProps) {
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { backend } = useClientConfig();
-  const { fetchWithAuth } = useApiClient();
-
+  const client = useApiClient();
+  const { userId } = useUser();
+  
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
 
-      const response = await fetchWithAuth(`${backend}/api/stacks/stacks`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      await createProcessingStackRouteApiStacksStacksPost({
+        client,
+        body: {
           display_name: name
-        })
+        },
+        query: {
+          user_id: userId
+        }
       });
-  
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Failed to create stack');
-      }
   
       onCreated();
       onClose();

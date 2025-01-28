@@ -1,28 +1,20 @@
+import { createClient, createConfig } from '@hey-api/client-fetch';
 import { useUser } from '../contexts/user-context';
+import { useClientConfig } from '../components/chat/hooks/use-config';
 import { useMemo } from 'react';
 
 export function useApiClient() {
   const { userId } = useUser();
+  const { backend } = useClientConfig();
   
-  const fetchWithAuth = useMemo(() => {
-    return async (url: string, options: RequestInit = {}) => {
-      const headers = {
-        ...options.headers,
-        'X-User-Id': userId,
-      };
-
-      // Only add user_id as query param if it's not already present
-      const urlObj = new URL(url);
-      if (!urlObj.searchParams.has('user_id')) {
-        urlObj.searchParams.append('user_id', userId);
+  const client = useMemo(() => {
+    return createClient(createConfig({
+      baseUrl: backend,
+      headers: {
+        'X-User-Id': userId
       }
+    }));
+  }, [backend, userId]);
 
-      return fetch(urlObj.toString(), {
-        ...options,
-        headers,
-      });
-    };
-  }, [userId]);
-
-  return { fetchWithAuth, userId };
+  return client;
 } 

@@ -1,86 +1,56 @@
-import { useClientConfig } from "@/app/components/chat/hooks/use-config";
-import { useApiClient } from "@/app/lib/api-client";
-
-export interface ProcessingFile {
-  original_path: string;
-  stacks_identifiers_to_queue?: string[];
-}
+import { useApiClient } from '@/app/lib/api-client';
+import { 
+  processingRouteApiProcessingPost,
+  ProcessingRequest,
+  ProcessingItem
+} from '@/app/client';
+import { useUser } from '@/app/contexts/user-context';
 
 export function useProcessing() {
-  const { backend } = useClientConfig();
-  const { fetchWithAuth } = useApiClient();
+  const client = useApiClient();
+  const { userId } = useUser();
 
   const processWithStack = async (files: string[], stackIdentifier: string) => {
-    const controller = new AbortController();
     try {
-      const processFiles: ProcessingFile[] = files.map(original_path => ({
+      const processFiles: ProcessingItem[] = files.map(original_path => ({
         original_path,
         stacks_identifiers_to_queue: [stackIdentifier]
       }));
 
-      const response = await fetchWithAuth(`${backend}/api/processing`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ items: processFiles }),
-        signal: controller.signal
+      const response = await processingRouteApiProcessingPost({
+        client,
+        body: { items: processFiles },
+        query: { user_id: userId }
       });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Failed to process');
-      }
-      
-      return data;
+      return response;
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return;
-      }
       console.error('Processing error:', error);
       throw error;
-    } finally {
-      controller.abort();
     }
   };
 
   const processFolder = async (folderPath: string, stackIdentifier: string) => {
-    const controller = new AbortController();
     try {
-      const response = await fetchWithAuth(`${backend}/api/processing`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await processingRouteApiProcessingPost({
+        client,
+        body: {
           items: [{
             original_path: folderPath,
             stacks_identifiers_to_queue: [stackIdentifier]
           }]
-        }),
-        signal: controller.signal
+        },
+        query: { user_id: userId }
       });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || 'Failed to process folder');
-      }
-      
-      return data;
+      return response;
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return;
-      }
       console.error('Processing folder error:', error);
       throw error;
-    } finally {
-      controller.abort();
     }
   };
 
-  return { processWithStack, process, processFolder };
+  return { processWithStack, processFolder };
 }
 
 export default useProcessing;

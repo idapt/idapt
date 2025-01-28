@@ -8,7 +8,7 @@ import {
 } from "@radix-ui/react-dropdown-menu";
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
-import { DatasourceResponse } from "@/app/types/datasources";
+import { DatasourceResponse } from "@/app/client";
 import { Textarea } from "@/app/components/ui/textarea";
 import { useProcessingStacks } from "@/app/components/processing/hooks/use-processing-stacks";
 import useProcessing from "@/app/components/file-manager/hooks/use-processing";

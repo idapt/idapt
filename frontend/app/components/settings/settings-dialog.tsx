@@ -15,8 +15,8 @@ import {
 import { useSettingsContext } from "@/app/components/settings/settings-provider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { SettingsEditor } from "./settings-editor";
-import { SCHEMA_IDENTIFIER_OPTIONS } from "@/app/types/settings";
-import type { Setting } from "@/app/types/settings";
+import { SCHEMA_IDENTIFIER_OPTIONS } from "@/app/types/settings"; // TODO Use a literal in api
+import type { SettingResponse } from "@/app/client";
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -24,8 +24,8 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
-  const [settings, setSettings] = useState<Setting[]>([]);
-  const [selectedSetting, setSelectedSetting] = useState<Setting | null>(null);
+  const [settings, setSettings] = useState<SettingResponse[]>([]);
+  const [selectedSetting, setSelectedSetting] = useState<SettingResponse | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newSettingIdentifier, setNewSettingIdentifier] = useState("");
   const [selectedSchemaId, setSelectedSchemaId] = useState<string>("");
@@ -36,7 +36,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
   }, []);
 
   const loadSettings = async () => {
-    const settings : Setting[] = await getAllSettings();
+    const settings = await getAllSettings();
     setSettings(settings);
   };
 
