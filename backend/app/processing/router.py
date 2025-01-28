@@ -6,7 +6,7 @@ from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
 
 from app.processing.service import get_queue_status, mark_items_as_queued
-from app.processing.schemas import ProcessingRequest
+from app.processing.schemas import ProcessingRequest, ProcessingStatusResponse
 from app.api.utils import get_user_id, get_file_manager_db_session
 from app.api.websocket import StatusWebSocket
 
@@ -14,13 +14,13 @@ logger = logging.getLogger("uvicorn")
 
 processing_router = r = APIRouter()
 
-@r.post("")
+@r.post("", response_model=ProcessingStatusResponse)
 async def processing_route(
     request: ProcessingRequest,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session),
-):
+) -> ProcessingStatusResponse:
     """Add files or folders to generation queue and start processing if needed"""
     try:
         # Process all items in the request
@@ -29,26 +29,30 @@ async def processing_route(
         # Get the current status of the queue
         status = get_queue_status(session)
 
-        return {
-            "status": "queued",
-            "message": f"Added files to generation queue",
-            "queue_status": status
-        }
+        return ProcessingStatusResponse(
+            status="queued",
+            message=f"Added files to generation queue",
+            queue_status=status
+        )
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error in processing endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@r.get("/status")
+@r.get("/status", response_model=ProcessingStatusResponse)
 async def get_processing_status_route(
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session),
-):
+) -> ProcessingStatusResponse:
     """Get the current status of the generation queue"""
     try:
         status = get_queue_status(session)
-        return status
+        return ProcessingStatusResponse(
+            status="pending",
+            message="Processing queue is pending",
+            queue_status=status
+        )
     except Exception as e:
         logger.error(f"Error in get_generation_status_route: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

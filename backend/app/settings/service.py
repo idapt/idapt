@@ -60,18 +60,20 @@ def create_setting(session: Session, identifier: str, create_setting_request: Cr
         logger.error(f"Error creating setting: {str(e)}")
         raise
 
-def get_all_settings(session: Session) -> List[SettingResponse]:
+def get_all_settings(session: Session) -> AllSettingsResponse:
     try:
         # Only return the identifiers ?
         settings = session.query(Setting).all()
-        return [
-            SettingResponse(
-                identifier=setting.identifier,
-                schema_identifier=setting.schema_identifier,
-                setting_schema_json=json.dumps(setting.setting_schema_json),
-                value_json=setting.value_json
-            ) for setting in settings
-        ]
+        return AllSettingsResponse(
+            data=[
+                SettingResponse(
+                    identifier=setting.identifier,
+                    schema_identifier=setting.schema_identifier,
+                    setting_schema_json=json.dumps(setting.setting_schema_json),
+                    value_json=setting.value_json
+                ) for setting in settings
+            ]
+        )
     except Exception as e:
         logger.error(f"Error getting all settings: {str(e)}")
         raise ValueError(f"Error getting all settings: {str(e)}")

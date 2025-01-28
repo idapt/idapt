@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Literal, Optional, Dict, Type
+from typing import Literal, Optional, Dict, Type, List
 
 class CreateSettingRequest(BaseModel):
     schema_identifier: str
@@ -12,6 +12,9 @@ class SettingResponse(BaseModel):
     schema_identifier: str
     setting_schema_json: str
     value_json: str
+
+class AllSettingsResponse(BaseModel):
+    data: List[SettingResponse]
 
 class SettingBase(BaseModel):
 

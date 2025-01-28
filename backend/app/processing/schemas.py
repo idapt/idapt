@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Literal, Optional
 
 class ProcessingItem(BaseModel):
     original_path: str
@@ -7,3 +7,7 @@ class ProcessingItem(BaseModel):
 
 class ProcessingRequest(BaseModel):
     items: List[ProcessingItem]
+
+class ProcessingStatusResponse(BaseModel):
+    status: Literal["pending", "queued", "processing", "completed", "error"]
+    message: Optional[str]

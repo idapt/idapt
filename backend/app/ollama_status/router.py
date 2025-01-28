@@ -1,17 +1,17 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, WebSocket
-from app.ollama_status.service import can_process
 from app.api.utils import get_user_id, get_file_manager_db_session
 from sqlalchemy.orm import Session
 import logging
 from app.api.websocket import StatusWebSocket
 from fastapi import WebSocketDisconnect
-
+from app.ollama_status.schemas import OllamaStatusResponse
+from app.ollama_status.service import can_process
 
 logger = logging.getLogger("uvicorn")
 
 ollama_status_router = r = APIRouter()
 
-@r.get("")
+@r.get("", response_model=OllamaStatusResponse)
 async def get_ollama_status_route(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),

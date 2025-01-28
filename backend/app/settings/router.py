@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.api.utils import get_file_manager_db_session, get_user_id
 from app.settings.service import get_setting, update_setting, create_setting, delete_setting, get_all_settings
-from app.settings.schemas import CreateSettingRequest, UpdateSettingRequest, SettingResponse
+from app.settings.schemas import CreateSettingRequest, UpdateSettingRequest, SettingResponse, AllSettingsResponse
 import logging
 
 logger = logging.getLogger("uvicorn")
@@ -23,11 +23,11 @@ async def create_setting_route(
         logger.error(f"Error creating setting: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@r.get("", response_model=List[SettingResponse])
+@r.get("", response_model=AllSettingsResponse)
 async def get_all_settings_route(
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session),
-) -> List[SettingResponse]:
+) -> AllSettingsResponse:
     try:
         return get_all_settings(session)
     except Exception as e:
