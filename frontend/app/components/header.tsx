@@ -10,7 +10,7 @@ export default function Header() {
         >
           <Image
             className="rounded-xl"
-            src="/idapt_logo.png"
+            src="/images/idapt_logo.png"
             alt="Idapt Logo"
             width={100}
             height={50}

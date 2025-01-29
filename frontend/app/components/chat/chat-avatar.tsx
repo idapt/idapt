@@ -16,7 +16,7 @@ export function ChatMessageAvatar() {
     <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-md border text-white shadow">
       <Image
         className="rounded-md"
-        src="/idapt_icon.png"
+        src="/images/idapt_icon.png"
         alt="idapt Logo"
         width={24}
         height={24}
