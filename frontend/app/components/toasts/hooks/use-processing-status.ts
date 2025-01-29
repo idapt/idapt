@@ -2,26 +2,14 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useClientConfig } from '@/app/components/chat/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
 import { withBackoff } from '@/app/lib/backoff';
-import { getProcessingStatusRouteApiProcessingStatusGet } from '@/app/client';
+import { getProcessingStatusRouteApiProcessingStatusGet, ProcessingStatusResponse } from '@/app/client';
 import { useUser } from '@/app/contexts/user-context';
-
-interface ProcessingFile {
-  name: string;
-  path: string;
-}
-
-interface ProcessingStatus {
-  queued_count: number;
-  processing_count: number;
-  queued_files: ProcessingFile[];
-  processing_files: ProcessingFile[];
-}
 
 export function useProcessingStatus() {
   const { backend } = useClientConfig();
   const { userId } = useUser();
   const client = useApiClient();
-  const [status, setStatus] = useState<ProcessingStatus | null>(null);
+  const [status, setStatus] = useState<ProcessingStatusResponse | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isConnectingRef = useRef(false);
@@ -29,8 +17,8 @@ export function useProcessingStatus() {
   const fetchInitialStatus = useCallback(async () => {
     if (!backend) return;
     const response = await getProcessingStatusRouteApiProcessingStatusGet({ client, query: { user_id: userId } });
-    const data = response.data as ProcessingStatus;
-    setStatus(data);
+    const data = response.data;
+    setStatus(data ?? null);
     return data;
   }, [backend, client]);
 
@@ -50,7 +38,7 @@ export function useProcessingStatus() {
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        setStatus(data);
+        setStatus(data ?? null);
       };
 
       ws.onclose = () => {
