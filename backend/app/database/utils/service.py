@@ -10,7 +10,7 @@ import os
 
 logger = logging.getLogger("uvicorn")
 
-def create_session(db_path: str) -> Session:
+def create_session(db_path: str, script_location: str, models_declarative_base_class) -> Session:
     """Create a new database session"""
     try:
         # Check if database file exists and create empty one if not
@@ -31,7 +31,7 @@ def create_session(db_path: str) -> Session:
         )
         
         # Run migrations if needed
-        run_migrations(engine, db_path)
+        run_migrations(engine, db_path, script_location, models_declarative_base_class)
         
         SessionLocal = sessionmaker(
             autocommit=False,
@@ -45,9 +45,9 @@ def create_session(db_path: str) -> Session:
         raise HTTPException(status_code=500, detail=str(e))
 
 @contextmanager
-def get_session(db_path: str) -> Generator[Session, None, None]:
+def get_session(db_path: str, script_location: str, models_declarative_base_class) -> Generator[Session, None, None]:
     """Context manager for database sessions"""
-    session = create_session(db_path)
+    session = create_session(db_path, script_location, models_declarative_base_class)
     try:
         yield session
         session.commit()

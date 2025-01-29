@@ -10,11 +10,10 @@ import os
 
 logger = logging.getLogger("uvicorn")
 
-def get_alembic_config(engine: Engine) -> Config:
-    """Get Alembic config"""
-    script_location = Path(__file__).parent.parent / "alembic"
+def create_alembic_config(engine: Engine, script_location: str) -> Config:
+    """Create Alembic config"""
     
-    if not script_location.exists():
+    if not Path(script_location).exists():
         raise RuntimeError(f"migrations directory not found at {script_location}")
     
     alembic_cfg = Config()
@@ -23,28 +22,27 @@ def get_alembic_config(engine: Engine) -> Config:
     alembic_cfg.set_main_option("sqlalchemy.url", str(engine.url))
     return alembic_cfg
 
-def check_current_head(engine: Engine) -> bool:
+def check_current_head(engine: Engine, alembic_cfg: Config) -> bool:
     """Check if database is at the latest revision"""
-    alembic_cfg = get_alembic_config(engine)
     script = ScriptDirectory.from_config(alembic_cfg)
     
     with engine.begin() as connection:
         context = MigrationContext.configure(connection)
         return set(context.get_current_heads()) == set(script.get_heads())
 
-def run_migrations(engine: Engine, db_path: str):
+def run_migrations(engine: Engine, db_path: str, script_location: str, models_declarative_base_class):
     """Run database migrations if needed"""
     lock_file = None  # Initialize lock_file variable
     try:
         # First check if we need to do any migrations at all
-        alembic_cfg = get_alembic_config(engine)
+        alembic_cfg = create_alembic_config(engine, script_location)
         
         # Check if database needs initialization or migration
         with engine.begin() as connection:
             context = MigrationContext.configure(connection)
             current_heads = context.get_current_heads()
             needs_init = not current_heads
-            needs_migration = not needs_init and not check_current_head(engine)
+            needs_migration = not needs_init and not check_current_head(engine, alembic_cfg)
             
             # If no migrations needed, return early
             if not needs_init and not needs_migration:
@@ -65,8 +63,7 @@ def run_migrations(engine: Engine, db_path: str):
                 # Database is empty or not initialized
                 logger.info("Initializing empty database...")
                 # Create all tables
-                from app.database.models import Base
-                Base.metadata.create_all(engine)
+                models_declarative_base_class.metadata.create_all(engine)
                 logger.info("Database tables created")
                 # Stamp with current head
                 command.stamp(alembic_cfg, "head")

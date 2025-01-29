@@ -3,6 +3,7 @@ from typing import Optional
 from app.database.utils.service import get_session
 from app.api.user_path import get_user_data_dir
 from sqlalchemy.orm import Session
+from pathlib import Path
 import logging
 
 logger = logging.getLogger("uvicorn")
@@ -21,7 +22,10 @@ async def get_user_id(
 # Get a session for the file manager database
 def get_file_manager_db_session(user_id: str):
     db_path = get_user_data_dir(user_id) + "/file_manager.db"
-    with get_session(db_path) as session:
+    script_location = Path(__file__).parent.parent / "database" / "alembic"
+    from app.database.models import Base
+    models_declarative_base_class = Base
+    with get_session(db_path, str(script_location), models_declarative_base_class) as session:
         # Always initialize default data if needed before yielding the session
         init_default_database_data_if_needed(session, user_id)
         yield session
