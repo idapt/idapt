@@ -20,10 +20,15 @@ datasources_router = APIRouter()
 
 # Include the datasource modules
 from app.datasources.file_manager.router import file_manager_router
+from app.datasources.chats.router import chats_router
 
 datasources_router.include_router(
     file_manager_router,
     prefix="/file-manager"
+)
+datasources_router.include_router(
+    chats_router,
+    prefix="/chats"
 )
 
 
