@@ -7,13 +7,13 @@ from fastapi import HTTPException
 import shutil
 
 from sqlalchemy.orm import Session
-from app.file_manager.models import File, FileStatus, Folder
+from app.datasources.file_manager.models import File, FileStatus, Folder
 from app.datasources.models import Datasource
-from app.file_manager.service.db_operations import get_db_folder_files_recursive
+from app.datasources.file_manager.service.db_operations import get_db_folder_files_recursive
 from app.settings.schemas import AppSettings, SettingResponse
 from app.settings.service import get_setting
 from app.api.user_path import get_user_app_data_dir
-from app.file_manager.utils import validate_path
+from app.datasources.file_manager.utils import validate_path
 
 from llama_index.core.storage import StorageContext
 from llama_index.core.indices import VectorStoreIndex

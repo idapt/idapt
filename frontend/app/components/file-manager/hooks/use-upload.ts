@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApiClient } from '@/app/lib/api-client';
-import { FileUploadItem, uploadFileRouteApiFileManagerUploadFilePost } from '@/app/client';
+import { FileUploadItem, uploadFileRouteApiDatasourcesFileManagerUploadFilePost } from '@/app/client';
 import { useUser } from '@/app/contexts/user-context';
 
 export function useFiles() {
@@ -12,7 +12,7 @@ export function useFiles() {
     try {
       setIsUploading(true);
       
-      await uploadFileRouteApiFileManagerUploadFilePost({
+      await uploadFileRouteApiDatasourcesFileManagerUploadFilePost({
         client,
         body: uploadItem,
         query: { user_id: userId }

@@ -2,10 +2,10 @@ from sqlalchemy.orm import Session
 from typing import List
 import json
 
-from app.file_manager.models import Folder
-from app.file_manager.service.service import delete_folder
-from app.file_manager.service.file_system import get_new_fs_path
-from app.file_manager.service.llama_index import delete_datasource_llama_index_components, delete_files_in_folder_recursive_from_llama_index
+from app.datasources.file_manager.models import Folder
+from app.datasources.file_manager.service.service import delete_folder
+from app.datasources.file_manager.service.file_system import get_new_fs_path
+from app.datasources.file_manager.service.llama_index import delete_datasource_llama_index_components, delete_files_in_folder_recursive_from_llama_index
 from app.datasources.schemas import DatasourceResponse, DatasourceUpdate, DatasourceCreate
 from app.datasources.utils import validate_name
 from app.datasources.models import Datasource, DatasourceType

@@ -234,7 +234,7 @@ export type ProcessingStackUpdate = {
 };
 
 export type ProcessingStatusResponse = {
-    status: 'pending' | 'processing' | 'completed' | 'failed';
+    status: 'pending' | 'queued' | 'processing' | 'completed' | 'error';
     message: string | null;
 };
 
@@ -531,7 +531,7 @@ export type GetAllSettingsRouteApiSettingsGetResponses = {
 
 export type GetAllSettingsRouteApiSettingsGetResponse = GetAllSettingsRouteApiSettingsGetResponses[keyof GetAllSettingsRouteApiSettingsGetResponses];
 
-export type UploadFileRouteApiFileManagerUploadFilePostData = {
+export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostData = {
     body: FileUploadItem;
     headers?: {
         'x-user-id'?: string | null;
@@ -540,28 +540,28 @@ export type UploadFileRouteApiFileManagerUploadFilePostData = {
     query: {
         user_id: string;
     };
-    url: '/api/file-manager/upload-file';
+    url: '/api/datasources/file-manager/upload-file';
 };
 
-export type UploadFileRouteApiFileManagerUploadFilePostErrors = {
+export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type UploadFileRouteApiFileManagerUploadFilePostError = UploadFileRouteApiFileManagerUploadFilePostErrors[keyof UploadFileRouteApiFileManagerUploadFilePostErrors];
+export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostError = UploadFileRouteApiDatasourcesFileManagerUploadFilePostErrors[keyof UploadFileRouteApiDatasourcesFileManagerUploadFilePostErrors];
 
-export type UploadFileRouteApiFileManagerUploadFilePostResponses = {
+export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostResponses = {
     /**
      * Successful Response
      */
     200: FileInfoResponse;
 };
 
-export type UploadFileRouteApiFileManagerUploadFilePostResponse = UploadFileRouteApiFileManagerUploadFilePostResponses[keyof UploadFileRouteApiFileManagerUploadFilePostResponses];
+export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostResponse = UploadFileRouteApiDatasourcesFileManagerUploadFilePostResponses[keyof UploadFileRouteApiDatasourcesFileManagerUploadFilePostResponses];
 
-export type DeleteRouteApiFileManagerEncodedOriginalPathDeleteData = {
+export type DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -572,26 +572,26 @@ export type DeleteRouteApiFileManagerEncodedOriginalPathDeleteData = {
     query: {
         user_id: string;
     };
-    url: '/api/file-manager/{encoded_original_path}';
+    url: '/api/datasources/file-manager/{encoded_original_path}';
 };
 
-export type DeleteRouteApiFileManagerEncodedOriginalPathDeleteErrors = {
+export type DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DeleteRouteApiFileManagerEncodedOriginalPathDeleteError = DeleteRouteApiFileManagerEncodedOriginalPathDeleteErrors[keyof DeleteRouteApiFileManagerEncodedOriginalPathDeleteErrors];
+export type DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteError = DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteErrors[keyof DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteErrors];
 
-export type DeleteRouteApiFileManagerEncodedOriginalPathDeleteResponses = {
+export type DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetData = {
+export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -603,28 +603,28 @@ export type GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetData = {
         include_child_folders_files_recursively?: boolean;
         user_id: string;
     };
-    url: '/api/file-manager/folder/{encoded_original_path}';
+    url: '/api/datasources/file-manager/folder/{encoded_original_path}';
 };
 
-export type GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetErrors = {
+export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetError = GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetErrors[keyof GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetErrors];
+export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetError = GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetErrors[keyof GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetErrors];
 
-export type GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetResponses = {
+export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetResponses = {
     /**
      * Successful Response
      */
     200: FolderInfoResponse;
 };
 
-export type GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetResponse = GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetResponses[keyof GetFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGetResponses];
+export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetResponse = GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetResponses[keyof GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetResponses];
 
-export type GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetData = {
+export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -635,28 +635,28 @@ export type GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetData = {
     query: {
         user_id: string;
     };
-    url: '/api/file-manager/file/{encoded_original_path}';
+    url: '/api/datasources/file-manager/file/{encoded_original_path}';
 };
 
-export type GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetErrors = {
+export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetError = GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetErrors[keyof GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetErrors];
+export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetError = GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetErrors[keyof GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetErrors];
 
-export type GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetResponses = {
+export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetResponses = {
     /**
      * Successful Response
      */
     200: FileInfoResponse;
 };
 
-export type GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetResponse = GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetResponses[keyof GetFileInfoRouteApiFileManagerFileEncodedOriginalPathGetResponses];
+export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetResponse = GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetResponses[keyof GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetResponses];
 
-export type DownloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGetData = {
+export type DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -667,26 +667,26 @@ export type DownloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGetDat
     query: {
         user_id: string;
     };
-    url: '/api/file-manager/file/{encoded_original_path}/download';
+    url: '/api/datasources/file-manager/file/{encoded_original_path}/download';
 };
 
-export type DownloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGetErrors = {
+export type DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DownloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGetError = DownloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGetErrors[keyof DownloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGetErrors];
+export type DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetError = DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetErrors[keyof DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetErrors];
 
-export type DownloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGetResponses = {
+export type DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type DownloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGetData = {
+export type DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -697,26 +697,26 @@ export type DownloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGe
     query: {
         user_id: string;
     };
-    url: '/api/file-manager/folder/{encoded_original_path}/download';
+    url: '/api/datasources/file-manager/folder/{encoded_original_path}/download';
 };
 
-export type DownloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGetErrors = {
+export type DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DownloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGetError = DownloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGetErrors[keyof DownloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGetErrors];
+export type DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetError = DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetErrors[keyof DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetErrors];
 
-export type DownloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGetResponses = {
+export type DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type DeleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDeleteData = {
+export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -727,19 +727,19 @@ export type DeleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPa
     query: {
         user_id: string;
     };
-    url: '/api/file-manager/processed-data/{encoded_original_path}';
+    url: '/api/datasources/file-manager/processed-data/{encoded_original_path}';
 };
 
-export type DeleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDeleteErrors = {
+export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DeleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDeleteError = DeleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDeleteErrors[keyof DeleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDeleteErrors];
+export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteError = DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteErrors[keyof DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteErrors];
 
-export type DeleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDeleteResponses = {
+export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteResponses = {
     /**
      * Successful Response
      */

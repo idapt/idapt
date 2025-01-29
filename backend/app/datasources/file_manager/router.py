@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from fastapi.responses import Response
 #from fastapi.responses import FileResponse
 
-from app.file_manager.schemas import FileUploadItem, FileDownloadResponse, FolderDownloadResponse, FileInfoResponse, FolderInfoResponse, UpdateFileProcessingStatusRequest
-from app.file_manager.service.service import upload_file, download_file, delete_item, download_folder, get_folder_info, get_file_info, update_file_processing_status
+from app.datasources.file_manager.schemas import FileUploadItem, FileDownloadResponse, FolderDownloadResponse, FileInfoResponse, FolderInfoResponse, UpdateFileProcessingStatusRequest
+from app.datasources.file_manager.service.service import upload_file, download_file, delete_item, download_folder, get_folder_info, get_file_info, update_file_processing_status
 from app.api.utils import get_file_manager_db_session, get_user_id
-from app.file_manager.utils import decode_path_safe
-from app.file_manager.service.llama_index import delete_item_from_llama_index
+from app.datasources.file_manager.utils import decode_path_safe
+from app.datasources.file_manager.service.llama_index import delete_item_from_llama_index
 
 import logging
 

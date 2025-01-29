@@ -3,7 +3,7 @@ import logging
 from typing import List, Tuple
 
 from app.api.user_path import get_user_data_dir
-from app.file_manager.models import File, Folder
+from app.datasources.file_manager.models import File, Folder
 
 logger = logging.getLogger("uvicorn")
     

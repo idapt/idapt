@@ -11,7 +11,7 @@ from app.settings.schemas import SettingResponse
 from app.constants.file_extensions import TEXT_FILE_EXTENSIONS, CODE_FILE_EXTENSIONS
 from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.datasources.models import Datasource
-from app.file_manager.schemas import FileInfoResponse
+from app.datasources.file_manager.schemas import FileInfoResponse
 from app.processing_stacks.schemas import (
     ProcessingStackCreate, 
     ProcessingStackResponse, 

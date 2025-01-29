@@ -36,7 +36,7 @@ def init_default_database_data_if_needed(session: Session, user_id: str):
         init_default_settings_if_needed(session, user_id)
 
         # Init default folders
-        from app.file_manager.service.db_operations import create_default_db_filestructure_if_needed
+        from app.datasources.file_manager.service.db_operations import create_default_db_filestructure_if_needed
         create_default_db_filestructure_if_needed(session, user_id)
 
         # Init default datasources

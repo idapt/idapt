@@ -18,6 +18,15 @@ logger = logging.getLogger("uvicorn")
 
 datasources_router = APIRouter()
 
+# Include the datasource modules
+from app.datasources.file_manager.router import file_manager_router
+
+datasources_router.include_router(
+    file_manager_router,
+    prefix="/file-manager"
+)
+
+
 @datasources_router.get("", response_model=List[DatasourceResponse])
 async def get_datasources_route(
     user_id: str = Depends(get_user_id),

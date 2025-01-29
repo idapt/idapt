@@ -18,10 +18,10 @@ import { useUser } from "@/app/contexts/user-context";
 import { useProcessingStacks } from '@/app/components/processing/hooks/use-processing-stacks';
 import { useProcessing } from '@/app/components/file-manager/hooks/use-processing';
 import {
-  downloadFileRouteApiFileManagerFileEncodedOriginalPathDownloadGet,
-  downloadFolderRouteApiFileManagerFolderEncodedOriginalPathDownloadGet,
-  deleteRouteApiFileManagerEncodedOriginalPathDelete,
-  deleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDelete
+  downloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGet,
+  downloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGet,
+  deleteRouteApiDatasourcesFileManagerEncodedOriginalPathDelete,
+  deleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDelete
   // renameFileRouteApiFileManagerFilePathRenamePost,
   // renameFolderRouteApiFileManagerFolderPathRenamePost
 } from '@/app/client';
@@ -88,8 +88,8 @@ export function FileItem({
       
       // Use fetch directly to get the raw response // TODO: Use API client
       const url = type === 'folder' 
-        ? `/api/file-manager/folder/${encodedPath}/download?user_id=${userId}`
-        : `/api/file-manager/file/${encodedPath}/download?user_id=${userId}`;
+        ? `/api/datasources/file-manager/folder/${encodedPath}/download?user_id=${userId}`
+        : `/api/datasources/file-manager/file/${encodedPath}/download?user_id=${userId}`;
       
       const response = await fetch(url);
   
@@ -124,7 +124,7 @@ export function FileItem({
       try {
         const deletionId = startDeletion(name, path);
         const encodedPath = encodePathSafe(path);
-        const response = await deleteRouteApiFileManagerEncodedOriginalPathDelete({
+        const response = await deleteRouteApiDatasourcesFileManagerEncodedOriginalPathDelete({
           client,
           path: { encoded_original_path: encodedPath },
           query: {
@@ -183,7 +183,7 @@ export function FileItem({
     if (confirm(`Are you sure you want to delete all processed data for ${name}?`)) {
       try {
         const encodedPath = encodePathSafe(path);
-        const response = await deleteProcessedDataRouteApiFileManagerProcessedDataEncodedOriginalPathDelete({
+        const response = await deleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDelete({
           client,
           path: { encoded_original_path: encodedPath },
           query: {

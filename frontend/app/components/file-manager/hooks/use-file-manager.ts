@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useApiClient } from '@/app/lib/api-client';
 import {
   getDatasourcesRouteApiDatasourcesGet,
-  getFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGet
+  getFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGet
 } from '@/app/client';
 import { useUser } from '@/app/contexts/user-context';
 import { encodePathSafe } from '../utils/path-encoding';
@@ -34,7 +34,7 @@ export function useFileManager() {
         // Fetch folder contents and datasources
         const encodedPath = encodePathSafe(path);
         const [folderData, datasources] = await Promise.all([
-          getFolderInfoRouteApiFileManagerFolderEncodedOriginalPathGet({
+          getFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGet({
             client,
             path: { encoded_original_path: encodedPath },
             query: { include_child_folders_files_recursively: false, user_id: userId }
