@@ -1,7 +1,7 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Button } from '../ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
+import { Button } from '@/app/components/ui/button';
 import { ProcessingStack, ProcessingStep } from '@/app/components/processing/processing';
 import { useProcessingStacks } from '@/app/components/processing/hooks/use-processing-stacks';
 //import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';

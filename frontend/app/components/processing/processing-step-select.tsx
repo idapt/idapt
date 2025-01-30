@@ -1,5 +1,5 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Button } from '../ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/app/components/ui/dialog';
+import { Button } from '@/app/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ProcessingStep } from '@/app/components/processing/processing';
 

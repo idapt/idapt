@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from 'react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
+import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
 import { ProcessingStack, ProcessingStep, ProcessingStackStep } from '@/app/components/processing/processing';
 import {
   DndContext,

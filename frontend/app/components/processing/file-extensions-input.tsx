@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
 import { useState, KeyboardEvent } from "react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 
 interface FileExtensionsInputProps {
   value: string[];
