@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export default function Header() {
   return (
-    <div className="z-10 w-full flex items-center justify-left">
+    <div className="z-100 w-full flex items-center justify-center">
       <div className="flex items-center justify-center py-2">
         <a
           href="https://www.idapt.ai/"

@@ -1,12 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext } from "react";
 import { useSettingsAPI } from "@/app/components/settings/hooks/use-settings";
 
 interface SettingsContextType {
-  isOpen: boolean;
-  openSettings: () => void;
-  closeSettings: () => void;
   getSetting: ReturnType<typeof useSettingsAPI>['getSetting'];
   getAllSettings: ReturnType<typeof useSettingsAPI>['getAllSettings'];
   updateSetting: ReturnType<typeof useSettingsAPI>['updateSetting'];
@@ -17,20 +14,11 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
+export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const settingsAPI = useSettingsAPI();
 
-  const openSettings = () => setIsOpen(true);
-  const closeSettings = () => setIsOpen(false);
-
   return (
-    <SettingsContext.Provider value={{ 
-      isOpen, 
-      openSettings, 
-      closeSettings,
-      ...settingsAPI
-    }}>
+    <SettingsContext.Provider value={settingsAPI}>
       {children}
     </SettingsContext.Provider>
   );

@@ -1,3 +1,4 @@
+//'use client';
 
 import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
@@ -12,6 +13,8 @@ import { ThemeProvider } from '@/app/components/theme/theme-provider';
 
 import './globals.css';
 import { SidebarProvider } from './components/ui/sidebar';
+import { SidebarUserNav } from './components/chat/sidebar-user-nav';
+import { AppSidebar } from '@/app/components/chat/app-sidebar';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://idapt.ai'),
@@ -43,11 +46,11 @@ const THEME_COLOR_SCRIPT = `\
   updateThemeColor();
 })();`;
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html
       lang="en"
@@ -76,8 +79,10 @@ export default async function RootLayout({
               <Providers>
                 <SettingsProvider>
                   <ProcessingStacksProvider>
+                    <div className="flex h-screen">
+                      {children}
+                    </div>
                     <Toaster position="top-center" />
-                    {children}
                   </ProcessingStacksProvider>
                 </SettingsProvider>
               </Providers>

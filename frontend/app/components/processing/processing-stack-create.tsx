@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { useApiClient } from '@/app/lib/api-client';
@@ -18,6 +17,8 @@ export function ProcessingStackCreate({ isOpen, onClose, onCreated }: Processing
   const client = useApiClient();
   const { userId } = useUser();
   
+  if (!isOpen) return null;
+
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
@@ -44,31 +45,27 @@ export function ProcessingStackCreate({ isOpen, onClose, onCreated }: Processing
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create New Processing Stack</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Name</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter stack name"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button 
-              onClick={handleSubmit} 
-              disabled={!name.trim() || isSubmitting}
-            >
-              Create Stack
-            </Button>
-          </div>
+    <div className="space-y-4 p-4 border rounded-lg">
+      <h4 className="font-medium">Create New Processing Stack</h4>
+      <div className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Name</label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Enter stack name"
+          />
         </div>
-      </DialogContent>
-    </Dialog>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={!name.trim() || isSubmitting}
+          >
+            Create Stack
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 } 

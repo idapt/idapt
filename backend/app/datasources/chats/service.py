@@ -1,7 +1,7 @@
 from typing import List
 from sqlalchemy.orm import Session
 
-from app.datasources.chats.schema import AllChatsResponse, ChatResponse, MessageResponse, MessageRequest
+from app.datasources.chats.schema import ChatResponse, MessageResponse, MessageRequest
 from app.datasources.chats.database.models import Chat, Message
 
 import logging
