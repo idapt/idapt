@@ -4,7 +4,7 @@ import { ResetButton } from "@/app/components/chat/reset-button";
 import { NavMenu } from "@/app/components/nav/nav-menu";
 import ChatSection from "@/app/components/chat-section";
 
-export default function Home() {
+export default function App() {
   return (
     <main className="h-screen w-screen flex justify-center items-center background-gradient">
       <ResetButton />

@@ -70,12 +70,14 @@
     "sonner": "^1.7.2",
     "swr": "^2.3.0",
     "tailwind-merge": "^2.5.2",
+    "tailwindcss-animate": "^1.0.7",
     "usehooks-ts": "^3.1.0",
     "vaul": "^1.1.2"
   },
   "devDependencies": {
     "@hey-api/client-fetch": "^0.7.2",
     "@hey-api/openapi-ts": "^0.63.0",
+    "@tailwindcss/typography": "^0.5.16",
     "@types/highlight.js": "^9.12.4",
     "@types/node": "22.10.7",
     "@types/react": "^19.0.7",
@@ -83,6 +85,8 @@
     "eslint": "^9.18.0",
     "eslint-config-next": "^15.1.5",
     "eslint-config-prettier": "^10.0.1",
+    "eslint-import-resolver-typescript": "^3.7.0",
+    "eslint-plugin-tailwindcss": "^3.18.0",
     "prettier": "^3.2.5",
     "prettier-plugin-organize-imports": "^4.1.0",
     "tailwindcss": "^3.3.6",
