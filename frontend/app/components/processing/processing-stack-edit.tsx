@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { ProcessingStack, ProcessingStep, ProcessingStackStep } from '@/app/components/processing/processing';
+//import { Input } from '@/app/components/ui/input';
 import {
   DndContext,
   closestCenter,
@@ -29,12 +28,15 @@ import { ParameterEditor } from './parameter-editor';
 import { FileExtensionsInput } from './file-extensions-input';
 import { 
   updateProcessingStackRouteApiStacksStacksStackIdentifierPut,
-  deleteProcessingStackRouteApiStacksStacksStackIdentifierDelete
+  deleteProcessingStackRouteApiStacksStacksStackIdentifierDelete,
+  ProcessingStackStepResponse,
+  ProcessingStepResponse,
+  ProcessingStackResponse
 } from '@/app/client';
 
 interface ProcessingStackEditProps {
-  stack: ProcessingStack;
-  availableSteps: ProcessingStep[];
+  stack: ProcessingStackResponse;
+  availableSteps: ProcessingStepResponse[];
   onSave: () => void;
   onDelete: () => void;
 }
@@ -44,7 +46,7 @@ function SortableStep({
   onRemove, 
   onParametersChange 
 }: { 
-  step: ProcessingStackStep; 
+  step: ProcessingStackStepResponse; 
   onRemove: (id: number) => void;
   onParametersChange: (id: number, parameters: Record<string, any>) => void;
 }) {
@@ -95,7 +97,7 @@ function SortableStep({
         <div className="mt-4 pl-8">
           <ParameterEditor
             schema={step.step.parameters_schema}
-            parameters={step.parameters}
+            parameters={step.parameters || []}
             onChange={(parameters) => onParametersChange(step.id, parameters)}
           />
         </div>
@@ -105,7 +107,7 @@ function SortableStep({
 }
 
 export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }: ProcessingStackEditProps) {
-  const [steps, setSteps] = useState<ProcessingStackStep[]>(stack.steps);
+  const [steps, setSteps] = useState<ProcessingStackStepResponse[]>(stack.steps);
   const [extensions, setExtensions] = useState<string[]>(stack.supported_extensions || []);
   const { userId } = useUser();
   const client = useApiClient();
@@ -196,7 +198,7 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
     });
   };
 
-  const validateStepAddition = (newStep: ProcessingStep, currentSteps: ProcessingStackStep[]): string | null => {
+  const validateStepAddition = (newStep: ProcessingStepResponse, currentSteps: ProcessingStackStepResponse[]): string | null => {
     // Check for node_parser - must be first and only one
     if (newStep.type === 'node_parser') {
       if (currentSteps.length > 0 && currentSteps[0].step.type !== 'node_parser') {
@@ -229,14 +231,14 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
     return null;
   };
 
-  const handleAddStep = (step: ProcessingStep) => {
+  const handleAddStep = (step: ProcessingStepResponse) => {
     const validationError = validateStepAddition(step, steps);
     if (validationError) {
       window.alert(validationError);
       return;
     }
 
-    const newStep: ProcessingStackStep = {
+    const newStep: ProcessingStackStepResponse = {
       id: Math.max(0, ...steps.map(s => s.id)) + 1,
       step,
       step_identifier: step.identifier,

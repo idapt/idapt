@@ -168,6 +168,13 @@ export type HttpValidationError = {
     detail?: Array<ValidationError>;
 };
 
+export type ItemProcessingStatusResponse = {
+    original_path: string;
+    name: string;
+    queued_stacks: Array<string>;
+    status: 'pending' | 'queued' | 'processing' | 'completed' | 'error';
+};
+
 export type MessageInput = {
     role: MessageRole;
     content: string;
@@ -259,8 +266,9 @@ export type ProcessingStackUpdate = {
 };
 
 export type ProcessingStatusResponse = {
-    status: 'pending' | 'queued' | 'processing' | 'completed' | 'error';
-    message: string | null;
+    queued_count: number;
+    processing_count: number;
+    processing_items: Array<ItemProcessingStatusResponse>;
 };
 
 export type ProcessingStepResponse = {

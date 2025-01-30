@@ -1,11 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/app/components/ui/dialog';
 import { Button } from '@/app/components/ui/button';
 import { Plus } from 'lucide-react';
-import { ProcessingStep } from '@/app/components/processing/processing';
+import { ProcessingStepResponse } from '@/app/client';
 
 interface ProcessingStepSelectProps {
-  availableSteps: ProcessingStep[];
-  onStepSelect: (step: ProcessingStep) => void;
+  availableSteps: ProcessingStepResponse[];
+  onStepSelect: (step: ProcessingStepResponse) => void;
 }
 
 export function ProcessingStepSelect({ availableSteps, onStepSelect }: ProcessingStepSelectProps) {

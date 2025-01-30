@@ -2,13 +2,13 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { Button } from '@/app/components/ui/button';
-import { ProcessingStack, ProcessingStep } from '@/app/components/processing/processing';
 import { useProcessingStacks } from '@/app/components/processing/hooks/use-processing-stacks';
 //import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { Settings2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { ProcessingStackEdit } from '@/app/components/processing/processing-stack-edit';
 import { ProcessingStackCreate } from '@/app/components/processing/processing-stack-create';
+import { ProcessingStackResponse, ProcessingStepResponse } from '@/app/client';
 
 export function ProcessingStacksDialog({ 
   isOpen, 
@@ -37,7 +37,7 @@ export function ProcessingStacksDialog({
           <div>Loading...</div>
         ) : (
           <div className="grid grid-cols-1 gap-4 overflow-y-auto pr-2">
-            {stacks.map((stack: ProcessingStack) => (
+            {stacks.map((stack: ProcessingStackResponse) => (
               <ProcessingStackCard 
                 key={stack.identifier} 
                 stack={stack} 
@@ -59,8 +59,8 @@ export function ProcessingStacksDialog({
 }
 
 function ProcessingStackCard({ stack, steps, onUpdate }: { 
-  stack: ProcessingStack;
-  steps: ProcessingStep[];
+  stack: ProcessingStackResponse;
+  steps: ProcessingStepResponse[];
   onUpdate: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);

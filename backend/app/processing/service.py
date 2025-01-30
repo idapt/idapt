@@ -2,7 +2,6 @@ from app.datasources.utils import get_datasource_identifier_from_path
 from app.datasources.file_manager.service.service import get_file_info
 from app.datasources.file_manager.service.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.datasources.file_manager.models import File, FileStatus, Folder
-from app.datasources.file_manager.schemas import FileInfoResponse
 from app.datasources.models import Datasource
 from app.processing_stacks.models import ProcessingStack
 from app.datasources.file_manager.service.llama_index import get_llama_index_datasource_folder_path, create_vector_store, create_doc_store
@@ -10,7 +9,7 @@ from app.processing_stacks.service import get_transformations_for_stack
 from app.ollama_status.service import can_process
 from app.datasources.file_manager.utils import validate_path
 from app.settings.service import get_setting
-from app.processing.schemas import ProcessingItem, ProcessingRequest
+from app.processing.schemas import ProcessingItem, ProcessingRequest, ProcessingStatusResponse, ItemProcessingStatusResponse
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
@@ -491,18 +490,36 @@ def _process_single_file(session: Session, file: File, user_id: str):
             logger.error(f"Failed to update file status for {file.path}: {str(e)}")
         raise
 
-def get_queue_status(session: Session) -> dict:
+def get_queue_status(session: Session) -> ProcessingStatusResponse:
     """Get the current status of the generation queue"""
     try:
-        queued_files = session.query(File).filter(File.status == FileStatus.QUEUED).all()
-        processing_files = session.query(File).filter(File.status == FileStatus.PROCESSING).all()
+        files = session.query(File).filter(File.status == FileStatus.QUEUED or File.status == FileStatus.PROCESSING).all()
+        queued_count = session.query(File).filter(File.status == FileStatus.QUEUED).count()
+        processing_count = session.query(File).filter(File.status == FileStatus.PROCESSING).count()
+
+        processing_status_response = ProcessingStatusResponse(
+            queued_count=queued_count,
+            processing_count=processing_count,
+            processing_items=[]
+        )
         
-        return {
-            "queued_count": len(queued_files),
-            "processing_count": len(processing_files),
-            "queued_files": [{"name": f.name, "path": f.path} for f in queued_files],
-            "processing_files": [{"name": f.name, "path": f.path} for f in processing_files],
-        }
+        for file in files:
+
+            queued_stacks : List[str] = []
+            for stack in json.loads(file.stacks_to_process):
+                if stack not in queued_stacks:
+                    queued_stacks.append(stack)
+            processing_status_response.processing_items.append(
+                ItemProcessingStatusResponse(
+                    original_path=file.original_path,
+                    name=file.name,
+                    queued_stacks=queued_stacks,
+                    status=file.status
+                )
+            )
+
+        return processing_status_response
+
     except Exception as e:
         logger.error(f"Failed to get queue status: {str(e)}")
         raise

@@ -49,18 +49,11 @@ export function ProcessingToast() {
       onMinimize={() => setIsMinimized(!isMinimized)}
     >
       <div className="max-h-[240px] overflow-y-auto">
-        {status?.processing_files?.map((file) => (
+        {status?.processing_items?.map((file) => (
           <ProcessingItem
-            key={file.path}
+            key={file.original_path}
             name={file.name}
-            status="processing"
-          />
-        ))}
-        {status?.queued_files?.map((file) => (
-          <ProcessingItem
-            key={file.path}
-            name={file.name}
-            status="pending"
+            status={file.status}
           />
         ))}
       </div>
@@ -68,13 +61,16 @@ export function ProcessingToast() {
   );
 }
 
-function ProcessingItem({ name, status }: { name: string; status: 'processing' | 'pending' }) {
+function ProcessingItem({ name, status }: { name: string; status: 'pending' | 'queued' | 'processing' | 'completed' | 'error' }) {
   return (
     <div className="px-3 py-2 hover:bg-gray-50">
       <div className="flex justify-between items-center gap-2">
         <div className="flex items-center gap-2 min-w-0">
           {status === 'processing' && <Loader2 className="h-3 w-3 animate-spin flex-shrink-0" />}
           {status === 'pending' && <div className="h-3 w-3 bg-gray-200 rounded-full flex-shrink-0" />}
+          {status === 'queued' && <div className="h-3 w-3 bg-gray-200 rounded-full flex-shrink-0" />}
+          {status === 'completed' && <div className="h-3 w-3 bg-green-500 rounded-full flex-shrink-0" />}
+          {status === 'error' && <div className="h-3 w-3 bg-red-500 rounded-full flex-shrink-0" />}
           <span className="text-xs truncate">{name}</span>
         </div>
       </div>

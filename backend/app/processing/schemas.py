@@ -1,5 +1,6 @@
 from pydantic import BaseModel
-from typing import List, Literal, Optional
+from typing import List
+from app.datasources.file_manager.models import FileStatus
 
 class ProcessingItem(BaseModel):
     original_path: str
@@ -8,6 +9,14 @@ class ProcessingItem(BaseModel):
 class ProcessingRequest(BaseModel):
     items: List[ProcessingItem]
 
+
+class ItemProcessingStatusResponse(BaseModel):
+    original_path: str
+    name: str
+    queued_stacks: List[str]
+    status: FileStatus
+
 class ProcessingStatusResponse(BaseModel):
-    status: Literal["pending", "queued", "processing", "completed", "error"]
-    message: Optional[str]
+    queued_count: int
+    processing_count: int
+    processing_items: List[ItemProcessingStatusResponse]

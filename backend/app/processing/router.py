@@ -27,13 +27,7 @@ async def processing_route(
         mark_items_as_queued(session, user_id, request.items)
 
         # Get the current status of the queue
-        status = get_queue_status(session)
-
-        return ProcessingStatusResponse(
-            status="queued",
-            message=f"Added files to generation queue",
-            queue_status=status
-        )
+        return get_queue_status(session)
     except HTTPException:
         raise
     except Exception as e:
@@ -47,14 +41,9 @@ async def get_processing_status_route(
 ) -> ProcessingStatusResponse:
     """Get the current status of the generation queue"""
     try:
-        status = get_queue_status(session)
-        return ProcessingStatusResponse(
-            status="pending",
-            message="Processing queue is pending",
-            queue_status=status
-        )
+        return get_queue_status(session)
     except Exception as e:
-        logger.error(f"Error in get_generation_status_route: {str(e)}")
+        logger.error(f"Error in get_processing_status_route: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -65,7 +54,11 @@ async def processing_status_websocket(
     session: Session = Depends(get_file_manager_db_session),
 ):
     """WebSocket endpoint for processing status updates"""
-    status_ws = StatusWebSocket(websocket, lambda: get_queue_status(session))
+    # Convert ProcessingStatusResponse to dict before sending
+    status_ws = StatusWebSocket(
+        websocket, 
+        lambda: get_queue_status(session).model_dump()  # Convert Pydantic model to dict
+    )
     await status_ws.accept()
     
     async with status_ws.status_loop():
