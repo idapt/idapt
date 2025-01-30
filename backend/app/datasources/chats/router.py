@@ -12,7 +12,7 @@ logger = logging.getLogger("uvicorn")
 chats_router = r = APIRouter()
 
 @r.get(
-    "/chats",
+    "",
     response_model=AllChatsResponse,
     status_code=status.HTTP_200_OK,
     summary="Get all chats"
@@ -30,7 +30,7 @@ async def get_all_chats_route(
         raise HTTPException(status_code=500, detail="Internal server error")
     
 @r.get(
-    "/chats/{chat_id}",
+    "/{chat_id}",
     response_model=ChatResponse,
     status_code=status.HTTP_200_OK,
     summary="Get a chat"
@@ -49,7 +49,7 @@ async def get_chat_route(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @r.post(
-    "/chats",
+    "",
     response_model=ChatResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a chat"
@@ -65,7 +65,7 @@ async def create_chat_route(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @r.post(
-    "/chats/{chat_id}/messages",
+    "/{chat_id}/messages",
     response_model=MessageResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Add a message to a chat"
@@ -83,7 +83,7 @@ async def add_message_to_chat_route(
         raise HTTPException(status_code=500, detail="Internal server error")
     
 @r.put(
-    "/chats/{chat_id}",
+    "/{chat_id}",
     status_code=status.HTTP_200_OK,
     summary="Update a chat title"
 )
@@ -100,7 +100,7 @@ async def update_chat_title_route(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @r.delete(
-    "/chats/{chat_id}",
+    "/{chat_id}",
     status_code=status.HTTP_200_OK,
     summary="Delete a chat"
 )

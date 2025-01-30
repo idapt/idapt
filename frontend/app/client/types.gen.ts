@@ -140,6 +140,8 @@ export type FileInfoResponse = {
     status: string;
 };
 
+export type FileStatus = 'pending' | 'queued' | 'processing' | 'completed' | 'error';
+
 export type FileUploadItem = {
     original_path: string;
     base64_content: string;
@@ -173,7 +175,7 @@ export type ItemProcessingStatusResponse = {
     original_path: string;
     name: string;
     queued_stacks: Array<string>;
-    status: 'pending' | 'queued' | 'processing' | 'completed' | 'error';
+    status: FileStatus;
 };
 
 export type MessageInput = {
@@ -781,7 +783,7 @@ export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncode
     200: unknown;
 };
 
-export type GetAllChatsRouteApiDatasourcesChatsChatsGetData = {
+export type GetAllChatsRouteApiDatasourcesChatsGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -791,28 +793,28 @@ export type GetAllChatsRouteApiDatasourcesChatsChatsGetData = {
         include_messages?: boolean;
         user_id: string;
     };
-    url: '/api/datasources/chats/chats';
+    url: '/api/datasources/chats';
 };
 
-export type GetAllChatsRouteApiDatasourcesChatsChatsGetErrors = {
+export type GetAllChatsRouteApiDatasourcesChatsGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetAllChatsRouteApiDatasourcesChatsChatsGetError = GetAllChatsRouteApiDatasourcesChatsChatsGetErrors[keyof GetAllChatsRouteApiDatasourcesChatsChatsGetErrors];
+export type GetAllChatsRouteApiDatasourcesChatsGetError = GetAllChatsRouteApiDatasourcesChatsGetErrors[keyof GetAllChatsRouteApiDatasourcesChatsGetErrors];
 
-export type GetAllChatsRouteApiDatasourcesChatsChatsGetResponses = {
+export type GetAllChatsRouteApiDatasourcesChatsGetResponses = {
     /**
      * Successful Response
      */
     200: AllChatsResponse;
 };
 
-export type GetAllChatsRouteApiDatasourcesChatsChatsGetResponse = GetAllChatsRouteApiDatasourcesChatsChatsGetResponses[keyof GetAllChatsRouteApiDatasourcesChatsChatsGetResponses];
+export type GetAllChatsRouteApiDatasourcesChatsGetResponse = GetAllChatsRouteApiDatasourcesChatsGetResponses[keyof GetAllChatsRouteApiDatasourcesChatsGetResponses];
 
-export type CreateChatRouteApiDatasourcesChatsChatsPostData = {
+export type CreateChatRouteApiDatasourcesChatsPostData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -821,28 +823,28 @@ export type CreateChatRouteApiDatasourcesChatsChatsPostData = {
     query: {
         user_id: string;
     };
-    url: '/api/datasources/chats/chats';
+    url: '/api/datasources/chats';
 };
 
-export type CreateChatRouteApiDatasourcesChatsChatsPostErrors = {
+export type CreateChatRouteApiDatasourcesChatsPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type CreateChatRouteApiDatasourcesChatsChatsPostError = CreateChatRouteApiDatasourcesChatsChatsPostErrors[keyof CreateChatRouteApiDatasourcesChatsChatsPostErrors];
+export type CreateChatRouteApiDatasourcesChatsPostError = CreateChatRouteApiDatasourcesChatsPostErrors[keyof CreateChatRouteApiDatasourcesChatsPostErrors];
 
-export type CreateChatRouteApiDatasourcesChatsChatsPostResponses = {
+export type CreateChatRouteApiDatasourcesChatsPostResponses = {
     /**
      * Successful Response
      */
     201: ChatResponse;
 };
 
-export type CreateChatRouteApiDatasourcesChatsChatsPostResponse = CreateChatRouteApiDatasourcesChatsChatsPostResponses[keyof CreateChatRouteApiDatasourcesChatsChatsPostResponses];
+export type CreateChatRouteApiDatasourcesChatsPostResponse = CreateChatRouteApiDatasourcesChatsPostResponses[keyof CreateChatRouteApiDatasourcesChatsPostResponses];
 
-export type DeleteChatRouteApiDatasourcesChatsChatsChatIdDeleteData = {
+export type DeleteChatRouteApiDatasourcesChatsChatIdDeleteData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -853,26 +855,26 @@ export type DeleteChatRouteApiDatasourcesChatsChatsChatIdDeleteData = {
     query: {
         user_id: string;
     };
-    url: '/api/datasources/chats/chats/{chat_id}';
+    url: '/api/datasources/chats/{chat_id}';
 };
 
-export type DeleteChatRouteApiDatasourcesChatsChatsChatIdDeleteErrors = {
+export type DeleteChatRouteApiDatasourcesChatsChatIdDeleteErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DeleteChatRouteApiDatasourcesChatsChatsChatIdDeleteError = DeleteChatRouteApiDatasourcesChatsChatsChatIdDeleteErrors[keyof DeleteChatRouteApiDatasourcesChatsChatsChatIdDeleteErrors];
+export type DeleteChatRouteApiDatasourcesChatsChatIdDeleteError = DeleteChatRouteApiDatasourcesChatsChatIdDeleteErrors[keyof DeleteChatRouteApiDatasourcesChatsChatIdDeleteErrors];
 
-export type DeleteChatRouteApiDatasourcesChatsChatsChatIdDeleteResponses = {
+export type DeleteChatRouteApiDatasourcesChatsChatIdDeleteResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type GetChatRouteApiDatasourcesChatsChatsChatIdGetData = {
+export type GetChatRouteApiDatasourcesChatsChatIdGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -884,28 +886,28 @@ export type GetChatRouteApiDatasourcesChatsChatsChatIdGetData = {
         include_messages?: boolean;
         user_id: string;
     };
-    url: '/api/datasources/chats/chats/{chat_id}';
+    url: '/api/datasources/chats/{chat_id}';
 };
 
-export type GetChatRouteApiDatasourcesChatsChatsChatIdGetErrors = {
+export type GetChatRouteApiDatasourcesChatsChatIdGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetChatRouteApiDatasourcesChatsChatsChatIdGetError = GetChatRouteApiDatasourcesChatsChatsChatIdGetErrors[keyof GetChatRouteApiDatasourcesChatsChatsChatIdGetErrors];
+export type GetChatRouteApiDatasourcesChatsChatIdGetError = GetChatRouteApiDatasourcesChatsChatIdGetErrors[keyof GetChatRouteApiDatasourcesChatsChatIdGetErrors];
 
-export type GetChatRouteApiDatasourcesChatsChatsChatIdGetResponses = {
+export type GetChatRouteApiDatasourcesChatsChatIdGetResponses = {
     /**
      * Successful Response
      */
     200: ChatResponse;
 };
 
-export type GetChatRouteApiDatasourcesChatsChatsChatIdGetResponse = GetChatRouteApiDatasourcesChatsChatsChatIdGetResponses[keyof GetChatRouteApiDatasourcesChatsChatsChatIdGetResponses];
+export type GetChatRouteApiDatasourcesChatsChatIdGetResponse = GetChatRouteApiDatasourcesChatsChatIdGetResponses[keyof GetChatRouteApiDatasourcesChatsChatIdGetResponses];
 
-export type UpdateChatTitleRouteApiDatasourcesChatsChatsChatIdPutData = {
+export type UpdateChatTitleRouteApiDatasourcesChatsChatIdPutData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -917,26 +919,26 @@ export type UpdateChatTitleRouteApiDatasourcesChatsChatsChatIdPutData = {
         title: string;
         user_id: string;
     };
-    url: '/api/datasources/chats/chats/{chat_id}';
+    url: '/api/datasources/chats/{chat_id}';
 };
 
-export type UpdateChatTitleRouteApiDatasourcesChatsChatsChatIdPutErrors = {
+export type UpdateChatTitleRouteApiDatasourcesChatsChatIdPutErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type UpdateChatTitleRouteApiDatasourcesChatsChatsChatIdPutError = UpdateChatTitleRouteApiDatasourcesChatsChatsChatIdPutErrors[keyof UpdateChatTitleRouteApiDatasourcesChatsChatsChatIdPutErrors];
+export type UpdateChatTitleRouteApiDatasourcesChatsChatIdPutError = UpdateChatTitleRouteApiDatasourcesChatsChatIdPutErrors[keyof UpdateChatTitleRouteApiDatasourcesChatsChatIdPutErrors];
 
-export type UpdateChatTitleRouteApiDatasourcesChatsChatsChatIdPutResponses = {
+export type UpdateChatTitleRouteApiDatasourcesChatsChatIdPutResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostData = {
+export type AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostData = {
     body: MessageRequest;
     headers?: {
         'x-user-id'?: string | null;
@@ -947,26 +949,26 @@ export type AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostData 
     query: {
         user_id: string;
     };
-    url: '/api/datasources/chats/chats/{chat_id}/messages';
+    url: '/api/datasources/chats/{chat_id}/messages';
 };
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostErrors = {
+export type AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostError = AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostErrors[keyof AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostErrors];
+export type AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostError = AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostErrors[keyof AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostErrors];
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostResponses = {
+export type AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostResponses = {
     /**
      * Successful Response
      */
     201: MessageResponse;
 };
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostResponse = AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostResponses[keyof AddMessageToChatRouteApiDatasourcesChatsChatsChatIdMessagesPostResponses];
+export type AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostResponse = AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostResponses[keyof AddMessageToChatRouteApiDatasourcesChatsChatIdMessagesPostResponses];
 
 export type GetDatasourcesRouteApiDatasourcesGetData = {
     body?: never;
