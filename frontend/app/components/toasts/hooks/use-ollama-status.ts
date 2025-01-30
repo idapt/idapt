@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useClientConfig } from '@/app/components/chat/hooks/use-config';
+import { useClientConfig } from '@/app/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
 import { withBackoff } from '@/app/lib/backoff';
 import { getOllamaStatusRouteApiOllamaStatusGet } from '@/app/client';

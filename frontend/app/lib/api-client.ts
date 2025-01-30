@@ -1,6 +1,6 @@
 import { createClient, createConfig } from '@hey-api/client-fetch';
 import { useUser } from '../contexts/user-context';
-import { useClientConfig } from '../components/chat/hooks/use-config';
+import { useClientConfig } from '../hooks/use-config';
 import { useMemo } from 'react';
 
 export function useApiClient() {

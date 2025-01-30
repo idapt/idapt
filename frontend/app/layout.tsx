@@ -11,6 +11,7 @@ import { ProcessingStacksProvider } from "@/app/components/processing/processing
 import { ThemeProvider } from '@/app/components/theme/theme-provider';
 
 import './globals.css';
+import { SidebarProvider } from './components/ui/sidebar';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://idapt.ai'),
@@ -71,14 +72,16 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <UserProvider>
-            <Providers>
-              <SettingsProvider>
-                <ProcessingStacksProvider>
-                  <Toaster position="top-center" />
-                  {children}
-                </ProcessingStacksProvider>
-              </SettingsProvider>
-            </Providers>
+            <SidebarProvider>
+              <Providers>
+                <SettingsProvider>
+                  <ProcessingStacksProvider>
+                    <Toaster position="top-center" />
+                    {children}
+                  </ProcessingStacksProvider>
+                </SettingsProvider>
+              </Providers>
+            </SidebarProvider>
           </UserProvider>
         </ThemeProvider>
       </body>
