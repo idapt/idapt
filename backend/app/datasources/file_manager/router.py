@@ -87,12 +87,13 @@ async def get_folder_info_route(
 )
 async def get_file_info_route(
     encoded_original_path: str,
+    include_content: bool = False,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session),
     original_path: str = Depends(decode_path_safe)
 ):
     try:
-        return get_file_info(session=session, user_id=user_id, original_path=original_path)
+        return await get_file_info(session=session, user_id=user_id, original_path=original_path, include_content=include_content)
     except HTTPException:
         raise
     except Exception as e:

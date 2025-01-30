@@ -194,17 +194,17 @@ async def process_queued_files(
    
         logger.info("Beginning processing files")
         # Process all files marked as processing that have been interrupted with unfinished processing
-        _process_files_marked_as_processing(session=session, user_id=user_id)
+        await _process_files_marked_as_processing(session=session, user_id=user_id)
 
         # Process all queued files
-        _process_all_queued_files(session=session, user_id=user_id)
+        await _process_all_queued_files(session=session, user_id=user_id)
    
 
     except Exception as e:
         logger.error(f"Processing loop error: {str(e)}")
         raise
 
-def _process_files_marked_as_processing(session: Session, user_id: str):
+async def _process_files_marked_as_processing(session: Session, user_id: str):
     """Process all files marked as processing"""
     try:
         while True:
@@ -236,7 +236,7 @@ def _process_files_marked_as_processing(session: Session, user_id: str):
                 except Exception as e:
                     logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
                 
-                _process_single_file(session, oldest_processing_file, user_id)
+                await _process_single_file(session, oldest_processing_file, user_id)
             except Exception as e:
                 session.rollback()
                 if oldest_processing_file:  # Only try to handle the file if it exists
@@ -254,7 +254,7 @@ def _process_files_marked_as_processing(session: Session, user_id: str):
         logger.error(f"Failed to process all queued files: {str(e)}")
         raise
         
-def _process_all_queued_files(session: Session, user_id: str):
+async def _process_all_queued_files(session: Session, user_id: str):
     """Process all queued files"""
     try:
         while True:
@@ -269,7 +269,7 @@ def _process_all_queued_files(session: Session, user_id: str):
                 ).first()
                 
                 if queued_file:
-                    _process_single_file(session=session, file=queued_file, user_id=user_id)
+                    await _process_single_file(session=session, file=queued_file, user_id=user_id)
                 else:
                     return
         
@@ -286,11 +286,11 @@ def _process_all_queued_files(session: Session, user_id: str):
         logger.error(f"Failed to process all queued files: {str(e)}")
         raise
 
-def _process_single_file(session: Session, file: File, user_id: str):
+async def _process_single_file(session: Session, file: File, user_id: str):
     """Process a single file through the ingestion pipeline"""
     try:
         # Get file response
-        file_response = get_file_info(session, user_id, file.original_path)
+        file_response = await get_file_info(session, user_id, file.original_path, include_content=False)
 
         # Update status to processing
         file.error_message = None

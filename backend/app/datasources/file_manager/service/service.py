@@ -132,11 +132,15 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> F
                 detail="Failed to create database entry for file"
             )
 
+        # Get file content
+        file_content = await read_file_filesystem(fs_path)
+
         return FileInfoResponse(
             id=file.id,
             name=file.name,
             path=get_path_from_fs_path(file.path, user_id),
             original_path=file.original_path,
+            content=None, # Not included here as not useful
             mime_type=file.mime_type,
             size=file.size,
             uploaded_at=file.uploaded_at.timestamp(),
@@ -156,7 +160,7 @@ async def upload_file(session: Session, item: FileUploadItem, user_id: str) -> F
             detail="An unexpected error occurred during file upload"
         )
     
-def get_file_info(session: Session, user_id: str, original_path: str) -> FileInfoResponse:
+async def get_file_info(session: Session, user_id: str, original_path: str, include_content: bool = False) -> FileInfoResponse:
     try:
         # Validate path
         validate_path(original_path)
@@ -175,12 +179,18 @@ def get_file_info(session: Session, user_id: str, original_path: str) -> FileInf
         if not file:
             raise HTTPException(status_code=404, detail="File not found")
         
+        if include_content:
+            file_content = await read_file_filesystem(file.path)
+        else:
+            file_content = None
+
         return FileInfoResponse(
             id=file.id,
             name=file.name,
             # We are leaving the api so convert the full path to path
             path=get_path_from_fs_path(file.path, user_id),
             original_path=file.original_path,
+            content=file_content,
             mime_type=file.mime_type,
             size=file.size,
             uploaded_at=file.uploaded_at.timestamp(),

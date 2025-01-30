@@ -127,6 +127,7 @@ export type FileInfoResponse = {
     name: string;
     path: string;
     original_path: string;
+    content?: string | null;
     mime_type?: string | null;
     size?: number | null;
     uploaded_at: number;
@@ -666,6 +667,7 @@ export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetD
         encoded_original_path: string;
     };
     query: {
+        include_content?: boolean;
         user_id: string;
     };
     url: '/api/datasources/file-manager/file/{encoded_original_path}';

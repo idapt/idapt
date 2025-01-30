@@ -26,15 +26,16 @@ class FileInfoResponse(BaseModel):
     name: str
     path: str
     original_path: str
-    mime_type: str | None = None
-    size: int | None = None
+    content: Optional[str] = None
+    mime_type: Optional[str] = None
+    size: Optional[int] = None
     uploaded_at: float
     accessed_at: float
     file_created_at: float
     file_modified_at: float
-    stacks_to_process: str | None = None
-    processed_stacks: str | None = None
-    error_message: str | None = None
+    stacks_to_process: Optional[str] = None
+    processed_stacks: Optional[str] = None
+    error_message: Optional[str] = None
     status: str
 
 class FolderInfoResponse(BaseModel):
