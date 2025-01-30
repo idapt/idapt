@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.datasources.chats.service import get_all_chats, get_chat, add_message_to_chat, create_chat, update_chat_title, delete_chat
 from app.datasources.chats.utils import get_chats_db_session
 from app.api.utils import get_user_id
-from app.datasources.chats.schema import AllChatsResponse, ChatResponse, MessageResponse, MessageRequest
+from app.datasources.chats.schema import ChatResponse, MessageResponse, MessageRequest
+from typing import List
 
 import logging
 logger = logging.getLogger("uvicorn")
@@ -13,7 +14,7 @@ chats_router = r = APIRouter()
 
 @r.get(
     "",
-    response_model=AllChatsResponse,
+    response_model=List[ChatResponse],
     status_code=status.HTTP_200_OK,
     summary="Get all chats"
 )

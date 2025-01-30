@@ -5,10 +5,6 @@ export type AgentAnnotation = {
     text: string;
 };
 
-export type AllChatsResponse = {
-    chats: Array<ChatResponse>;
-};
-
 export type AllSettingsResponse = {
     data: Array<SettingResponse>;
 };
@@ -809,7 +805,7 @@ export type GetAllChatsRouteApiDatasourcesChatsGetResponses = {
     /**
      * Successful Response
      */
-    200: AllChatsResponse;
+    200: Array<ChatResponse>;
 };
 
 export type GetAllChatsRouteApiDatasourcesChatsGetResponse = GetAllChatsRouteApiDatasourcesChatsGetResponses[keyof GetAllChatsRouteApiDatasourcesChatsGetResponses];

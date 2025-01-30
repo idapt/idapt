@@ -16,9 +16,6 @@ class ChatResponse(BaseModel):
     last_opened_at: Optional[datetime]
     messages: Optional[List[MessageResponse]]
 
-class AllChatsResponse(BaseModel):
-    chats: List[ChatResponse]
-
 class MessageRequest(BaseModel):
     role: Literal["user", "assistant", "system"]
     message_content: str

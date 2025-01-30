@@ -8,7 +8,7 @@ import logging
 logger = logging.getLogger("uvicorn")
 
 
-def get_all_chats(chats_session: Session, include_messages: bool = False) -> AllChatsResponse:
+def get_all_chats(chats_session: Session, include_messages: bool = False) -> List[ChatResponse]:
     try:
         all_chats_responses : List[ChatResponse] = []
         chats = chats_session.query(Chat).all()
@@ -34,9 +34,7 @@ def get_all_chats(chats_session: Session, include_messages: bool = False) -> All
                         )
                     )
             all_chats_responses.append(chat_response)
-        return AllChatsResponse(
-            chats=all_chats_responses
-        )
+        return all_chats_responses
     except Exception as e:
         logger.error(f"Error getting all chats: {str(e)}")
         raise
@@ -119,6 +117,11 @@ def update_chat_title(chats_session: Session, chat_id: int, title: str) -> None:
 
 def delete_chat(chats_session: Session, chat_id: int) -> None:
     try:
+        # Delete all messages in the chat
+        messages = chats_session.query(Message).filter(Message.chat_id == chat_id).all()
+        for message in messages:
+            chats_session.delete(message)
+        # Delete the chat
         chat = chats_session.query(Chat).filter(Chat.id == chat_id).first()
         chats_session.delete(chat)
         chats_session.commit()
