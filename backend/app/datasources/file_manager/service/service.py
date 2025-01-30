@@ -233,7 +233,19 @@ def get_folder_info(session: Session, user_id: str, original_path: str, include_
         # Get all folders in this folder
         child_folders_db = session.query(Folder).filter(Folder.parent_id == folder.id).all()
         # Get the child folders recursively or not depending on the parameter
-        child_folders=[get_folder_info(session=session, user_id=user_id, original_path=folder.original_path, include_child_folders_files_recursively=include_child_folders_files_recursively) for folder in child_folders_db]
+        child_folders = [FolderInfoResponse(
+            id=child_folder_db.id,
+            name=child_folder_db.name,
+            path=get_path_from_fs_path(child_folder_db.path, user_id),
+            original_path=child_folder_db.original_path,
+            uploaded_at=child_folder_db.uploaded_at.timestamp(),
+            accessed_at=child_folder_db.accessed_at.timestamp(),
+            child_files=[],
+            child_folders=[]
+        ) for child_folder_db in child_folders_db]
+        if include_child_folders_files_recursively:
+            for child_folder_db in child_folders_db:
+                child_folders.append(get_folder_info(session=session, user_id=user_id, original_path=child_folder_db.original_path, include_child_folders_files_recursively=include_child_folders_files_recursively))
         
         # Get files in this folder
         child_files_db = session.query(File).filter(File.folder_id == folder.id).all()
