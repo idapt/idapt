@@ -554,16 +554,29 @@ def should_start_processing(session: Session) -> bool:
             File.processing_started_at.asc()
         ).first()
 
-        if not oldest_processing_file:
-            return True
-
         # If the file has been processing for more than 10 minutes, start start the processing because it is probably stuck/ the app has restarted and processing background task has not been restarted
-        if oldest_processing_file.processing_started_at < datetime.now() - timedelta(seconds=600):
-            logger.info(f"Processing file {oldest_processing_file.path} is stuck, starting processing")
-            return True
+        if oldest_processing_file and oldest_processing_file.processing_started_at < datetime.now() - timedelta(seconds=60 * 15):
+            # A processing is probably still running
+            # TODO Make this better
+            # See if there are any files that are queued
+            queued_files = session.query(File).filter(
+                File.status == FileStatus.QUEUED
+            ).first()
+            if queued_files:
+                return True
+            return False
+        else:
+            # No file currently processing, see if there are any files that are queued
+            queued_files = session.query(File).filter(
+                File.status == FileStatus.QUEUED
+            ).first()
+            if queued_files:
+                return True
+            return False
+        
 
-        # A processing is probably still running
-        # TODO Make this better
+
+
         return False
     
     except Exception as e:
