@@ -65,8 +65,36 @@ export function ToastIndicator() {
   }
 
   return (
-    <div className="px-2 py-1 border-t">
-      <div className="flex gap-2">
+    <div>
+      {/* Display the toasts above the indicators */}
+      {activeToast === 'ollama' && (
+        <OllamaToast 
+          isDownloading={isDownloading}
+          onClose={() => {
+            hideOllamaToast();
+            setActiveToast(null);
+          }} 
+        />
+      )}
+      
+      {activeToast === 'upload' && (
+        <UploadToast />
+      )}
+      
+      {activeToast === 'deletion' && (
+        <DeletionToast />
+      )}
+      
+      {activeToast === 'processing' && (
+        <ProcessingToast 
+          onClose={() => {
+            hideProcessingToast();
+            setActiveToast(null);
+          }} 
+        />
+      )}
+
+      <div className="flex gap-2 p-2">
         {(isToastVisible || isDownloading) && (
           <Button
             variant="ghost"
@@ -115,41 +143,6 @@ export function ToastIndicator() {
           </Button>
         )}
       </div>
-      
-      {activeToast === 'ollama' && (
-        <div className="absolute bottom-16 left-[76px]">
-          <OllamaToast 
-            isDownloading={isDownloading}
-            onClose={() => {
-              hideOllamaToast();
-              setActiveToast(null);
-            }} 
-          />
-        </div>
-      )}
-      
-      {activeToast === 'upload' && (
-        <div className="absolute bottom-16 left-[76px]">
-          <UploadToast />
-        </div>
-      )}
-      
-      {activeToast === 'deletion' && (
-        <div className="absolute bottom-16 left-[76px]">
-          <DeletionToast />
-        </div>
-      )}
-      
-      {activeToast === 'processing' && (
-        <div className="absolute bottom-16 left-[76px]">
-          <ProcessingToast 
-            onClose={() => {
-              hideProcessingToast();
-              setActiveToast(null);
-            }} 
-          />
-        </div>
-      )}
     </div>
   );
 } 

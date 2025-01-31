@@ -1,9 +1,8 @@
-import { CheckCircle, Loader2, XCircle } from "lucide-react";
+import { CheckCircle, Loader2 } from "lucide-react";
 import { OllamaToastItem } from '@/app/types/toast';
 import { BaseToast } from "@/app/components/file-manager/base-toast";
 import { useToastContext } from '@/app/contexts/toast-context';
-import { useState, useEffect, useRef } from "react";
-import { useOllamaStatus } from '@/app/components/toasts/hooks/use-ollama-status';
+import { useState } from "react";
 
 interface OllamaToastProps {
   isDownloading: boolean;

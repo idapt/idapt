@@ -27,7 +27,7 @@ export function BaseToast({
   children
 }: BaseToastProps) {
   return (
-    <div className="w-96 bg-background border rounded-lg shadow-lg">
+    <div className="w-[19rem] bg-background border rounded-lg">
       <div className="p-3 border-b flex justify-between items-center">
         <span className="text-sm font-medium">{title}</span>
         <div className="flex gap-1">
