@@ -1,30 +1,29 @@
-//'use client';
+'use client';
 
 import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
 
 import { SettingsProvider } from "@/app/components/settings/settings-provider";
-import "@/app/globals.css";
-import "@/app/markdown.css";
-import { Providers } from "@/app/components/providers/upload-provider";
 import { UserProvider } from "@/app/contexts/user-context";
 import { ProcessingStacksProvider } from "@/app/components/processing/processing-stacks-provider";
 import { ThemeProvider } from '@/app/components/theme/theme-provider';
-
-import './globals.css';
+import { ToastContextProvider } from './contexts/toast-context';
 import { SidebarProvider } from './components/ui/sidebar';
-import { SidebarUserNav } from './components/chat/sidebar-user-nav';
-import { AppSidebar } from '@/app/components/chat/app-sidebar';
+import { OllamaProvider } from '@/app/contexts/ollama-context';
+import { ProcessingProvider } from '@/app/contexts/processing-context';
 
-export const metadata: Metadata = {
+import "@/app/globals.css";
+import "@/app/markdown.css";
+
+const metadata: Metadata = {
   metadataBase: new URL('https://idapt.ai'),
   title: 'idapt',
   description: 'idapt is a private personal data management platform that allows you to create your own personal AI by regrouping your data from multiple sources (Files, Emails, Google Drive, etc.) and allow your AI assistant to use it in your chats to provide a fully personalized experience.',
 };
 
-export const viewport = {
-  maximumScale: 1, // Disable auto-zoom on mobile Safari
-};
+// export const viewport = {
+//   maximumScale: 1, // Disable auto-zoom on mobile Safari
+// };
 
 const LIGHT_THEME_COLOR = 'hsl(0 0% 100%)';
 const DARK_THEME_COLOR = 'hsl(240deg 10% 3.92%)';
@@ -75,18 +74,22 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <UserProvider>
-            <SidebarProvider>
-              <Providers>
-                <SettingsProvider>
-                  <ProcessingStacksProvider>
-                    <div className="flex h-screen">
-                      {children}
-                    </div>
-                    <Toaster position="top-center" />
-                  </ProcessingStacksProvider>
-                </SettingsProvider>
-              </Providers>
-            </SidebarProvider>
+            <ToastContextProvider>
+              <OllamaProvider>
+                <ProcessingProvider>
+                  <SidebarProvider>
+                    <SettingsProvider>
+                      <ProcessingStacksProvider>
+                        <div className="flex h-screen">
+                          {children}
+                        </div>
+                        <Toaster position="top-center" />
+                      </ProcessingStacksProvider>
+                    </SettingsProvider>
+                  </SidebarProvider>
+                </ProcessingProvider>
+              </OllamaProvider>
+            </ToastContextProvider>
           </UserProvider>
         </ThemeProvider>
       </body>

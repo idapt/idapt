@@ -1,61 +1,41 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 import { ToastItem } from '@/app/types/toast';
 
 interface ToastContextType {
   items: ToastItem[];
-  totalItems: number;
   addItems: (items: ToastItem[]) => void;
-  updateItem: (id: string, updates: Partial<Omit<ToastItem, 'type'>>) => void;
+  updateItem: (id: string, updates: Partial<ToastItem>) => void;
   removeItem: (id: string) => void;
-  cancelAll: () => void;
   resetAll: () => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
-export function ToastProvider({ children }: { children: ReactNode }) {
+export function ToastContextProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
-  const [totalItems, setTotalItems] = useState(0);
 
-  const addItems = (newItems: ToastItem[]) => {
+  const addItems = useCallback((newItems: ToastItem[]) => {
     setItems(prev => [...prev, ...newItems]);
-    setTotalItems(prev => prev + newItems.length);
-  };
+  }, []);
 
-  const updateItem = (id: string, updates: Partial<Omit<ToastItem, 'type'>>) => {
-    setItems(prev => prev.map(item =>
+  const updateItem = useCallback((id: string, updates: Partial<ToastItem>) => {
+    setItems(prev => prev.map(item => 
       item.id === id ? { ...item, ...updates } : item
     ));
-  };
+  }, []);
 
-  const removeItem = (id: string) => {
+  const removeItem = useCallback((id: string) => {
     setItems(prev => prev.filter(item => item.id !== id));
-    setTotalItems(prev => Math.max(0, prev - 1));
-  };
+  }, []);
 
-  const cancelAll = () => {
-    window.dispatchEvent(new CustomEvent('cancelAllOperations'));
+  const resetAll = useCallback(() => {
     setItems([]);
-    setTotalItems(0);
-  };
-
-  const resetAll = () => {
-    setItems([]);
-    setTotalItems(0);
-  };
+  }, []);
 
   return (
-    <ToastContext.Provider value={{
-      items,
-      totalItems,
-      addItems,
-      updateItem,
-      removeItem,
-      cancelAll,
-      resetAll,
-    }}>
+    <ToastContext.Provider value={{ items, addItems, updateItem, removeItem, resetAll }}>
       {children}
     </ToastContext.Provider>
   );
@@ -64,7 +44,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 export function useToastContext() {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error('useToastContext must be used within a ToastProvider');
+    throw new Error('useToastContext must be used within a ToastContextProvider');
   }
   return context;
 } 

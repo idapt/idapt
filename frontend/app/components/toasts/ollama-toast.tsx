@@ -1,32 +1,22 @@
-import { CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Loader2, XCircle } from "lucide-react";
 import { OllamaToastItem } from '@/app/types/toast';
 import { BaseToast } from "@/app/components/file-manager/base-toast";
 import { useToastContext } from '@/app/contexts/toast-context';
 import { useState, useEffect, useRef } from "react";
 import { useOllamaStatus } from '@/app/components/toasts/hooks/use-ollama-status';
-import { useOllamaToast } from '@/app/components/toasts/hooks/use-ollama-toast';
 
-export function OllamaToast() {
+interface OllamaToastProps {
+  isDownloading: boolean;
+  onClose?: () => void;
+}
+
+export function OllamaToast({ isDownloading, onClose }: OllamaToastProps) {
   const { items } = useToastContext();
   const [isMinimized, setIsMinimized] = useState(false);
-  const { isDownloading } = useOllamaStatus();
-  const { startDownloading, stopDownloading } = useOllamaToast();
-  const prevIsDownloadingRef = useRef(isDownloading);
 
   const ollamaItem = items.find((item): item is OllamaToastItem => 
     item.type === 'ollama'
   );
-
-  useEffect(() => {
-    if (isDownloading !== prevIsDownloadingRef.current) {
-      if (isDownloading) {
-        startDownloading();
-      } else {
-        stopDownloading();
-      }
-      prevIsDownloadingRef.current = isDownloading;
-    }
-  }, [isDownloading, startDownloading, stopDownloading]);
   
   if (!ollamaItem) {
     return null;
@@ -40,6 +30,7 @@ export function OllamaToast() {
       total={0}
       completed={0}
       onMinimize={() => setIsMinimized(!isMinimized)}
+      onClose={onClose}
     >
       <div className="px-3 py-2">
         <div className="flex items-center gap-2">

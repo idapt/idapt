@@ -14,7 +14,7 @@ import { useUser } from '@/app/contexts/user-context';
 
 export function SidebarUserNav() {
   const { theme, setTheme } = useTheme();
-  const { userId, logout } = useUser();
+  const { userId } = useUser();
 
   return (
     <DropdownMenu>
@@ -38,11 +38,11 @@ export function SidebarUserNav() {
             </>
           )}
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout}>
+        {/* <DropdownMenuSeparator /> */}
+        {/* <DropdownMenuItem onClick={logout}>
           <LogOut className="h-4 w-4 mr-2" />
           Logout
-        </DropdownMenuItem>
+        </DropdownMenuItem> */}
       </DropdownMenuContent>
     </DropdownMenu>
   );

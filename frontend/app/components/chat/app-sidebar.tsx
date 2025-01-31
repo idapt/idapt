@@ -14,6 +14,7 @@ import {
 } from '@/app/components/ui/sidebar';
 import { SidebarUserNav } from '@/app/components/chat/sidebar-user-nav';
 import Header from '@/app/components/header';
+import { ToastIndicator } from '@/app/components/toasts/toast-indicator';
 
 type View = 'chat' | 'files' | 'settings' | 'processing';
 
@@ -77,7 +78,7 @@ export function AppSidebar({ userId, onViewChange, currentView }: AppSidebarProp
               }}
             >
               <Database className="h-4 w-4" />
-              Processing
+              Processing Stacks
             </Button>
           </div>
         </SidebarMenu>
@@ -90,6 +91,7 @@ export function AppSidebar({ userId, onViewChange, currentView }: AppSidebarProp
       </SidebarContent>
 
       <SidebarFooter>
+        <ToastIndicator />
         <div className="p-2">
           <SidebarUserNav />
         </div>

@@ -61,6 +61,7 @@ export function useProcessingToast() {
     startProcessing,
     updateProcessing,
     completeProcessing,
-    failProcessing
+    failProcessing,
+    items
   };
 } 

@@ -1,6 +1,5 @@
 import { useToastContext } from '@/app/contexts/toast-context';
 import { OllamaToastItem } from '@/app/types/toast';
-import { useEffect } from 'react';
 
 export function useOllamaToast() {
   const { addItems, removeItem } = useToastContext();
@@ -8,9 +7,12 @@ export function useOllamaToast() {
   const OLLAMA_TOAST_ID = 'ollama-download-status';
 
   const startDownloading = () => {
+    // Remove any existing ollama toast first
+    removeItem(OLLAMA_TOAST_ID);
+    
     const item: OllamaToastItem = {
       id: OLLAMA_TOAST_ID,
-      name: '',
+      name: 'Ollama Status',
       path: '',
       status: 'pending',
       progress: 0,

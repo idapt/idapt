@@ -7,37 +7,44 @@ import {
   ProcessingStepResponse
 } from '@/app/client';
 import { useUser } from '@/app/contexts/user-context';
+import { useProcessingStacksState } from '@/app/components/processing/hooks/use-processing-stacks-state';
 
 export function useProcessingStacks() {
-  const client = useApiClient();
   const { userId } = useUser();
-  const [stacks, setStacks] = useState<ProcessingStackResponse[]>([]);
-  const [steps, setSteps] = useState<ProcessingStepResponse[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const client = useApiClient();
+  const { setStacks, setSteps } = useProcessingStacksState();
 
-  const fetchStacks = useCallback(async () => {
+  const fetchData = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
     try {
-      const response = await getProcessingStacksRouteApiStacksStacksGet({ client, query: { user_id: userId } });
-      setStacks(response.data || []);
+      const [stacksResponse, stepsResponse] = await Promise.all([
+        getProcessingStacksRouteApiStacksStacksGet({
+          client,
+          query: { user_id: userId }
+        }),
+        getProcessingStepsRouteApiStacksStepsGet({
+          client,
+          query: { user_id: userId }
+        })
+      ]);
+      setStacks(stacksResponse.data || []);
+      setSteps(stepsResponse.data || []);
     } catch (error) {
-      console.error('Failed to fetch processing stacks:', error);
-      setStacks([]);
+      console.error('Error fetching processing stacks:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [client]);
+  }, [client, setStacks, setSteps, userId]);
 
-  const fetchSteps = useCallback(async () => {
-    try {
-      const response = await getProcessingStepsRouteApiStacksStepsGet({ client, query: { user_id: userId } });
-      setSteps(response.data || []);
-    } catch (error) {
-      console.error('Failed to fetch processing steps:', error);
-      setSteps([]);
-    }
-  }, [client]);
+  const stacks = useProcessingStacksState(state => state.stacks);
+  const steps = useProcessingStacksState(state => state.steps);
 
-  useEffect(() => {
-    Promise.all([fetchStacks(), fetchSteps()]).finally(() => setLoading(false));
-  }, [fetchStacks, fetchSteps]);
-
-  return { stacks, steps, loading, refetch: () => Promise.all([fetchStacks(), fetchSteps()]) };
+  return {
+    stacks,
+    steps,
+    loading,
+    refetch: fetchData
+  };
 }

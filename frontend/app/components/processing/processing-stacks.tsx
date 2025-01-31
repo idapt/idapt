@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Plus, Settings2 } from 'lucide-react';
 import { useProcessingStacks } from '@/app/components/processing/hooks/use-processing-stacks';
@@ -11,6 +11,14 @@ import { ProcessingStackResponse, ProcessingStepResponse } from '@/app/client';
 export function ProcessingStacks() {
   const { stacks, steps, loading, refetch } = useProcessingStacks();
   const [isCreating, setIsCreating] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!isInitialized) {
+      refetch();
+      setIsInitialized(true);
+    }
+  }, [isInitialized, refetch]);
 
   return (
     <div className="container mx-auto max-w-3xl py-6">

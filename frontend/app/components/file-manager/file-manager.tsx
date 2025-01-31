@@ -1,7 +1,7 @@
 "use client";
 
 import { Grid2X2, List, Upload, FolderUp, Plus, Loader2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Button } from "@/app/components/ui/button";
 import { FileList } from "@/app/components/file-manager/file-list";
 import { FilePath } from "@/app/components/file-manager/file-path";
@@ -10,6 +10,7 @@ import { useFolderUpload } from "@/app/components/file-manager/hooks/use-folder-
 import { useFileManager } from "@/app/components/file-manager/hooks/use-file-manager";
 import { CreateDatasourceDialog } from "@/app/components/file-manager/create-datasource-dialog";
 import { DatasourceResponse } from "@/app/client";
+import { useProcessingStacks } from '../processing/hooks/use-processing-stacks';
 
 export function FileManager() {
   const {
@@ -30,6 +31,11 @@ export function FileManager() {
   const folderInputRef = useRef<HTMLInputElement>(null);
   const { uploadFile } = useFileUpload();
   const { uploadFolder } = useFolderUpload();
+  const { refetch: fetchProcessingStacks } = useProcessingStacks();
+
+  useEffect(() => {
+    fetchProcessingStacks();
+  }, [fetchProcessingStacks]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
