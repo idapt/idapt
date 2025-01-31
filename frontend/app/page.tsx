@@ -10,6 +10,7 @@ import { useUser } from "@/app/contexts/user-context";
 import { FileManager } from "@/app/components/file-manager/file-manager";
 import { ProcessingStacks } from "@/app/components/processing/processing-stacks";
 import { useState } from 'react';
+import { SidebarToggle } from "./components/chat/sidebar-toggle";
 
 type View = 'chat' | 'files' | 'settings' | 'processing';
 
@@ -58,6 +59,9 @@ export default function App() {
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       <AppSidebar userId={userId} onViewChange={setCurrentView} currentView={currentView} />
+      <div className="flex justify-between pt-1.5 pl-1.5">
+        <SidebarToggle />
+      </div>
       <main className="flex-1 relative overflow-hidden">
         {renderContent()}
       </main>
