@@ -26,12 +26,12 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
       action: `How to make progress on my current project?`,
     },
     {
-      title: 'Give me ideas of activities to do with my mom for Mother\'s Day',
+      title: 'Ideas of activities to do with my mom',
       label: `based on our preferences`,
-      action: `Give me ideas of activities to do with my mom for Mother's Day`,
+      action: `Give me ideas of activities to do with my mom based on our preferences`,
     },
     {
-      title: 'What is the last thing i talked about with my best friend?',
+      title: 'Last thing i talked about with my best friend?',
       label: 'using our message history',
       action: 'What is the last thing i talked about with my best friend?',
     },
