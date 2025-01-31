@@ -9,7 +9,7 @@ import { memo, useMemo, useState } from 'react';
 
 //import { DocumentToolCall, DocumentToolResult } from './document';
 import { PencilEditIcon, SparklesIcon } from './icons';
-import { Markdown } from './unused/markdown';
+import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 //import { PreviewAttachment } from './preview-attachment';
 //import { Weather } from './unused/weather';

@@ -1,12 +1,28 @@
-/*import Link from 'next/link';
+import Link from 'next/link';
 import React, { memo, useMemo, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { CodeBlock } from './code-block';
+import { CodeBlock } from '@/app/components/chat/code-block';
 
 const components: Partial<Components> = {
-  // @ts-expect-error
+  // Modify the code handling to ensure it's not wrapped in a paragraph
   code: CodeBlock,
+  // Add a specific handler for code blocks within paragraphs
+  p: ({ node, children, ...props }) => {
+    // Check if the paragraph only contains a code block
+    const hasOnlyCodeBlock = 
+      node.children.length === 1 && 
+      node.children[0].type === 'element' && 
+      node.children[0].tagName === 'code';
+
+    // If it only contains a code block, don't wrap in paragraph
+    if (hasOnlyCodeBlock) {
+      return <>{children}</>;
+    }
+
+    // Otherwise render as normal paragraph
+    return <p {...props}>{children}</p>;
+  },
   pre: ({ children }) => <>{children}</>,
   ol: ({ node, children, ...props }) => {
     return (
@@ -107,4 +123,3 @@ export const Markdown = memo(
   NonMemoizedMarkdown,
   (prevProps, nextProps) => prevProps.children === nextProps.children,
 );
-*/

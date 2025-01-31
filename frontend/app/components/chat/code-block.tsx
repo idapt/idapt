@@ -1,10 +1,10 @@
-/*'use client';
+'use client';
 
-import { useCallback, useState } from 'react';
-import { CodeIcon, LoaderIcon, PlayIcon, PythonIcon } from '../icons';
-import { Button } from '@/app/components/ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
-import { cn } from '@/app/components/lib/utils';
+import { useState } from 'react';
+//import { CodeIcon, LoaderIcon, PlayIcon, PythonIcon } from '../icons';
+//import { Button } from '@/app/components/ui/button';
+//import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
+//import { cn } from '@/app/components/lib/utils';
 
 interface CodeBlockProps {
   node: any;
@@ -56,4 +56,4 @@ export function CodeBlock({
       </code>
     );
   }
-}*/
+}

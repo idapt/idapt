@@ -4,9 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useWindowSize } from 'usehooks-ts';
 
 //import { ModelSelector } from '@/app/components/chat/model-selector';
-import { SidebarToggle } from '@/app/components/chat/sidebar-toggle';
 import { Button } from '@/app/components/ui/button';
-import { PlusIcon, VercelIcon } from './icons';
+import { PlusIcon } from './icons';
 import { useSidebar } from '@/app/components/ui/sidebar';
 import { memo } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
