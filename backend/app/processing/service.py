@@ -102,11 +102,6 @@ def mark_items_as_queued(session: Session, user_id: str, items: List[ProcessingI
 
             logger.warning(f"File or folder {item.original_path} not found, skipping")
 
-        # Start processing thread if needed
-        if should_start_processing(session):
-            logger.info(f"Starting processing thread for user {user_id}")
-            start_processing_thread(session, user_id)
-
     except Exception as e:
         logger.error(f"Failed to mark items as queued: {str(e)}")
         raise
@@ -490,31 +485,55 @@ async def _process_single_file(session: Session, file: File, user_id: str):
             logger.error(f"Failed to update file status for {file.path}: {str(e)}")
         raise
 
+def start_processing_if_needed_and_get_queue_status(session: Session, user_id: str) -> ProcessingStatusResponse:
+    """Start processing and get the current status of the generation queue"""
+    try:
+        if should_start_processing(session):
+            logger.info(f"Starting processing thread for user {user_id}")
+            start_processing_thread(session, user_id)
+        return get_queue_status(session)
+    except Exception as e:
+        logger.error(f"Failed to start processing and get queue status: {str(e)}")
+        raise
+
 def get_queue_status(session: Session) -> ProcessingStatusResponse:
     """Get the current status of the generation queue"""
     try:
-        files = session.query(File).filter(File.status == FileStatus.QUEUED or File.status == FileStatus.PROCESSING).all()
-        queued_count = session.query(File).filter(File.status == FileStatus.QUEUED).count()
-        processing_count = session.query(File).filter(File.status == FileStatus.PROCESSING).count()
+        queued_files = session.query(File).filter(File.status == FileStatus.QUEUED).all()
+        processing_files = session.query(File).filter(File.status == FileStatus.PROCESSING).all()
 
         processing_status_response = ProcessingStatusResponse(
-            queued_count=queued_count,
-            processing_count=processing_count,
+            queued_count=len(queued_files),
+            queued_items=[],
+            processing_count=len(processing_files),
             processing_items=[]
         )
-        
-        for file in files:
 
-            queued_stacks : List[str] = []
+        for file in queued_files:
+            file_queued_stacks : List[str] = []
             for stack in json.loads(file.stacks_to_process):
-                if stack not in queued_stacks:
-                    queued_stacks.append(stack)
+                if stack not in file_queued_stacks:
+                    file_queued_stacks.append(stack)
+            processing_status_response.queued_items.append(
+                ItemProcessingStatusResponse(
+                    original_path=file.original_path,
+                    name=file.name,
+                    queued_stacks=file_queued_stacks,
+                    status=file.status.value
+                )
+            )
+        
+        for file in processing_files:
+            file_queued_stacks : List[str] = []
+            for stack in json.loads(file.stacks_to_process):
+                if stack not in file_queued_stacks:
+                    file_queued_stacks.append(stack)
             processing_status_response.processing_items.append(
                 ItemProcessingStatusResponse(
                     original_path=file.original_path,
                     name=file.name,
-                    queued_stacks=queued_stacks,
-                    status=file.status
+                    queued_stacks=file_queued_stacks,
+                    status=file.status.value
                 )
             )
 

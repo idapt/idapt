@@ -136,8 +136,6 @@ export type FileInfoResponse = {
     status: string;
 };
 
-export type FileStatus = 'pending' | 'queued' | 'processing' | 'completed' | 'error';
-
 export type FileUploadItem = {
     original_path: string;
     base64_content: string;
@@ -171,7 +169,7 @@ export type ItemProcessingStatusResponse = {
     original_path: string;
     name: string;
     queued_stacks: Array<string>;
-    status: FileStatus;
+    status: 'pending' | 'processing' | 'queued' | 'completed' | 'error';
 };
 
 export type MessageInput = {
@@ -266,6 +264,7 @@ export type ProcessingStackUpdate = {
 
 export type ProcessingStatusResponse = {
     queued_count: number;
+    queued_items: Array<ItemProcessingStatusResponse>;
     processing_count: number;
     processing_items: Array<ItemProcessingStatusResponse>;
 };

@@ -4,8 +4,7 @@ from sqlalchemy.orm import Session
 import asyncio
 from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
-
-from app.processing.service import get_queue_status, mark_items_as_queued
+from app.processing.service import get_queue_status, mark_items_as_queued, start_processing_if_needed_and_get_queue_status
 from app.processing.schemas import ProcessingRequest, ProcessingStatusResponse
 from app.api.utils import get_user_id, get_file_manager_db_session
 from app.api.websocket import StatusWebSocket
@@ -26,8 +25,8 @@ async def processing_route(
         # Process all items in the request
         mark_items_as_queued(session, user_id, request.items)
 
-        # Get the current status of the queue
-        return get_queue_status(session)
+        # Start processing thread if needed
+        return start_processing_if_needed_and_get_queue_status(session, user_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -41,7 +40,8 @@ async def get_processing_status_route(
 ) -> ProcessingStatusResponse:
     """Get the current status of the generation queue"""
     try:
-        return get_queue_status(session)
+        # Start processing thread if needed
+        return start_processing_if_needed_and_get_queue_status(session, user_id)
     except Exception as e:
         logger.error(f"Error in get_processing_status_route: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -57,7 +57,7 @@ async def processing_status_websocket(
     # Convert ProcessingStatusResponse to dict before sending
     status_ws = StatusWebSocket(
         websocket, 
-        lambda: get_queue_status(session).model_dump()  # Convert Pydantic model to dict
+        lambda: start_processing_if_needed_and_get_queue_status(session, user_id).model_dump()
     )
     await status_ws.accept()
     
