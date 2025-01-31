@@ -1,11 +1,11 @@
 import logging
-
+import os
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status, Depends
 from llama_index.core.llms import MessageRole
 from sqlalchemy.orm import Session
 
 from app.chat.events import EventCallbackHandler
-from app.chat.chat_models import (
+from app.chat.schemas import (
     ChatData,
     Message,
     Result,
@@ -30,6 +30,10 @@ async def chat_route(
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session),
 ):
+    """
+    Streaming endpoint for chat requests.
+    Returns a stream of messages from the agent.
+    """
     try:
         logger.info(f"Chat route called for user {user_id}")
         last_message_content = data.get_last_message_content()
@@ -64,14 +68,16 @@ async def chat_route(
             detail=f"Error in chat engine: {e}",
         ) from e
 
-
-# non-streaming endpoint - delete if not needed
 @r.post("/request")
 async def chat_request_route(
     data: ChatData,
     user_id: str = Depends(get_user_id),
     session: Session = Depends(get_file_manager_db_session),
 ) -> Result:
+    """
+    Non-streaming endpoint for chat requests.
+    Returns a single message from the agent.
+    """
     try:
         logger.info(f"Chat request route called for user {user_id}")
         last_message_content = data.get_last_message_content()

@@ -6,12 +6,28 @@ from llama_index.core.schema import NodeWithScore
 from pydantic import BaseModel, Field, validator
 from pydantic.alias_generators import to_camel
 
-from app.chat.file import DocumentFile
-
 logger = logging.getLogger("uvicorn")
 
+# TODO Use FileInfo
+class DocumentFile(BaseModel):
+    id: str
+    name: str  # Stored file name
+    type: str = None
+    size: int = None
+    url: str = None
+    path: Optional[str] = Field(
+        None,
+        description="The stored file path. Used internally in the server.",
+        exclude=True,
+    )
+    refs: Optional[List[str]] = Field(
+        None, description="The document ids in the index."
+    )
 
 class AnnotationFileData(BaseModel):
+    """
+    A list of files used as context to generate the response.
+    """
     files: List[DocumentFile] = Field(
         default=[],
         description="List of files",
@@ -73,16 +89,35 @@ class AnnotationFileData(BaseModel):
 
 
 class AgentAnnotation(BaseModel):
+    """
+    An annotation from the agent that is a text and an agent name.
+    """
     agent: str
     text: str
 
 
 class ArtifactAnnotation(BaseModel):
+    """
+    An artifact from the agent that is a tool call and tool output.
+    """
     toolCall: Dict[str, Any]
     toolOutput: Dict[str, Any]
 
 
 class Annotation(BaseModel):
+    """
+    An annotation on a message used to pass additional data about the message.
+    The type of the annotation is a string that can be one of the following:
+    - "document_file": A file uploaded by the user.
+    - "image": An image uploaded by the user.
+    - "agent": An annotation from the agent.
+    - "artifact": An artifact from the agent.
+    The data is one of the following types:
+    - AnnotationFileData: A file uploaded by the user.
+    - List[str]: A list of strings.
+    - AgentAnnotation: An annotation from the agent.
+    - ArtifactAnnotation: An artifact from the agent.
+    """
     type: str
     data: AnnotationFileData | List[str] | AgentAnnotation | ArtifactAnnotation
 
@@ -99,12 +134,18 @@ class Annotation(BaseModel):
 
 
 class Message(BaseModel):
+    """
+    A message from the user or the agent.
+    """
     role: MessageRole
     content: str
     annotations: List[Annotation] | None = None
 
 
 class ChatData(BaseModel):
+    """
+    Data for chat requests.
+    """
     messages: List[Message]
     data: Any = None
 
@@ -259,6 +300,9 @@ class ChatData(BaseModel):
 
 
 class SourceNodes(BaseModel):
+    """
+    A source node from the index.
+    """
     id: str
     metadata: Dict[str, Any]
     score: Optional[float]
@@ -317,21 +361,3 @@ class SourceNodes(BaseModel):
 class Result(BaseModel):
     result: Message
     nodes: List[SourceNodes]
-
-
-class ChatConfig(BaseModel):
-    starter_questions: Optional[List[str]] = Field(
-        default=None,
-        description="List of starter questions",
-        serialization_alias="starterQuestions",
-    )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "starterQuestions": [
-                    "What standards for letters exist?",
-                    "What are the requirements for a letter to be considered a letter?",
-                ]
-            }
-        }

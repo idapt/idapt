@@ -9,7 +9,7 @@ from llama_index.core.chat_engine.types import StreamingAgentChatResponse
 from llama_index.core.schema import NodeWithScore
 
 from app.chat.events import EventCallbackHandler
-from app.chat.chat_models import ChatData, Message, SourceNodes
+from app.chat.schemas import ChatData, Message, SourceNodes
 from app.chat.suggestion import NextQuestionSuggestion
 
 logger = logging.getLogger("uvicorn")
@@ -100,7 +100,7 @@ class VercelStreamResponse(StreamingResponse):
         result = await response
 
         # Once we got a source node, start a background task to download the files (if needed)
-        cls._process_response_nodes(result.source_nodes, background_tasks)
+        # cls._process_response_nodes(result.source_nodes, background_tasks)
 
         # Yield the source nodes
         yield cls.convert_data(
@@ -145,24 +145,6 @@ class VercelStreamResponse(StreamingResponse):
     def convert_error(cls, error: str):
         error_str = json.dumps(error)
         return f"{cls.ERROR_PREFIX}{error_str}\n"
-
-    @staticmethod
-    def _process_response_nodes(
-        source_nodes: List[NodeWithScore],
-        background_tasks: BackgroundTasks,
-    ):
-        try:
-            # Start background tasks to download documents from LlamaCloud if needed
-            from app.engine.service import LLamaCloudFileService  # type: ignore
-
-            LLamaCloudFileService.download_files_from_nodes(
-                source_nodes, background_tasks
-            )
-        except ImportError:
-            logger.debug(
-                "LlamaCloud is not configured. Skipping post processing of nodes"
-            )
-            pass
 
     @staticmethod
     async def _generate_next_questions(chat_history: List[Message], response: str):
