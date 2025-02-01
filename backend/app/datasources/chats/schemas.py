@@ -34,6 +34,7 @@ class ChatResponse(BaseModel):
     uuid: str
     title: str
     created_at: datetime
+    last_message_at: datetime
     last_opened_at: datetime
 
     messages: List[MessageResponse]

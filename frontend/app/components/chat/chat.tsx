@@ -33,7 +33,7 @@ export function Chat({
 }) {
   const { backend } = useClientConfig();
   const { userId } = useUser();
-  const { currentChatId, currentChat } = useChatResponse();
+  const { currentChatId, currentChat, refreshChats } = useChatResponse();
 
   const {
     messages,
@@ -54,7 +54,13 @@ export function Chat({
     body: { id: currentChatId },
     initialMessages: convertToUIMessages(currentChat?.messages || []),
     experimental_throttle: 100,
-    sendExtraMessageFields: true
+    sendExtraMessageFields: true,
+    onFinish: (message) => {
+      // Refresh the chat history to update the title and update the order of the chats
+      // TODO Make this smarter and work with title change
+      // Wait 0.5 seconds before refreshing the chats
+      refreshChats();
+    }
   });
 
   // Update messages when chat data changes

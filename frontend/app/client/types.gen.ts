@@ -107,6 +107,7 @@ export type ChatResponse = {
     uuid: string;
     title: string;
     created_at: string;
+    last_message_at: string;
     last_opened_at: string;
     messages: Array<MessageResponse>;
 };
@@ -827,6 +828,7 @@ export type CreateChatRouteApiDatasourcesChatsPostData = {
     };
     path?: never;
     query: {
+        chat_uuid?: string;
         user_id: string;
     };
     url: '/api/datasources/chats';
@@ -891,6 +893,7 @@ export type GetChatRouteApiDatasourcesChatsChatUuidGetData = {
     query: {
         include_messages?: boolean;
         create_if_not_found?: boolean;
+        update_last_opened_at?: boolean;
         user_id: string;
     };
     url: '/api/datasources/chats/{chat_uuid}';

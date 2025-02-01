@@ -143,7 +143,7 @@ class MessageData(BaseModel):
     id: str # Set by vercel frontend
     role: MessageRole
     content: str
-    createdAt: datetime # Set by vercel frontend
+    createdAt: Optional[datetime] = datetime.now() # Set by vercel frontend
     annotations: List[Annotation] | None = None
     is_upvoted: bool | None = None
 

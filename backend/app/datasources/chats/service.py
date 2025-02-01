@@ -1,7 +1,7 @@
 from typing import List
 from sqlalchemy.orm import Session
 import uuid
-
+from datetime import datetime
 
 from app.datasources.chats.database.models import Chat, Message
 from app.datasources.chats.schemas import ChatResponse, MessageResponse, MessageCreate
@@ -19,6 +19,7 @@ def get_all_chats(chats_session: Session, include_messages: bool = False) -> Lis
                 uuid=chat.uuid,
                 title=chat.title,
                 created_at=chat.created_at,
+                last_message_at=chat.last_message_at,
                 last_opened_at=chat.last_opened_at,
                 messages=[]
             )
@@ -42,7 +43,7 @@ def get_all_chats(chats_session: Session, include_messages: bool = False) -> Lis
         logger.error(f"Error getting all chats: {str(e)}")
         raise
 
-def get_chat(chats_session: Session, chat_uuid: str, include_messages: bool = False, create_if_not_found: bool = False) -> ChatResponse:
+def get_chat(chats_session: Session, chat_uuid: str, include_messages: bool = False, create_if_not_found: bool = False, update_last_opened_at: bool = True) -> ChatResponse:
     try:
         chat = chats_session.query(Chat).filter(Chat.uuid == chat_uuid).first()
         if not chat and create_if_not_found:
@@ -51,10 +52,17 @@ def get_chat(chats_session: Session, chat_uuid: str, include_messages: bool = Fa
             chat = chats_session.query(Chat).filter(Chat.uuid == chat_uuid).first()
         if not chat:
             raise ValueError(f"Chat with id {chat_uuid} not found")
+        
+        # Update the last opened at time if the option is enabled
+        if update_last_opened_at:
+            chat.last_opened_at = datetime.now()
+            chats_session.commit()
+
         chat_response = ChatResponse(
             uuid=chat.uuid,
             title=chat.title,
             created_at=chat.created_at,
+            last_message_at=chat.last_message_at,
             last_opened_at=chat.last_opened_at,
             messages=[]
         )
@@ -89,6 +97,7 @@ def create_chat(chats_session: Session, uuid: str = None) -> ChatResponse:
             uuid=chat.uuid,
             title=chat.title,
             created_at=chat.created_at,
+            last_message_at=chat.last_message_at,
             last_opened_at=chat.last_opened_at,
             messages=[]
         )
@@ -110,6 +119,8 @@ def add_message_to_chat(chats_session: Session, chat_uuid: str, message: Message
             chat_id=chat.id,
         )
         chats_session.add(message_model)
+        # Update the last message at time
+        chat.last_message_at = datetime.now()
         chats_session.commit()
         #chats_session.refresh(message_model)
     except Exception as e:

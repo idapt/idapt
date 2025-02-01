@@ -248,9 +248,16 @@ export function SidebarHistory({ userId }: { userId: string | undefined }) {
       };
     }
 
-    return chats.reduce(
+    // First sort all chats by last_message_at in descending order
+    const sortedChats = [...chats].sort((a, b) => {
+      const dateA = new Date(a.last_message_at);
+      const dateB = new Date(b.last_message_at);
+      return dateB.getTime() - dateA.getTime();
+    });
+
+    return sortedChats.reduce(
       (groups, chat) => {
-        const chatDate = new Date(chat.created_at);
+        const chatDate = new Date(chat.last_message_at);
 
         if (isToday(chatDate)) {
           groups.today.push(chat);

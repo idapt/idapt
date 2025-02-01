@@ -25,6 +25,7 @@ def upgrade() -> None:
     sa.Column('uuid', sa.String(), nullable=False),
     sa.Column('title', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('last_message_at', sa.DateTime(), nullable=False),
     sa.Column('last_opened_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('uuid')

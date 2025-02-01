@@ -54,7 +54,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         query: {
           user_id: userId,
           include_messages: true,
-          create_if_not_found: true
+          create_if_not_found: true,
+          update_last_opened_at: true
         }
       });
       if (chat.data) {

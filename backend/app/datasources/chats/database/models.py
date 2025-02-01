@@ -13,6 +13,7 @@ class Chat(Base):
     uuid = Column(String, nullable=False, unique=True)
     title = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, default=func.now())
+    last_message_at = Column(DateTime, nullable=False, default=func.now())
     last_opened_at = Column(DateTime, nullable=False, default=func.now())
     
     # Relationships

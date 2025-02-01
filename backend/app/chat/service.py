@@ -44,9 +44,8 @@ def chat_streaming_response(
 
     # Get the llama index messages
     llama_index_messages = data.get_llama_index_messages()
-    chat = None
     # Get the chat
-    chat = get_chat(chats_session=chat_db_session, chat_uuid=data.id, include_messages=True, create_if_not_found=True)
+    chat = get_chat(chats_session=chat_db_session, chat_uuid=data.id, include_messages=True, create_if_not_found=False, update_last_opened_at=False)
 
     # Add the user message to the chat history
     user_message = MessageCreate(
