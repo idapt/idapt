@@ -14,6 +14,7 @@ import { ProcessingProvider } from '@/app/contexts/processing-context';
 
 import "@/app/globals.css";
 import "@/app/markdown.css";
+import { ChatProvider } from './contexts/chat-response-context';
 
 const metadata: Metadata = {
   metadataBase: new URL('https://idapt.ai'),
@@ -77,16 +78,18 @@ export default function RootLayout({
             <ToastContextProvider>
               <OllamaProvider>
                 <ProcessingProvider>
-                  <SidebarProvider>
-                    <SettingsProvider>
-                      <ProcessingStacksProvider>
-                        <div className="flex h-screen">
-                          {children}
-                        </div>
-                        <Toaster position="top-center" />
-                      </ProcessingStacksProvider>
-                    </SettingsProvider>
-                  </SidebarProvider>
+                  <ChatProvider>
+                    <SidebarProvider>
+                      <SettingsProvider>
+                        <ProcessingStacksProvider>
+                          <div className="flex h-screen">
+                            {children}
+                          </div>
+                          <Toaster position="top-center" />
+                        </ProcessingStacksProvider>
+                      </SettingsProvider>
+                    </SidebarProvider>
+                  </ChatProvider>
                 </ProcessingProvider>
               </OllamaProvider>
             </ToastContextProvider>

@@ -19,7 +19,8 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 
-from app.datasources.chats.database.models import Base
+#from models import Base # Use this when running alembic dev commands
+from app.datasources.chats.database.models import Base # Use this when running the app # TODO
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

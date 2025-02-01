@@ -1,10 +1,13 @@
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Literal
 
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.schema import NodeWithScore
 from pydantic import BaseModel, Field, validator
 from pydantic.alias_generators import to_camel
+
+from app.datasources.chats.database.models import Message as DatabaseMessage
 
 logger = logging.getLogger("uvicorn")
 
@@ -132,40 +135,36 @@ class Annotation(BaseModel):
             )
         return None
 
-
-class Message(BaseModel):
+class MessageData(BaseModel):
     """
-    A message from the user or the agent.
+    Messages received from the vercel ai sdk from the frontend
+    Follows openai message format + vercel ai sdk format
     """
+    id: str # Set by vercel frontend
     role: MessageRole
     content: str
+    createdAt: datetime # Set by vercel frontend
     annotations: List[Annotation] | None = None
+    is_upvoted: bool | None = None
 
 
 class ChatData(BaseModel):
     """
-    Data for chat requests.
+    Chat received from the vercel ai sdk from the frontend
+    Follows openai chat format + vercel ai sdk format
     """
-    messages: List[Message]
-    data: Any = None
+    id: str
+    #title: str
+    #created_at: datetime
+    #last_opened_at: datetime
+    messages: Optional[List[MessageData]]
+    chat_engine_params: Any = None
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": "What standards for letters exist?",
-                    }
-                ]
-            }
-        }
-
-    @validator("messages")
-    def messages_must_not_be_empty(cls, v):
-        if len(v) == 0:
-            raise ValueError("Messages must not be empty")
-        return v
+    #@validator("messages")
+    #def messages_must_not_be_empty(cls, v):
+    #    if len(v) == 0:
+    #        raise ValueError("Messages must not be empty")
+    #    return v
 
     def get_last_message_content(self) -> str:
         """
@@ -239,18 +238,23 @@ class ChatData(BaseModel):
                                 return None
         return None
 
-    def get_history_messages(
+    def get_llama_index_messages(
         self,
         include_agent_messages: bool = False,
         include_code_artifact: bool = True,
     ) -> List[ChatMessage]:
         """
-        Get the history messages
+        Get the messages in the format expected by LlamaIndex
         """
-        chat_messages = [
-            ChatMessage(role=message.role, content=message.content)
-            for message in self.messages[:-1]
-        ]
+        if len(self.messages) == 0:
+            return []
+        # Get all the user messages
+        chat_messages = []
+        if any(message.role == MessageRole.USER for message in self.messages[:-1]):
+            chat_messages.extend([
+                ChatMessage(role=message.role, content=message.content)
+                for message in self.messages[:-1]
+            ])
         if include_agent_messages:
             agent_messages = self._get_agent_messages(max_messages=5)
             if len(agent_messages) > 0:
@@ -356,8 +360,3 @@ class SourceNodes(BaseModel):
     @classmethod
     def from_source_nodes(cls, source_nodes: List[NodeWithScore]):
         return [cls.from_source_node(node) for node in source_nodes]
-
-
-class Result(BaseModel):
-    result: Message
-    nodes: List[SourceNodes]

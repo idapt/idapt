@@ -2,10 +2,8 @@
 
 import { Settings } from "@/app/components/settings";
 import { Chat } from '@/app/components/chat/chat';
-import { generateUUID } from '@/app/lib/utils';
 import { DataStreamHandler } from '@/app/components/chat/data-stream-handler';
 import { AppSidebar } from '@/app/components/chat/app-sidebar';
-import { SidebarInset } from '@/app/components/ui/sidebar';
 import { useUser } from "@/app/contexts/user-context";
 import { FileManager } from "@/app/components/file-manager/file-manager";
 import { ProcessingStacks } from "@/app/components/processing/processing-stacks";
@@ -16,7 +14,6 @@ type View = 'chat' | 'files' | 'settings' | 'processing';
 
 export default function App() {
   const { userId } = useUser();
-  const chat_frontend_uuid = generateUUID();
   const [currentView, setCurrentView] = useState<View>('chat');
 
   const renderContent = () => {
@@ -44,12 +41,9 @@ export default function App() {
           <div className="flex-1 h-full w-full">
             <div className="pl-0 h-full">
               <Chat
-                key={chat_frontend_uuid}
-                id={chat_frontend_uuid}
-                initialMessages={[]}
                 isReadonly={false}
               />
-              <DataStreamHandler id={chat_frontend_uuid} />
+              <DataStreamHandler />
             </div>
           </div>
         );

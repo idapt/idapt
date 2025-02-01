@@ -1,8 +1,10 @@
 from typing import List
 from sqlalchemy.orm import Session
+import uuid
 
-from app.datasources.chats.schema import ChatResponse, MessageResponse, MessageRequest
+
 from app.datasources.chats.database.models import Chat, Message
+from app.datasources.chats.schemas import ChatResponse, MessageResponse, MessageCreate
 
 import logging
 logger = logging.getLogger("uvicorn")
@@ -14,11 +16,11 @@ def get_all_chats(chats_session: Session, include_messages: bool = False) -> Lis
         chats = chats_session.query(Chat).all()
         for chat in chats:
             chat_response = ChatResponse(
-                id=chat.id,
+                uuid=chat.uuid,
                 title=chat.title,
                 created_at=chat.created_at,
                 last_opened_at=chat.last_opened_at,
-                messages=None
+                messages=[]
             )
             if include_messages:
                 chat_response.messages = []
@@ -26,11 +28,12 @@ def get_all_chats(chats_session: Session, include_messages: bool = False) -> Lis
                 for message in chat_messages:
                     chat_response.messages.append(
                         MessageResponse(
-                            id=message.id,
+                            uuid=message.uuid,
                             role=message.role,
                             content=message.content,
+                            annotations=message.annotations,
+                            is_upvoted=message.is_upvoted,
                             created_at=message.created_at,
-                            is_upvoted=message.is_upvoted
                         )
                     )
             all_chats_responses.append(chat_response)
@@ -39,43 +42,51 @@ def get_all_chats(chats_session: Session, include_messages: bool = False) -> Lis
         logger.error(f"Error getting all chats: {str(e)}")
         raise
 
-def get_chat(chats_session: Session, chat_id: int, include_messages: bool = False) -> ChatResponse:
+def get_chat(chats_session: Session, chat_uuid: str, include_messages: bool = False, create_if_not_found: bool = False) -> ChatResponse:
     try:
-        chat = chats_session.query(Chat).filter(Chat.id == chat_id).first()
+        chat = chats_session.query(Chat).filter(Chat.uuid == chat_uuid).first()
+        if not chat and create_if_not_found:
+            create_chat(chats_session, uuid=chat_uuid)
+            # Reget it from the database
+            chat = chats_session.query(Chat).filter(Chat.uuid == chat_uuid).first()
+        if not chat:
+            raise ValueError(f"Chat with id {chat_uuid} not found")
         chat_response = ChatResponse(
-            id=chat.id,
+            uuid=chat.uuid,
             title=chat.title,
             created_at=chat.created_at,
             last_opened_at=chat.last_opened_at,
             messages=[]
         )
         if include_messages:
-            chat_messages = chats_session.query(Message).filter(Message.chat_id == chat_id).all()
+            chat_messages = chats_session.query(Message).filter(Message.chat_id == chat.id).all()
             for message in chat_messages:
                 chat_response.messages.append(
                     MessageResponse(
-                        id=message.id,
+                        uuid=message.uuid,
                         role=message.role,
                         content=message.content,
+                        annotations=message.annotations,
                         created_at=message.created_at,
                         is_upvoted=message.is_upvoted
                     )
                 )
         return chat_response
     except Exception as e:
-        logger.error(f"Error getting chat {chat_id}: {str(e)}")
+        logger.error(f"Error getting chat {chat_uuid}: {str(e)}")
         raise
 
-def create_chat(chats_session: Session) -> ChatResponse:
+def create_chat(chats_session: Session, uuid: str = None) -> ChatResponse:
     try:
         chat = Chat(
+            uuid=uuid or str(uuid.uuid4()),
             title="New Chat"
         )
         chats_session.add(chat)
         chats_session.commit()
         chats_session.refresh(chat)
         return ChatResponse(
-            id=chat.id,
+            uuid=chat.uuid,
             title=chat.title,
             created_at=chat.created_at,
             last_opened_at=chat.last_opened_at,
@@ -85,46 +96,48 @@ def create_chat(chats_session: Session) -> ChatResponse:
         logger.error(f"Error creating chat: {str(e)}")
         raise
 
-def add_message_to_chat(chats_session: Session, chat_id: int, message: MessageRequest) -> MessageResponse:
+def add_message_to_chat(chats_session: Session, chat_uuid: str, message: MessageCreate) -> None:
     try:
+        chat = chats_session.query(Chat).filter(Chat.uuid == chat_uuid).first()
+        if not chat:
+            raise ValueError(f"Chat with id {chat_uuid} not found")
         message_model = Message(
+            uuid=message.uuid,
             role=message.role,
-            content=message.message_content,
-            chat_id=chat_id,
+            content=message.content,
+            annotations=message.annotations,
+            created_at=message.created_at,
+            chat_id=chat.id,
         )
         chats_session.add(message_model)
         chats_session.commit()
-        chats_session.refresh(message_model)
-        return MessageResponse(
-            id=message_model.id,
-            role=message_model.role,
-            content=message_model.content,
-            created_at=message_model.created_at,
-            is_upvoted=message_model.is_upvoted
-        )
+        #chats_session.refresh(message_model)
     except Exception as e:
-        logger.error(f"Error adding message to chat {chat_id}: {str(e)}")
+        logger.error(f"Error adding message to chat {chat_uuid}: {str(e)}")
         raise
 
-def update_chat_title(chats_session: Session, chat_id: int, title: str) -> None:
+def update_chat_title(chats_session: Session, chat_uuid: str, title: str) -> None:
     try:
-        chat = chats_session.query(Chat).filter(Chat.id == chat_id).first()
+        chat = chats_session.query(Chat).filter(Chat.uuid == chat_uuid).first()
         chat.title = title
         chats_session.commit()
     except Exception as e:
-        logger.error(f"Error updating chat {chat_id} title: {str(e)}")
+        logger.error(f"Error updating chat {chat_uuid} title: {str(e)}")
         raise
 
-def delete_chat(chats_session: Session, chat_id: int) -> None:
+def delete_chat(chats_session: Session, chat_uuid: str) -> None:
     try:
         # Delete all messages in the chat
-        messages = chats_session.query(Message).filter(Message.chat_id == chat_id).all()
+        chat = chats_session.query(Chat).filter(Chat.uuid == chat_uuid).first()
+        if not chat:
+            raise ValueError(f"Chat with id {chat_uuid} not found")
+        # Delete all messages in the chat
+        messages = chats_session.query(Message).filter(Message.chat_id == chat.id).all()
         for message in messages:
             chats_session.delete(message)
         # Delete the chat
-        chat = chats_session.query(Chat).filter(Chat.id == chat_id).first()
         chats_session.delete(chat)
         chats_session.commit()
     except Exception as e:
-        logger.error(f"Error deleting chat {chat_id}: {str(e)}")
+        logger.error(f"Error deleting chat {chat_uuid}: {str(e)}")
         raise

@@ -1,15 +1,16 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useWindowSize } from 'usehooks-ts';
 
 //import { ModelSelector } from '@/app/components/chat/model-selector';
 import { Button } from '@/app/components/ui/button';
 import { PlusIcon } from './icons';
-import { useSidebar } from '@/app/components/ui/sidebar';
+//import { useSidebar } from '@/app/components/ui/sidebar';
 import { memo } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/app/components/ui/tooltip';
 //import { VisibilityType, VisibilitySelector } from './visibility-selector';
+import { useChatResponse } from '@/app/contexts/chat-response-context';
+import { generateUUID } from '@/app/lib/utils';
 
 function PureChatHeader({
   //chatId,
@@ -22,22 +23,23 @@ function PureChatHeader({
   //selectedVisibilityType: VisibilityType;
   //isReadonly: boolean;
 }) {
-  const router = useRouter();
-  const { open } = useSidebar();
-
-  const { width: windowWidth } = useWindowSize();
+  //const router = useRouter();
+  //const { open } = useSidebar();
+  //const { width: windowWidth } = useWindowSize();
+  const { tryToSetCurrentChat } = useChatResponse();
 
   return (
     <header className="flex sticky top-0 bg-background py-1.5 items-center px-2 md:px-2 gap-2">
-      {(!open || windowWidth < 768) && (
+      {(
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="outline"
               className="order-2 md:order-1 md:px-2 px-2 md:h-fit ml-auto md:ml-0"
               onClick={() => {
-                router.push('/');
-                router.refresh();
+                tryToSetCurrentChat(generateUUID());
+                //router.push('/');
+                //router.refresh();
               }}
             >
               <PlusIcon />

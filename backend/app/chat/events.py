@@ -12,11 +12,17 @@ logger = logging.getLogger("uvicorn")
 
 
 class CallbackEvent(BaseModel):
+    """
+    Integration of the llama_index callback handler to get the events from the chat engine.
+    """
     event_type: CBEventType
     payload: Optional[Dict[str, Any]] = None
     event_id: str = ""
 
     def get_retrieval_message(self) -> dict | None:
+        """
+        Get the retrieval message from the payload.
+        """
         if self.payload:
             nodes = self.payload.get("nodes")
             if nodes:

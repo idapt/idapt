@@ -7,6 +7,7 @@ import type {
 } from 'ai';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { MessageResponse } from '../client/types.gen';
 
 //import type { Message as DBMessage, Document } from '@/app/lib/db/schema';
 
@@ -84,23 +85,23 @@ export function generateUUID(): string {
   });
 }*/
 
-/*export function convertToUIMessages(
-  messages: Array<DBMessage>,
+export function convertToUIMessages(
+  messages: Array<MessageResponse>,
 ): Array<Message> {
   return messages.reduce((chatMessages: Array<Message>, message) => {
-    if (message.role === 'tool') {
+    /*if (message.role === 'tool') {
       return addToolMessageToChat({
         toolMessage: message as CoreToolMessage,
         messages: chatMessages,
       });
-    }
+    }*/
 
     let textContent = '';
     const toolInvocations: Array<ToolInvocation> = [];
 
     if (typeof message.content === 'string') {
       textContent = message.content;
-    } else if (Array.isArray(message.content)) {
+    } /*else if (Array.isArray(message.content)) {
       for (const content of message.content) {
         if (content.type === 'text') {
           textContent += content.text;
@@ -113,10 +114,10 @@ export function generateUUID(): string {
           });
         }
       }
-    }
+    }*/
 
     chatMessages.push({
-      id: message.id,
+      id: message.uuid,
       role: message.role as Message['role'],
       content: textContent,
       toolInvocations,
@@ -166,7 +167,7 @@ export function sanitizeResponseMessages(
   return messagesBySanitizedContent.filter(
     (message) => message.content.length > 0,
   );
-}*/
+}
 
 export function sanitizeUIMessages(messages: Array<Message>): Array<Message> {
   const messagesBySanitizedToolInvocations = messages.map((message) => {

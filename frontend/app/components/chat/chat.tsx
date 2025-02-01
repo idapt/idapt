@@ -1,13 +1,11 @@
 'use client';
 
-import type { Attachment, Message } from 'ai';
+import type { Attachment } from 'ai';
 import { useChat } from 'ai/react';
-import { useState } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
+import { useState, useEffect } from 'react';
 
 import { ChatHeader } from '@/app/components/chat/chat-header';
 //import type { Vote } from '@/app/lib/db/schema';
-import { fetcher, generateUUID } from '@/app/lib/utils';
 
 //import { Block } from './block';
 import { MultimodalInput } from './multimodal-input';
@@ -16,24 +14,26 @@ import { Messages } from './messages';
 import { useBlockSelector } from '@/app/hooks/use-block';
 import { useClientConfig } from '../../hooks/use-config';
 import { useUser } from "@/app/contexts/user-context";
+import { convertToUIMessages } from '@/app/lib/utils';
+import { useChatResponse } from '@/app/contexts/chat-response-context';
+import { Block } from './block';
 
 export function Chat({
-  id,
-  initialMessages,
+  //id,
+  //initialMessages,
   //selectedModelId,
   //selectedVisibilityType,
   isReadonly,
 }: {
-  id: string;
-  initialMessages: Array<Message>;
+  //id: number;
+  //initialMessages: Array<Message>;
   //selectedModelId: string;
   //selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
 }) {
-  const { backend } = useClientConfig(); // Done here as we are on the client
-  const { userId } = useUser(); // Done here as we are on the client
-
-  const { mutate } = useSWRConfig();
+  const { backend } = useClientConfig();
+  const { userId } = useUser();
+  const { currentChatId, currentChat } = useChatResponse();
 
   const {
     messages,
@@ -50,16 +50,26 @@ export function Chat({
     headers: {
       "X-User-Id": userId
     },
-    id,
-    body: { id: id },
-    initialMessages,
+    id: currentChatId,
+    body: { id: currentChatId },
+    initialMessages: convertToUIMessages(currentChat?.messages || []),
     experimental_throttle: 100,
-    sendExtraMessageFields: true,
-    generateId: generateUUID,
-    onFinish: () => {
-      mutate('/api/datasources/chats?user_id=' + userId);
-    },
+    sendExtraMessageFields: true
   });
+
+  // Update messages when chat data changes
+  useEffect(() => {
+    if (currentChat?.messages) {
+      setMessages(convertToUIMessages(currentChat.messages));
+    }
+    // Reset the chat if the current chat id is empty
+    if (!currentChatId || currentChatId === '') {
+      setMessages([]);
+      setInput('');
+    }
+  }, [currentChat, setMessages]);
+
+
 
   //const { data: votes } = useSWR<Array<Vote>>(
   //  `/api/vote?chatId=${id}`,
@@ -82,7 +92,7 @@ export function Chat({
         />
 
         <Messages
-          chatId={id}
+          chatId={currentChatId}
           isLoading={isLoading}
           //votes={[]}//{votes}
           messages={messages}
@@ -95,7 +105,7 @@ export function Chat({
         <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
           {!isReadonly && (
             <MultimodalInput
-              chatId={id}
+              chatId={currentChatId}
               input={input}
               setInput={setInput}
               handleSubmit={handleSubmit}
@@ -111,8 +121,8 @@ export function Chat({
         </form>
       </div>
 
-      {/*<Block
-        chatId={id}
+      {<Block
+        chatId={currentChatId}
         input={input}
         setInput={setInput}
         handleSubmit={handleSubmit}
@@ -124,9 +134,9 @@ export function Chat({
         messages={messages}
         setMessages={setMessages}
         reload={reload}
-        votes={[]}//{votes}
+        //votes={[]}//{votes}
         isReadonly={isReadonly}
-      />*/}
+      />}
     </>
   );
 }

@@ -3,7 +3,7 @@ import os
 import re
 from typing import List, Optional
 
-from app.chat.schemas import Message
+from app.chat.schemas import MessageData
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.settings import Settings
 
@@ -40,7 +40,7 @@ class NextQuestionSuggestion:
     @classmethod
     async def suggest_next_questions_all_messages(
         cls,
-        messages: List[Message],
+        messages: List[MessageData],
     ) -> Optional[List[str]]:
         """
         Suggest the next questions that user might ask based on the conversation history
@@ -84,11 +84,11 @@ class NextQuestionSuggestion:
     @classmethod
     async def suggest_next_questions(
         cls,
-        chat_history: List[Message],
+        chat_history: List[MessageData],
         response: str,
     ) -> List[str]:
         """
         Suggest the next questions that user might ask based on the chat history and the last response
         """
-        messages = chat_history + [Message(role="assistant", content=response)]
+        messages = chat_history + [MessageData(role="assistant", content=response)]
         return await cls.suggest_next_questions_all_messages(messages)

@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { blockDefinitions, BlockKind } from './block';
 //import { Suggestion } from '@/app/lib/db/schema';
 import { initialBlockData, useBlock } from '@/app/hooks/use-block';
+import { useChatResponse } from '@/app/contexts/chat-response-context';
 
 export type DataStreamDelta = {
   type:
@@ -20,8 +21,9 @@ export type DataStreamDelta = {
   content: string;// | Suggestion;
 };
 
-export function DataStreamHandler({ id }: { id: string }) {
-  const { data: dataStream } = useChat({ id });
+export function DataStreamHandler() {
+  const { currentChatId } = useChatResponse();
+  const { data: dataStream } = useChat({ id: currentChatId });
   const { block, setBlock, setMetadata } = useBlock();
   const lastProcessedIndex = useRef(-1);
 

@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Bool
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
+#from llama_index.core.llms import MessageRole
 
 Base = declarative_base()
 
@@ -9,6 +10,7 @@ class Chat(Base):
     __tablename__ = 'chat'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
+    uuid = Column(String, nullable=False, unique=True)
     title = Column(Text, nullable=False)
     created_at = Column(DateTime, nullable=False, default=func.now())
     last_opened_at = Column(DateTime, nullable=False, default=func.now())
@@ -20,12 +22,14 @@ class Message(Base):
     __tablename__ = 'message'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
+    uuid = Column(String, nullable=False, unique=True)
     chat_id = Column(Integer, ForeignKey('chat.id'), nullable=False)
+
     role = Column(String, nullable=False)
-    #previousMessageId = Column(Integer, ForeignKey('message.id'), nullable=True)
     content = Column(JSON, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=func.now())
+    annotations = Column(JSON, nullable=True) # Annotations on the message
     is_upvoted = Column(Boolean, nullable=True) # NULL if not upvoted, False if downvoted, True if upvoted
+    created_at = Column(DateTime, nullable=False, default=func.now())
     
     # Relationships
     chat = relationship("Chat", back_populates="messages")
