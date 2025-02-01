@@ -61,6 +61,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setCurrentChatId(uuid);
         setCurrentChat(chat.data);
       }
+      // If the chat is not in the list of chats, refresh the chats
       if (!chats?.some(chat => chat.uuid === uuid)) {
         await refreshChats();
       }

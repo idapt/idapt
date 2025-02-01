@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Awaitable, List
+from typing import Awaitable, List, Optional
 import uuid
 
 from aiostream import stream
@@ -10,14 +10,16 @@ from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
 from llama_index.core.chat_engine.types import StreamingAgentChatResponse
 from llama_index.core.schema import NodeWithScore
+from llama_index.core.llms import LLM
 
 from app.chat.events import EventCallbackHandler
 from app.chat.schemas import ChatData, MessageData, SourceNodes
 from app.chat.suggestion import NextQuestionSuggestion
 from app.chat.schemas import MessageRole
+from app.chat.title import ChatTitleGenerator
 
 from app.datasources.chats.schemas import MessageCreate
-from app.datasources.chats.service import add_message_to_chat
+from app.datasources.chats.service import add_message_to_chat, update_chat_title
 
 logger = logging.getLogger("uvicorn")
 
@@ -38,10 +40,11 @@ class VercelStreamResponse(StreamingResponse):
         event_handler: EventCallbackHandler,
         response: Awaitable[StreamingAgentChatResponse],
         chat_data: ChatData,
+        llm: LLM,
         background_tasks: BackgroundTasks,
     ):
         content = VercelStreamResponse.content_generator(
-            request, event_handler, response, chat_data, background_tasks, chat_db_session
+            request, event_handler, response, chat_data, llm, background_tasks, chat_db_session
         )
         super().__init__(content=content)
 
@@ -52,11 +55,12 @@ class VercelStreamResponse(StreamingResponse):
         event_handler: EventCallbackHandler,
         response: Awaitable[StreamingAgentChatResponse],
         chat_data: ChatData,
+        llm: LLM,
         background_tasks: BackgroundTasks,
         chat_db_session: Session,
     ):
         chat_response_generator = cls._chat_response_generator(
-            response, background_tasks, event_handler, chat_data, chat_db_session
+            response, background_tasks, event_handler, chat_data, llm, chat_db_session
         )
         event_generator = cls._event_generator(event_handler)
 
@@ -101,6 +105,7 @@ class VercelStreamResponse(StreamingResponse):
         background_tasks: BackgroundTasks,
         event_handler: EventCallbackHandler,
         chat_data: ChatData,
+        llm: LLM,
         chat_db_session: Session,
     ):
         """
@@ -147,6 +152,22 @@ class VercelStreamResponse(StreamingResponse):
         )
         add_message_to_chat(chats_session=chat_db_session, chat_uuid=chat_data.id, message=assistant_message)
 
+        # Create the message data for the final response and add it to the chat data
+        assistant_message_data = MessageData(
+            id=str(uuid.uuid4()),
+            role=MessageRole.ASSISTANT,
+            content=final_response,
+            createdAt=datetime.now()
+        )
+        chat_data.messages.append(assistant_message_data)
+
+        # Generate a title for the chat
+        title = await cls._generate_chat_title(llm, chat_data.messages)
+        if title:
+            yield cls.convert_data({"type": "title", "data": title})
+            # Set the title for the chat
+            update_chat_title(chat_db_session, chat_data.id, title)
+
         # the text_generator is the leading stream, once it's finished, also finish the event stream
         event_handler.is_done = True
 
@@ -177,3 +198,7 @@ class VercelStreamResponse(StreamingResponse):
                 "data": questions,
             }
         return None
+
+    async def _generate_chat_title(llm: LLM, chat_history: List[MessageData]) -> Optional[str]:
+        title = await ChatTitleGenerator.generate_title(llm, chat_history)
+        return title

@@ -1,13 +1,13 @@
 from typing import List
-import os
-import json
 
 from llama_index.core.agent.react import ReActAgent, ReActChatFormatter
+from llama_index.core.agent import AgentRunner
 from llama_index.core.callbacks import CallbackManager
 from llama_index.core.tools import BaseTool
+from llama_index.core.llms import LLM
 from sqlalchemy.orm import Session
 #from app.engine.tools import ToolFactory
-from app.settings.model_initialization import init_llm, init_embedding_model
+from app.settings.model_initialization import init_embedding_model
 from app.datasources.file_manager.service.llama_index import create_query_tool, create_vector_store, create_doc_store
 from app.settings.schemas import SettingResponse, AppSettings
 from app.settings.service import get_setting
@@ -20,24 +20,19 @@ logger = logging.getLogger("uvicorn")
 
 def get_chat_engine(session: Session,
                     user_id: str,
+                    llm: LLM,
+                    max_iterations: int,
+                    system_prompt: str,
                     datasource_identifier: str = None,
                     filters=None,
                     params=None,
                     event_handlers=None,
-                    **kwargs):
+                    **kwargs) -> AgentRunner:
     try:
         # The tools that will be used by the agent
         tools: List[BaseTool] = []
         # Used to display the index events in the steps ui
         callback_manager = CallbackManager(handlers=event_handlers or [])
-
-        # Get the app settings
-        app_setting_response : SettingResponse = get_setting(session, "app")
-        app_setting : AppSettings = AppSettings.model_validate_json(app_setting_response.value_json)
-        # Get the llm provider from the settings
-        llm_provider_setting : SettingResponse = get_setting(session, app_setting.llm_setting_identifier)
-        # Init the llm from the app settings
-        llm = init_llm(llm_provider_setting.schema_identifier, llm_provider_setting.value_json, app_setting_response.value_json)
 
         # Get the datasources tools
         if datasource_identifier:
@@ -95,10 +90,10 @@ def get_chat_engine(session: Session,
             tools=tools,
             callback_manager=callback_manager,
             verbose=True,
-            max_iterations=app_setting.max_iterations,
+            max_iterations=max_iterations,
             react_chat_formatter=ReActChatFormatter.from_defaults(
                 #system_header=react_agent_prompt, #Use the default system header react
-                context=app_setting.system_prompt # Give the app setting system prompt as base context for the chat formatter
+                context=system_prompt # Give the app setting system prompt as base context for the chat formatter
             )
         )
     except Exception as e:

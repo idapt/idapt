@@ -10,6 +10,10 @@ from app.engine.query_filter import generate_filters
 
 from app.datasources.chats.service import get_chat, add_message_to_chat
 from app.datasources.chats.schemas import MessageCreate
+from app.settings.model_initialization import init_llm, init_embedding_model
+from app.settings.schemas import SettingResponse, AppSettings
+from app.settings.service import get_setting
+
 
 from llama_index.core.llms import MessageRole
 
@@ -61,23 +65,36 @@ def chat_streaming_response(
     params = data.chat_engine_params or {}
     # Create the event handler to handle the events from the agent
     event_handler = EventCallbackHandler()
+
+    # Get the app settings
+    app_setting_response : SettingResponse = get_setting(file_manager_session, "app")
+    app_setting : AppSettings = AppSettings.model_validate_json(app_setting_response.value_json)
+    # Get the llm provider from the settings
+    llm_provider_setting : SettingResponse = get_setting(file_manager_session, app_setting.llm_setting_identifier)
+    # Init the llm from the app settings
+    llm = init_llm(llm_provider_setting.schema_identifier, llm_provider_setting.value_json, app_setting_response.value_json)
+
     # Create the chat engine
-    chat_engine = get_chat_engine(
+    agent_runner = get_chat_engine(
         session=file_manager_session,
         user_id=user_id,
+        llm=llm,
+        max_iterations=app_setting.max_iterations,
+        system_prompt=app_setting.system_prompt,
         filters=filters,
         params=params,
         event_handlers=[event_handler]
     )
 
     # Send the streaming query to the agent
-    response = chat_engine.astream_chat(last_message_content, llama_index_messages)
+    response = agent_runner.astream_chat(last_message_content, llama_index_messages)
 
     return VercelStreamResponse(
         request=request, 
         event_handler=event_handler, 
         response=response, 
         chat_data=data, 
+        llm=llm,
         chat_db_session=chat_db_session,
         background_tasks=background_tasks,
     )
