@@ -10,9 +10,6 @@ from app.ollama_status.service import can_process
 from app.datasources.file_manager.utils import validate_path
 from app.settings.service import get_setting
 from app.processing.schemas import ProcessingItem, ProcessingRequest, ProcessingStatusResponse, ItemProcessingStatusResponse
-from app.settings.database.session import get_settings_db_session
-from app.processing_stacks.database.session import get_processing_stacks_db_session
-
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
@@ -24,12 +21,11 @@ from llama_index.core.readers import SimpleDirectoryReader
 
 from datetime import datetime, timedelta
 import os
-from typing import List
+from typing import List, Dict
 from pathlib import Path
 from sqlalchemy.orm import Session
 import json
 import threading
-from contextlib import contextmanager
 import asyncio
 
 import logging
@@ -37,39 +33,81 @@ import logging
 logger = logging.getLogger("uvicorn")
 
 # Global processing thread reference
-processing_thread = None
-processing_thread_lock = threading.Lock()
+users_processing_threads: Dict[str, threading.Thread] = {}
+users_processing_threads_lock = threading.Lock()
 
-@contextmanager
-def get_processing_thread():
-    global processing_thread
-    with processing_thread_lock:
-        yield processing_thread
+users_file_manager_db_sessions: Dict[str, Dict[str, Session]] = {}
+users_settings_db_session: Dict[str, Session] = {}
+users_processing_stacks_db_session: Dict[str, Session] = {}
+users_datasources_db_session: Dict[str, Session] = {}
 
-def start_processing_thread(session: Session, user_id: str):
+def start_processing_thread(user_id: str, file_manager_db_sessions: Dict[str, Session], datasources_db_session: Session, settings_db_session: Session, processing_stacks_db_session: Session):
     """Start a new processing thread if none is running"""
-    global processing_thread
-    
-    with processing_thread_lock:
-        if processing_thread and processing_thread.is_alive():
-            return
+    global users_processing_threads
+    global users_file_manager_db_sessions
+    global users_settings_db_session
+    global users_processing_stacks_db_session
+    global users_datasources_db_session
+
+    with users_processing_threads_lock:
+        # Initialize the user's thread entry if it doesn't exist
+        if user_id not in users_processing_threads:
+            users_processing_threads[user_id] = None
             
-        # Create a new session with the same configuration as the original session
-        thread_session = Session(bind=session.get_bind())
+        # Now check if there's an active thread
+        if users_processing_threads[user_id] and users_processing_threads[user_id].is_alive():
+            logger.info(f"Processing thread for user {user_id} already running")
+            return
         
+        # Init the global variables for the user if they don't exist
+        if user_id not in users_file_manager_db_sessions:
+            users_file_manager_db_sessions[user_id] = {}
+        if user_id not in users_settings_db_session:
+            users_settings_db_session[user_id] = {}
+        if user_id not in users_processing_stacks_db_session:
+            users_processing_stacks_db_session[user_id] = {}
+        if user_id not in users_datasources_db_session:
+            users_datasources_db_session[user_id] = {}
+        
+        # Store the sessions in the global variables
+        # Append the sessions to the global variables
+        for datasource_name in file_manager_db_sessions.keys():
+            if datasource_name not in users_file_manager_db_sessions[user_id]:
+                users_file_manager_db_sessions[user_id][datasource_name] = file_manager_db_sessions[datasource_name]
+        users_settings_db_session[user_id] = settings_db_session
+        users_processing_stacks_db_session[user_id] = processing_stacks_db_session
+        users_datasources_db_session[user_id] = datasources_db_session
+        
+        # Create thread sessions
+        file_manager_thread_sessions: Dict[str, Session] = {}
+        for datasource_name in file_manager_db_sessions.keys():
+            file_manager_thread_sessions[datasource_name] = Session(bind=file_manager_db_sessions[datasource_name].get_bind())
+        settings_thread_session = Session(bind=settings_db_session.get_bind())
+        processing_stacks_thread_session = Session(bind=processing_stacks_db_session.get_bind())
+        datasources_thread_session = Session(bind=datasources_db_session.get_bind())
+
         def process_wrapper():
             try:
-                asyncio.run(process_queued_files(thread_session, user_id))
+                asyncio.run(process_queued_files(file_manager_thread_sessions, datasources_thread_session, settings_thread_session, processing_stacks_thread_session, user_id))
             except Exception as e:
                 logger.error(f"Processing thread error: {str(e)}")
             finally:
-                thread_session.close()
-                
-        processing_thread = threading.Thread(target=process_wrapper, daemon=True)
-        processing_thread.start()
+                for file_manager_thread_session in file_manager_thread_sessions.values():
+                    file_manager_thread_session.close()
+                settings_thread_session.close()
+                processing_stacks_thread_session.close()
+                datasources_thread_session.close()
+
+        users_processing_threads[user_id] = threading.Thread(target=process_wrapper, daemon=True)
+        users_processing_threads[user_id].start()
 
 
-def mark_items_as_queued(session: Session, user_id: str, items: List[ProcessingItem]):
+def mark_items_as_queued(
+        processing_stacks_db_session: Session, 
+        file_manager_db_session: Session,
+        user_id: str, 
+        items: List[ProcessingItem]
+    ):
     """Mark items as queued"""
     try:
         total_files = 0
@@ -77,15 +115,18 @@ def mark_items_as_queued(session: Session, user_id: str, items: List[ProcessingI
         for item in items:
             # Validate path
             validate_path(item.original_path)
+
+            # TODO Check if the first part of the path is the right datasource name
             
             # Check if it's a folder
-            folder = session.query(Folder).filter(Folder.original_path == item.original_path).first()
+            folder = file_manager_db_session.query(Folder).filter(Folder.original_path == item.original_path).first()
             if folder:
                 # Get all files in the folder from the database
-                files = session.query(File).filter(File.path.like(f"{folder.path}%")).all()
+                files = file_manager_db_session.query(File).filter(File.path.like(f"{folder.path}%")).all()
                 for file in files:
                     mark_file_as_queued(
-                        session,
+                        processing_stacks_db_session,
+                        file_manager_db_session,
                         file.path,
                         item.stacks_identifiers_to_queue
                     )
@@ -93,10 +134,11 @@ def mark_items_as_queued(session: Session, user_id: str, items: List[ProcessingI
                 continue
                 
             # If not a folder, try as a file
-            file = session.query(File).filter(File.original_path == item.original_path).first()
+            file = file_manager_db_session.query(File).filter(File.original_path == item.original_path).first()
             if file:
                 mark_file_as_queued(
-                    session,
+                    processing_stacks_db_session,
+                    file_manager_db_session,
                     file.path,
                     item.stacks_identifiers_to_queue
                 )
@@ -110,13 +152,13 @@ def mark_items_as_queued(session: Session, user_id: str, items: List[ProcessingI
         raise
 
 # Not used for now do not use it
-def _validate_stacks_to_process_for_file_extension(session: Session, stacks_to_process: List[str], file_extension: str) -> List[str]:
+def _validate_stacks_to_process_for_file_extension(processing_stacks_db_session: Session, stacks_to_process: List[str], file_extension: str) -> List[str]:
     """Validate the stacks to process for a given file extension"""
     try:
         validated_stacks_to_process = []
         for stack_name in stacks_to_process:
             # Get the stack from the database
-            stack = session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_name).first()
+            stack = processing_stacks_db_session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_name).first()
             if not stack:
                 logger.error(f"Stack {stack_name} not found, skipping")
                 continue
@@ -131,16 +173,21 @@ def _validate_stacks_to_process_for_file_extension(session: Session, stacks_to_p
         logger.error(f"Failed to validate stacks to process for file extension {file_extension}: {str(e)}")
         return stacks_to_process
 
-def mark_file_as_queued(session: Session, file_path: str, stacks_to_process: List[str]):
+def mark_file_as_queued(
+        processing_stacks_db_session: Session, 
+        file_manager_db_session: Session,
+        file_path: str, 
+        stacks_to_process: List[str]
+    ):
     """Mark a file as queued"""
     try:
         # Get the file extension
         file_extension = os.path.splitext(file_path)[1]
         # For each transformation stack name
-        validated_stacks_to_process = _validate_stacks_to_process_for_file_extension(session, stacks_to_process, file_extension)
+        validated_stacks_to_process = _validate_stacks_to_process_for_file_extension(processing_stacks_db_session, stacks_to_process, file_extension)
         
         # Get the file
-        file = session.query(File).filter(File.path == file_path).first()
+        file = file_manager_db_session.query(File).filter(File.path == file_path).first()
         if not file:
             raise ValueError(f"File not found: {file_path}")
 
@@ -171,15 +218,18 @@ def mark_file_as_queued(session: Session, file_path: str, stacks_to_process: Lis
         # Convert back to json string and store it in the database
         file.stacks_to_process = json.dumps(existing_stacks_to_process)
         
-        session.commit()
+        file_manager_db_session.commit()
 
     except Exception as e:
-        session.rollback()
+        file_manager_db_session.rollback()
         logger.error(f"Failed to mark file as queued: {str(e)}")
         raise
 
 async def process_queued_files(
-        session: Session,
+        file_manager_db_sessions: Dict[str, Session],
+        datasources_db_session: Session,
+        settings_db_session: Session,
+        processing_stacks_db_session: Session,
         user_id: str
     ):
     """Processing loop"""
@@ -188,113 +238,127 @@ async def process_queued_files(
         # TODO Make it work with other providers
 
         # Wait for Ollama models to be downloaded
-        await can_process(session, True)
+        #for file_manager_db_session in file_manager_db_sessions.values():
+        await can_process(settings_db_session, True)
    
         logger.info("Beginning processing files")
         # Process all files marked as processing that have been interrupted with unfinished processing
-        await _process_files_marked_as_processing(session=session, user_id=user_id)
+        #await _process_files_marked_as_processing(file_manager_db_session=file_manager_db_session, settings_db_session=settings_db_session, processing_stacks_db_session=processing_stacks_db_session, user_id=user_id)
 
         # Process all queued files
-        await _process_all_queued_files(session=session, user_id=user_id)
+        await _process_all_queued_files(file_manager_db_sessions=file_manager_db_sessions, datasources_db_session=datasources_db_session, settings_db_session=settings_db_session, processing_stacks_db_session=processing_stacks_db_session, user_id=user_id)
    
 
     except Exception as e:
         logger.error(f"Processing loop error: {str(e)}")
         raise
 
-async def _process_files_marked_as_processing(session: Session, user_id: str):
-    """Process all files marked as processing"""
-    try:
-        while True:
-            oldest_processing_file = None  # Initialize the variable
-            try:
-                logger.info("Processing files marked as processing")
-                # Get the files one by one so that in case of queued file changes we get the freshest database data
-                oldest_processing_file = session.query(File).filter(
-                    File.status == FileStatus.PROCESSING
-                ).order_by(
-                    File.uploaded_at.asc()
-                ).first()
-
-                # If there are no more files marked as processing, return
-                if not oldest_processing_file:
-                    return
-
-                # Move the processed stacks to the stacks_to_process column as we will delete all already processed stacks from llama index and reprocess them
-                processed_stacks = json.loads(oldest_processing_file.processed_stacks)
-                stacks_to_process = json.loads(oldest_processing_file.stacks_to_process)
-                stacks_to_process.extend(processed_stacks)
-                oldest_processing_file.stacks_to_process = json.dumps(stacks_to_process)
-                oldest_processing_file.processed_stacks = json.dumps([])
-                session.commit()
-
-                logger.info(f"Reprocessing interrupted file: {oldest_processing_file.path}")
-                try:
-                    delete_file_llama_index(file_manager_session=session, user_id=user_id, file=oldest_processing_file)
-                except Exception as e:
-                    logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
-                
-                await _process_single_file(session, oldest_processing_file, user_id)
-            except Exception as e:
-                session.rollback()
-                if oldest_processing_file:  # Only try to handle the file if it exists
-                    logger.error(f"Failed to process interrupted file {oldest_processing_file.path}: {str(e)}, marking as error")
-                    try:
-                        oldest_processing_file.status = FileStatus.ERROR
-                        session.commit()
-                    except Exception as e:
-                        session.rollback()
-                        logger.error(f"Failed to update file status for {oldest_processing_file.path}: {str(e)}")
-                else:
-                    logger.error(f"Failed to process interrupted file: {str(e)}")
-                    
-    except Exception as e:
-        logger.error(f"Failed to process all queued files: {str(e)}")
-        raise
+#async def _process_files_marked_as_processing(file_manager_db_sessions: Dict[str, Session], settings_db_session: Session, processing_stacks_db_session: Session, user_id: str):
+#    """Process all files marked as processing"""
+#    try:
+#        logger.info("Processing files marked as processing")
+#        files_to_process = []
+#        # For each datasource file manager db session we have
+#        for file_manager_db_session in file_manager_db_sessions.values():
+#            # Get the files one by one so that in case of queued file changes we get the freshest database data
+#            oldest_processing_file = file_manager_db_session.query(File).filter(
+#                File.status == FileStatus.PROCESSING
+#            ).order_by(
+#                File.uploaded_at.asc()
+#            ).first()
+#
+#            # If there are no more files marked as processing, return
+#            if not oldest_processing_file:
+#                continue
+#
+#            files_to_process.append(oldest_processing_file)
+#
+#            # Move the processed stacks to the stacks_to_process column as we will delete all already processed stacks from llama index and reprocess them
+#            processed_stacks = json.loads(file.processed_stacks)
+#            stacks_to_process = json.loads(file.stacks_to_process)
+#            stacks_to_process.extend(processed_stacks)
+#            file.stacks_to_process = json.dumps(stacks_to_process)
+#            file.processed_stacks = json.dumps([])
+#            file_manager_db_session.commit()
+#
+#            logger.info(f"Reprocessing interrupted file: {file.path}")
+#            try:
+#                delete_file_llama_index(file_manager_session=file_manager_db_session, user_id=user_id, file=file)
+#            except Exception as e:
+#                logger.error(f"Failed to delete {file.path} from stores: {str(e)}")
+#            
+#            try:
+#                await _process_single_file(file_manager_db_session=file_manager_db_session, settings_db_session=settings_db_session, processing_stacks_db_session=processing_stacks_db_session, file=file, #user_id=user_id)
+#            except Exception as e:
+#                file_manager_db_session.rollback()
+#                if file:  # Only try to handle the file if it exists
+#                    logger.error(f"Failed to process interrupted file {file.path}: {str(e)}, marking as error")
+#                    try:
+#                        file.status = FileStatus.ERROR
+#                        file_manager_db_session.commit()
+#                    except Exception as e:
+#                        file_manager_db_session.rollback()
+#                        logger.error(f"Failed to update file status for {file.path}: {str(e)}")
+#                else:
+#                    logger.error(f"Failed to process interrupted file: {str(e)}")
+#                    
+#
+#
+#    except Exception as e:
+#        logger.error(f"Failed to process all queued files: {str(e)}")
+#        raise
         
-async def _process_all_queued_files(session: Session, user_id: str):
+async def _process_all_queued_files(file_manager_db_sessions: Dict[str, Session], datasources_db_session: Session, settings_db_session: Session, processing_stacks_db_session: Session, user_id: str):
     """Process all queued files"""
     try:
-        while True:
-            queued_file = None  # Initialize the variable
-            try:
-                # Get the files one by one so that in case of queued file changes we get the freshest database data
-                # Get oldest queued file
-                queued_file = session.query(File).filter(
-                    File.status == FileStatus.QUEUED
-                ).order_by(
-                    File.uploaded_at.asc()
-                ).first()
-                
-                if queued_file:
-                    await _process_single_file(session=session, file=queued_file, user_id=user_id)
-                else:
-                    return
-        
-            except Exception as e:
-                if queued_file:  # Only try to handle the file if it exists
-                    logger.error(f"Failed to process queued file {queued_file.path}: {str(e)}, marking as error")
-                    try:
-                        queued_file.status = FileStatus.ERROR
-                        session.commit()
-                    except Exception as e:
-                        session.rollback()
-                        logger.error(f"Failed to update file status for {queued_file.path}: {str(e)}")
+        queued_files = []  # Initialize the variable
+        # For each datasource file manager db session we have
+        for file_manager_db_session in file_manager_db_sessions.values():
+            # Get the files one by one so that in case of queued file changes we get the freshest database data
+            # Get oldest queued file
+            queued_files.extend(file_manager_db_session.query(File).filter(
+                File.status == FileStatus.QUEUED
+            ).order_by(
+                File.uploaded_at.asc()
+            ).all())
+
+            if not queued_files:
+                continue
+
+            for file in queued_files:
+                try:
+                    await _process_single_file(file_manager_db_session=file_manager_db_session, datasources_db_session=datasources_db_session, settings_db_session=settings_db_session, processing_stacks_db_session=processing_stacks_db_session, file=file, user_id=user_id)
+                except Exception as e:
+                    logger.error(f"Failed to process queued file {file.path}: {str(e)}, marking as error")
+                    file.status = FileStatus.ERROR
+                    file.error_message = str(e)
+                    file_manager_db_session.commit()
+                queued_files.remove(file)
+
+        if not queued_files:
+            logger.info("No more files to process, stopping")
+            # Reset the global variables for the user
+            # TODO Make it remove the unuesed datasource once there is no more files in this datasource to process
+            users_file_manager_db_sessions[user_id] = {}
+            users_settings_db_session[user_id] = {}
+            users_processing_stacks_db_session[user_id] = {}
+            return
+
     except Exception as e:
         logger.error(f"Failed to process all queued files: {str(e)}")
         raise
 
-async def _process_single_file(session: Session, file: File, user_id: str):
+async def _process_single_file(file_manager_db_session: Session, datasources_db_session: Session, settings_db_session: Session, processing_stacks_db_session: Session, file: File, user_id: str):
     """Process a single file through the ingestion pipeline"""
     try:
         # Get file response
-        file_response = await get_file_info(session, user_id, file.original_path, include_content=False)
+        file_response = await get_file_info(file_manager_db_session, user_id, file.original_path, include_content=False)
 
         # Update status to processing
         file.error_message = None
         file.status = FileStatus.PROCESSING
         file.processing_started_at = datetime.now()
-        session.commit()
+        file_manager_db_session.commit()
 
         logger.info(f"Processing file: {file.path}")
         
@@ -302,7 +366,7 @@ async def _process_single_file(session: Session, file: File, user_id: str):
         stacks_to_process = json.loads(file.stacks_to_process) if file.stacks_to_process else []
         processed_stacks = json.loads(file.processed_stacks) if file.processed_stacks else []
         datasource_identifier = get_datasource_identifier_from_path(file.path)
-        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
+        datasource = datasources_db_session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
         
         # Process each stack
         for stack_identifier in stacks_to_process:
@@ -313,7 +377,7 @@ async def _process_single_file(session: Session, file: File, user_id: str):
                     # Remove the stack from the stacks_to_process list
                     stacks_to_process = [stack for stack in stacks_to_process if stack != stack_identifier]
                     file.stacks_to_process = json.dumps(stacks_to_process)
-                    session.commit()
+                    file_manager_db_session.commit()
                     continue
 
                 logger.info(f"Processing stack {stack_identifier} for file {file.path}")
@@ -385,12 +449,10 @@ async def _process_single_file(session: Session, file: File, user_id: str):
                     document.doc_id = f"{original_doc_id}_{stack_identifier}"
 
                     # Get the embedding settings for this datasource
-                    with get_settings_db_session(user_id) as settings_db_session:
-                        embedding_settings_response = get_setting(settings_db_session, datasource.embedding_setting_identifier)
+                    embedding_settings_response = get_setting(settings_db_session, datasource.embedding_setting_identifier)
 
                     # Get the transformations stack
-                    with get_processing_stacks_db_session(user_id, datasource.identifier) as processing_stacks_db_session:
-                        transformations = get_transformations_for_stack(processing_stacks_db_session, stack_identifier, datasource, file_response, embedding_settings_response)
+                    transformations = get_transformations_for_stack(processing_stacks_db_session, stack_identifier, datasource, file_response, embedding_settings_response)
 
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess
@@ -401,7 +463,7 @@ async def _process_single_file(session: Session, file: File, user_id: str):
                     file_ref_doc_ids.append(document.doc_id)
                     # Update the file in the database
                     file.ref_doc_ids = json.dumps(file_ref_doc_ids)
-                    session.commit()
+                    file_manager_db_session.commit()
 
                     # TODO : Make the HierarchicalNodeParser work with the ingestion pipeline
                     #if transformations_stack_name == "hierarchical":
@@ -453,13 +515,13 @@ async def _process_single_file(session: Session, file: File, user_id: str):
                     stacks_to_process = [stack for stack in stacks_to_process if stack != stack_identifier]
                     file.stacks_to_process = json.dumps(stacks_to_process)
 
-                session.commit()
+                file_manager_db_session.commit()
 
             except Exception as e:
-                session.rollback()
+                file_manager_db_session.rollback()
                 # try to delete the processing stack from llama index as it failed to try to avoid partially processed states
                 try:
-                    delete_file_processing_stack_from_llama_index(file_manager_session=session, user_id=user_id, fs_path=file.path, processing_stack_identifier=stack_identifier)
+                    delete_file_processing_stack_from_llama_index(file_manager_session=file_manager_db_session, user_id=user_id, fs_path=file.path, processing_stack_identifier=stack_identifier)
                 except Exception as e:
                     logger.error(f"Failed to delete erroring file stack {file.path} from stores: {str(e)}")
                 # Add the stack to the stacks_to_process list as it failed to process and if we retry to process the file we want it there
@@ -468,14 +530,14 @@ async def _process_single_file(session: Session, file: File, user_id: str):
                     stacks_to_process.append(stack_identifier)
                     file.stacks_to_process = json.dumps(stacks_to_process)
                 file.error_message = str(e)
-                session.commit()
+                file_manager_db_session.commit()
                 logger.error(f"Failed to process stack {stack_identifier} for file {file.path}, marking file status as error and letting the stack in stacks_to_process: {str(e)}")
                 raise
         
         # All stacks are processed, update status to completed
         file.status = FileStatus.COMPLETED
         file.processing_started_at = datetime.now()
-        session.commit()
+        file_manager_db_session.commit()
 
         logger.info(f"Processed file '{file.path}' for user '{user_id}'")
 
@@ -484,104 +546,99 @@ async def _process_single_file(session: Session, file: File, user_id: str):
         try:
             file.status = FileStatus.ERROR
             file.error_message = str(e)
-            session.commit()
+            file_manager_db_session.commit()
         except Exception as e:
-            session.rollback()
+            file_manager_db_session.rollback()
             logger.error(f"Failed to update file status for {file.path}: {str(e)}")
         raise
 
-def start_processing_if_needed_and_get_queue_status(session: Session, user_id: str) -> ProcessingStatusResponse:
-    """Start processing and get the current status of the generation queue"""
-    try:
-        if should_start_processing(session):
-            logger.info(f"Starting processing thread for user {user_id}")
-            start_processing_thread(session, user_id)
-        return get_queue_status(session)
-    except Exception as e:
-        logger.error(f"Failed to start processing and get queue status: {str(e)}")
-        raise
-
-def get_queue_status(session: Session) -> ProcessingStatusResponse:
+def get_queue_status(user_id: str) -> ProcessingStatusResponse:
     """Get the current status of the generation queue"""
     try:
-        queued_files = session.query(File).filter(File.status == FileStatus.QUEUED).all()
-        processing_files = session.query(File).filter(File.status == FileStatus.PROCESSING).all()
-
         processing_status_response = ProcessingStatusResponse(
-            queued_count=len(queued_files),
+            queued_count=0,
             queued_items=[],
-            processing_count=len(processing_files),
+            processing_count=0,
             processing_items=[]
         )
 
-        for file in queued_files:
-            file_queued_stacks : List[str] = []
-            for stack in json.loads(file.stacks_to_process):
-                if stack not in file_queued_stacks:
-                    file_queued_stacks.append(stack)
-            processing_status_response.queued_items.append(
-                ItemProcessingStatusResponse(
-                    original_path=file.original_path,
-                    name=file.name,
-                    queued_stacks=file_queued_stacks,
-                    status=file.status.value
-                )
-            )
-        
-        for file in processing_files:
-            file_queued_stacks : List[str] = []
-            for stack in json.loads(file.stacks_to_process):
-                if stack not in file_queued_stacks:
-                    file_queued_stacks.append(stack)
-            processing_status_response.processing_items.append(
-                ItemProcessingStatusResponse(
-                    original_path=file.original_path,
-                    name=file.name,
-                    queued_stacks=file_queued_stacks,
-                    status=file.status.value
-                )
-            )
+        file_manager_db_sessions = users_file_manager_db_sessions.get(user_id, {})
+        if not file_manager_db_sessions:
+            # Convert to dict before returning
+            return processing_status_response.model_dump()
 
-        return processing_status_response
+        for file_manager_db_session in file_manager_db_sessions.values():
+            queued_files = file_manager_db_session.query(File).filter(File.status == FileStatus.QUEUED).all()
+            processing_files = file_manager_db_session.query(File).filter(File.status == FileStatus.PROCESSING).all()
+
+            for file in queued_files:
+                file_queued_stacks : List[str] = []
+                for stack in json.loads(file.stacks_to_process):
+                    if stack not in file_queued_stacks:
+                        file_queued_stacks.append(stack)
+                processing_status_response.queued_items.append(
+                    ItemProcessingStatusResponse(
+                        original_path=file.original_path,
+                        name=file.name,
+                        queued_stacks=file_queued_stacks,
+                        status=file.status.value
+                    )
+                )
+            
+            for file in processing_files:
+                file_queued_stacks : List[str] = []
+                for stack in json.loads(file.stacks_to_process):
+                    if stack not in file_queued_stacks:
+                        file_queued_stacks.append(stack)
+                processing_status_response.processing_items.append(
+                    ItemProcessingStatusResponse(
+                        original_path=file.original_path,
+                        name=file.name,
+                        queued_stacks=file_queued_stacks,
+                        status=file.status.value
+                    )
+                )
+
+        processing_status_response.queued_count = len(processing_status_response.queued_items)
+        processing_status_response.processing_count = len(processing_status_response.processing_items)
+
+        # Convert to dict before returning
+        return processing_status_response.model_dump()
 
     except Exception as e:
         logger.error(f"Failed to get queue status: {str(e)}")
         raise
 
-def should_start_processing(session: Session) -> bool:
+def should_start_processing(user_id: str) -> bool:
     """Check if the processing should start"""
     
     try:
-        # Try to get the oldest file that has been processing for the longest time
-        oldest_processing_file = session.query(File).filter(
-            File.status == FileStatus.PROCESSING
-        ).order_by(
-            File.processing_started_at.asc()
-        ).first()
+        for file_manager_db_session in users_file_manager_db_sessions.get(user_id, {}).values():
+            # Try to get the oldest file that has been processing for the longest time
+            oldest_processing_file = file_manager_db_session.query(File).filter(
+                File.status == FileStatus.PROCESSING
+            ).order_by(
+                File.processing_started_at.asc()
+            ).first()
 
-        # If the file has been processing for more than 10 minutes, start start the processing because it is probably stuck/ the app has restarted and processing background task has not been restarted
-        if oldest_processing_file and oldest_processing_file.processing_started_at < datetime.now() - timedelta(seconds=60 * 15):
-            # A processing is probably still running
-            # TODO Make this better
-            # See if there are any files that are queued
-            queued_files = session.query(File).filter(
-                File.status == FileStatus.QUEUED
-            ).first()
-            if queued_files:
-                return True
-            return False
-        else:
-            # No file currently processing, see if there are any files that are queued
-            queued_files = session.query(File).filter(
-                File.status == FileStatus.QUEUED
-            ).first()
-            if queued_files:
-                return True
-            return False
+            # If the file has been processing for more than 10 minutes, start start the processing because it is probably stuck/ the app has restarted and processing background task has not been restarted
+            if oldest_processing_file and oldest_processing_file.processing_started_at < datetime.now() - timedelta(seconds=60 * 15):
+                # A processing is probably still running
+                # TODO Make this better
+                # See if there are any files that are queued
+                queued_files = file_manager_db_session.query(File).filter(
+                    File.status == FileStatus.QUEUED
+                ).first()
+                if queued_files:
+                    return True
+            else:
+                # No file currently processing, see if there are any files that are queued
+                queued_files = file_manager_db_session.query(File).filter(
+                    File.status == FileStatus.QUEUED
+                ).first()
+                if queued_files:
+                    return True
         
-
-
-
         return False
     
     except Exception as e:

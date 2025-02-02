@@ -12,7 +12,7 @@ def get_settings_db_session(user_id: str):
     Get a session for the settings database
     """
     db_path = Path(get_user_data_dir(user_id), "settings.db")
-    script_location = Path(__file__).parent / "database"
+    script_location = Path(__file__).parent
     from app.settings.database.models import Base
     models_declarative_base_class = Base
     with get_session(str(db_path), str(script_location), models_declarative_base_class) as session:

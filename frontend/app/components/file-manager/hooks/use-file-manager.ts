@@ -1,10 +1,13 @@
-import { DatasourceResponse, FileInfoResponse, FolderInfoResponse } from '@/app/client';
+import {
+   DatasourceResponse,
+   FileInfoResponse,
+   FolderInfoResponse,
+   getDatasourceRouteApiDatasourcesDatasourceNameGet,
+   getFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGet,
+   getAllDatasourcesRouteApiDatasourcesGet
+} from '@/app/client';
 import { useCallback, useEffect, useState } from 'react';
 import { useApiClient } from '@/app/lib/api-client';
-import {
-  getDatasourcesRouteApiDatasourcesGet,
-  getFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGet
-} from '@/app/client';
 import { useUser } from '@/app/contexts/user-context';
 import { encodePathSafe } from '../utils/path-encoding';
 
@@ -23,36 +26,37 @@ export function useFileManager() {
     try {
       setLoading(true);
       
-      if (!path) {
+      const pathParts = path?.split('/').filter(Boolean);
+      if ( !path || !pathParts || pathParts.length === 0) {
         // Only fetch datasources for root view
-        const datasources = await getDatasourcesRouteApiDatasourcesGet({ client, query: { user_id: userId } });
+        const datasources = await getAllDatasourcesRouteApiDatasourcesGet({ client, query: { user_id: userId } });
         setFiles([]);
         setFolders([]);
         setDatasources(datasources.data || []);
         setCurrentDatasource(undefined);
       } else {
+
+        // Set current datasource
+        const datasourceName = pathParts[0];
+        const datasource = await getDatasourceRouteApiDatasourcesDatasourceNameGet(
+          {
+            client,
+            path: { datasource_name: datasourceName },
+            query: { user_id: userId }
+          });
+        setCurrentDatasource(datasource.data);
+        
         // Fetch folder contents and datasources
         const encodedPath = encodePathSafe(path);
-        const [folderData, datasources] = await Promise.all([
-          getFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGet({
-            client,
-            path: { encoded_original_path: encodedPath },
-            query: { include_child_folders_files_recursively: false, user_id: userId }
-          }),
-          getDatasourcesRouteApiDatasourcesGet({ client, query: { user_id: userId } })
-        ]);
+        const folderData = await getFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGet({
+          client,
+          path: { encoded_original_path: encodedPath, datasource_name: datasourceName },
+          query: { include_child_folders_files_recursively: false, user_id: userId }
+        });
 
         setFiles(folderData.data?.child_files || []);
         setFolders(folderData.data?.child_folders || []);
-        setDatasources(datasources.data || []);
 
-        // Set current datasource
-        const pathParts = path.split('/').filter(Boolean);
-        if (pathParts.length > 0) {
-          const datasourceIdentifier = pathParts[0];
-          const currentDatasource = datasources.data?.find(d => d.identifier === datasourceIdentifier);
-          setCurrentDatasource(currentDatasource);
-        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch contents');

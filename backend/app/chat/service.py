@@ -30,7 +30,8 @@ logger = logging.getLogger("uvicorn")
 def chat_streaming_response(
     data: ChatData,
     chat_db_session: Session,
-    file_manager_session: Session,
+    settings_db_session: Session,
+    datasources_db_session: Session,
     request: Request,
     background_tasks: BackgroundTasks,
     user_id: str,
@@ -66,16 +67,17 @@ def chat_streaming_response(
     event_handler = EventCallbackHandler()
 
     # Get the app settings
-    app_setting_response : SettingResponse = get_setting(file_manager_session, "app")
+    app_setting_response : SettingResponse = get_setting(settings_db_session=settings_db_session, identifier="app")
     app_setting : AppSettings = AppSettings.model_validate_json(app_setting_response.value_json)
     # Get the llm provider from the settings
-    llm_provider_setting : SettingResponse = get_setting(file_manager_session, app_setting.llm_setting_identifier)
+    llm_provider_setting : SettingResponse = get_setting(settings_db_session=settings_db_session, identifier=app_setting.llm_setting_identifier)
     # Init the llm from the app settings
     llm = init_llm(llm_provider_setting.schema_identifier, llm_provider_setting.value_json, app_setting_response.value_json)
 
     # Create the chat engine
     agent_runner = get_chat_engine(
-        session=file_manager_session,
+        datasources_db_session=datasources_db_session,
+        settings_db_session=settings_db_session,
         user_id=user_id,
         llm=llm,
         max_iterations=app_setting.max_iterations,
@@ -108,7 +110,8 @@ def chat_streaming_response(
 async def chat_request_response(
     data: ChatData,
     chat_db_session: Session,
-    file_manager_session: Session,
+    settings_db_session: Session,
+    datasources_db_session: Session,
     user_id: str,
   ) -> ChatData:
   """
@@ -126,7 +129,8 @@ async def chat_request_response(
     params = data.chat_engine_params or {}
     # Create the chat engine
     chat_engine = get_chat_engine(
-        session=file_manager_session,
+        datasources_db_session=datasources_db_session,
+        settings_db_session=settings_db_session,
         user_id=user_id,
         filters=filters,
         params=params

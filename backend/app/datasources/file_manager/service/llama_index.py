@@ -84,7 +84,7 @@ def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocument
         raise
 
 def create_query_tool(
-    file_manager_session: Session, 
+    settings_db_session: Session, 
     datasources_db_session: Session,
     datasource_identifier: str,
     vector_store: ChromaVectorStore,
@@ -107,7 +107,7 @@ def create_query_tool(
         )
 
         # Get the app settings
-        app_settings_response : SettingResponse = get_setting(file_manager_session, "app")
+        app_settings_response : SettingResponse = get_setting(settings_db_session=settings_db_session, identifier="app")
         app_settings : AppSettings = AppSettings.model_validate_json(app_settings_response.value_json)
     
         retriever = VectorIndexRetriever(

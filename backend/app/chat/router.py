@@ -6,9 +6,11 @@ from app.chat.schemas import (
     ChatData
 )
 from app.api.utils import get_user_id
-from app.database.utils.utils import get_file_manager_db_session
-from app.datasources.chats.utils import get_datasources_chats_db_session
 from app.chat.service import chat_streaming_response, chat_request_response
+from app.settings.database.session import get_settings_db_session
+from app.datasources.database.session import get_datasources_db_session
+from app.datasources.chats.database.session import get_datasources_chats_db_session
+
 chat_router = r = APIRouter()
 
 logger = logging.getLogger("uvicorn")
@@ -22,7 +24,8 @@ async def chat_streaming_route(
     background_tasks: BackgroundTasks,
     datasource_identifier: str = "Chats",
     user_id: str = Depends(get_user_id),
-    file_manager_session: Session = Depends(get_file_manager_db_session),
+    settings_db_session: Session = Depends(get_settings_db_session),
+    datasources_db_session: Session = Depends(get_datasources_db_session),
     chat_db_session: Session = Depends(get_datasources_chats_db_session),
 ):
     """
@@ -33,7 +36,8 @@ async def chat_streaming_route(
         logger.info(f"Chat streaming route called for user {user_id}")
         return chat_streaming_response(
             data=data,
-            file_manager_session=file_manager_session,
+            settings_db_session=settings_db_session,
+            datasources_db_session=datasources_db_session,
             request=request,
             background_tasks=background_tasks,
             user_id=user_id,
@@ -51,7 +55,8 @@ async def chat_request_route(
     data: ChatData,
     user_id: str = Depends(get_user_id),
     datasource_identifier: str = "Chats",
-    file_manager_session: Session = Depends(get_file_manager_db_session),
+    settings_db_session: Session = Depends(get_settings_db_session),
+    datasources_db_session: Session = Depends(get_datasources_db_session),
     chat_db_session: Session = Depends(get_datasources_chats_db_session),
 ) -> ChatData:
     """
@@ -63,7 +68,8 @@ async def chat_request_route(
         return await chat_request_response(
             data=data,
             chat_db_session=chat_db_session,
-            file_manager_session=file_manager_session,
+            settings_db_session=settings_db_session,
+            datasources_db_session=datasources_db_session,
             user_id=user_id
         )
     except Exception as e:

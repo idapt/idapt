@@ -3,7 +3,6 @@ from typing import Optional, Literal
 from app.datasources.database.models import DatasourceType
 
 class DatasourceCreate(BaseModel):
-    name: str
     type: Literal[DatasourceType.FILES.name, DatasourceType.CHATS.name, DatasourceType.WINDOWS_SYNC.name]
     description: Optional[str] = None
     settings_json: str = "{}"

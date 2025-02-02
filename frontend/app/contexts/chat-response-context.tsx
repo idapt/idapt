@@ -6,8 +6,8 @@ import { ChatResponse } from '@/app/client/types.gen';
 import useSWR, { mutate } from 'swr';
 import { fetcher, generateUUID } from '@/app/lib/utils';
 import { useUser } from './user-context';
-import { createChatRouteApiDatasourcesChatsPost, deleteChatRouteApiDatasourcesChatsChatUuidDelete } from '@/app/client/sdk.gen';
-import { getChatRouteApiDatasourcesChatsChatUuidGet, getAllChatsRouteApiDatasourcesChatsGet } from '@/app/client/sdk.gen';
+import { createChatRouteApiDatasourcesDatasourceNameChatsPost, deleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDelete } from '@/app/client/sdk.gen';
+import { getChatRouteApiDatasourcesDatasourceNameChatsChatUuidGet, getAllChatsRouteApiDatasourcesDatasourceNameChatsGet } from '@/app/client/sdk.gen';
 import { error } from 'console';
 
 interface ChatContextType {
@@ -47,13 +47,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const tryToSetCurrentChat = async (uuid: string) => {
     try {
       // Try to get the chat with this id
-      const chat = await getChatRouteApiDatasourcesChatsChatUuidGet({
+      const chat = await getChatRouteApiDatasourcesDatasourceNameChatsChatUuidGet({
         path: {
-        chat_uuid: uuid
+        chat_uuid: uuid,
+        datasource_name: "Chats"
         },
         query: {
           user_id: userId,
-          datasource_identifier: "Chats",
           include_messages: true,
           create_if_not_found: true,
           update_last_opened_at: true
@@ -76,10 +76,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const refreshChats = async () => {
     try {
       //await mutate(`/api/datasources/chats?user_id=${userId}`);
-      const response = await getAllChatsRouteApiDatasourcesChatsGet({
+      const response = await getAllChatsRouteApiDatasourcesDatasourceNameChatsGet({
+        path: {
+          datasource_name: "Chats"
+        },
         query: {
           user_id: userId,
-          datasource_identifier: "Chats"
         }
       });
       setChats(response.data);
@@ -96,13 +98,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         // Create a new chat and set it as the current chat before deleting the current one
         await tryToSetCurrentChat(generateUUID());
       }
-      await deleteChatRouteApiDatasourcesChatsChatUuidDelete({
+      await deleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDelete({
         path: {
-          chat_uuid: uuid
+          chat_uuid: uuid,
+          datasource_name: "Chats"
       },
         query: {
           user_id: userId,
-          datasource_identifier: "Chats"
         }
       });
       await refreshChats();

@@ -17,24 +17,39 @@ from app.datasources.file_manager.schemas import FileUploadItem, FileDownloadRes
 from app.datasources.file_manager.database.models import FileStatus, File, Folder
 from app.datasources.database.models import Datasource
 from app.datasources.file_manager.utils import validate_path, preprocess_base64_file
+from app.api.user_path import get_user_data_dir
 
 import logging
 
 logger = logging.getLogger("uvicorn")
 
-async def upload_file(file_manager_session: Session, datasources_db_session: Session, item: FileUploadItem, user_id: str, datasource_name: str) -> FileInfoResponse:
+def initialize_file_manager_db(file_manager_session: Session, user_id: str, datasource_name: str):
+    # Create the parent directories if they don't exist
+    #db_path = Path(get_user_data_dir(user_id), datasource_name, "file_manager.db")    
+    # Create the files directory for this datasource
+    #files_dir = Path(get_user_data_dir(user_id), datasource_name, "files")
+    #files_dir.mkdir(parents=True, exist_ok=True)
+
+    # If the root folder for this datasource do not exist in the file manager db, create it
+    root_folder = file_manager_session.query(Folder).filter(Folder.original_path == datasource_name).first()
+    if not root_folder:
+        fs_path = Path(get_user_data_dir(user_id)) / datasource_name
+        #get_new_fs_path(datasource_name, file_manager_session, last_path_part_is_file=False)
+        folder = Folder(
+            name=datasource_name,
+            path=str(fs_path),
+            original_path=datasource_name,
+            parent_id=None
+        )
+        file_manager_session.add(folder)
+        file_manager_session.commit()
+        logger.info(f"Initialized file manager db for datasource {datasource_name} with root folder {folder.path}")
+
+async def upload_file(file_manager_session: Session, item: FileUploadItem, user_id: str) -> FileInfoResponse:
     try:
 
         # Validate path and raise if invalid
         validate_path(item.original_path)
-
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
 
         # Validate file content
         if not item.base64_content:
@@ -159,19 +174,11 @@ async def upload_file(file_manager_session: Session, datasources_db_session: Ses
             detail="An unexpected error occurred during file upload"
         )
     
-async def get_file_info(file_manager_session: Session, datasources_db_session: Session, user_id: str, original_path: str, datasource_name: str, include_content: bool = False) -> FileInfoResponse:
+async def get_file_info(file_manager_session: Session, user_id: str, original_path: str, include_content: bool = False) -> FileInfoResponse:
     try:
         # Validate path
         validate_path(original_path)
-        
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
-        
+
         # Get file from database
         file = file_manager_session.query(File).filter(File.original_path == original_path).first()
         if not file:
@@ -204,21 +211,13 @@ async def get_file_info(file_manager_session: Session, datasources_db_session: S
         logger.error(f"Error getting file info: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get file info")
     
-def get_folder_info(file_manager_session: Session, datasources_db_session: Session, user_id: str, original_path: str, datasource_name: str, include_child_folders_files_recursively: bool = False) -> FolderInfoResponse:
+def get_folder_info(file_manager_session: Session, user_id: str, original_path: str, include_child_folders_files_recursively: bool = False) -> FolderInfoResponse:
     try:
         logger.info(f"Getting folder contents for path: {original_path} for user {user_id}")
         
         # Validate path
         validate_path(original_path)
 
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
-        
         # Convert it to the fs path used by the backend
         fs_path = get_existing_fs_path_from_db(file_manager_session=file_manager_session, original_path=original_path)
 
@@ -280,19 +279,11 @@ def get_folder_info(file_manager_session: Session, datasources_db_session: Sessi
         logger.error(f"Error getting folder content: {str(e)}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred while getting folder content")
 
-async def download_file(file_manager_session: Session, datasources_db_session: Session, original_path: str, datasource_name: str) -> FileDownloadResponse:
+async def download_file(file_manager_session: Session, user_id: str, original_path: str) -> FileDownloadResponse:
     try:
         # Validate path and raise if invalid
         validate_path(original_path)
         
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
-
         # Get file from database
         file = file_manager_session.query(File).filter(File.original_path == original_path).first()
         if not file:
@@ -316,7 +307,7 @@ async def download_file(file_manager_session: Session, datasources_db_session: S
         logger.error(f"Error downloading file: {str(e)}")
         raise
 
-async def delete_item(file_manager_session: Session, datasources_db_session: Session, user_id: str, original_path: str, datasource_name: str):
+async def delete_item(file_manager_session: Session, user_id: str, original_path: str):
     """ 
     Delete the item at the given original path 
     If it's a file, delete it
@@ -326,14 +317,6 @@ async def delete_item(file_manager_session: Session, datasources_db_session: Ses
         # Validate path and raise if invalid
         validate_path(original_path)
 
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
-        
         # Convert it to the fs path used by the backend
         fs_path = get_existing_fs_path_from_db(file_manager_session=file_manager_session, original_path=original_path)
         
@@ -355,17 +338,10 @@ async def delete_item(file_manager_session: Session, datasources_db_session: Ses
         logger.error(f"Error deleting file from database: {str(e)}")
         raise e
 
-async def delete_file(file_manager_session: Session, datasources_db_session: Session, user_id: str, fs_path: str, datasource_name: str):
+async def delete_file(file_manager_session: Session, user_id: str, fs_path: str):
     try:
-        logger.info(f"Deleting file {fs_path} for user {user_id} and datasource {datasource_name}")
+        logger.info(f"Deleting file {fs_path} for user {user_id}")
 
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
         
         file = file_manager_session.query(File).filter(File.path == fs_path).first()
         if not file:
@@ -390,18 +366,11 @@ async def delete_file(file_manager_session: Session, datasources_db_session: Ses
         logger.error(f"Error deleting file: {str(e)}")
         raise
 
-async def delete_folder(file_manager_session: Session, datasources_db_session: Session, user_id: str, fs_path: str, datasource_name: str):
+async def delete_folder(file_manager_session: Session, user_id: str, fs_path: str):
     # TODO Make more robust to avoid partial deletion by implementing a trash folder and moving the files to it and restoring them in case of an error
     try:
-        logger.info(f"Deleting folder: {fs_path} for user {user_id} and datasource {datasource_name}")
+        logger.info(f"Deleting folder: {fs_path} for user {user_id}")
 
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
 
         folder = file_manager_session.query(Folder).filter(Folder.path == fs_path).first()
         if not folder:
@@ -458,15 +427,8 @@ async def delete_folder(file_manager_session: Session, datasources_db_session: S
         raise HTTPException(status_code=500, detail=str(e))
 
 # Unused
-async def rename_file(file_manager_session: Session, datasources_db_session: Session, user_id: str, fs_path: str, new_name: str, datasource_name: str):
+async def rename_file(file_manager_session: Session, user_id: str, fs_path: str, new_name: str):
     try:
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
 
         file = file_manager_session.query(File).filter(File.path == fs_path).first()
         if not file:
@@ -489,18 +451,11 @@ async def rename_file(file_manager_session: Session, datasources_db_session: Ses
         logger.error(f"Error renaming file: {str(e)}")
         raise
 
-async def download_folder(file_manager_session: Session, datasources_db_session: Session, original_path: str, datasource_name: str) -> FolderDownloadResponse:
+async def download_folder(file_manager_session: Session, user_id: str, original_path: str) -> FolderDownloadResponse:
     try:
         # Validate path and raise if invalid
         validate_path(original_path)
-        
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
+
         # Convert it to the fs path used by the backend
         fs_path = get_existing_fs_path_from_db(file_manager_session=file_manager_session, original_path=original_path)
         # Get folder from database
@@ -545,9 +500,7 @@ async def download_folder(file_manager_session: Session, datasources_db_session:
 
 def update_file_processing_status(
         file_manager_session: Session,
-        datasources_db_session: Session,
         fs_path: str,
-        datasource_name: str,
         status: str,
         stacks_to_process: List[str] | None = None,
         stack_being_processed: str | None = None,
@@ -559,13 +512,6 @@ def update_file_processing_status(
     Update the file processing status and related fields in the database based on the parameters given
     """
     try:
-        # Check if datasource exists
-        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
-        if not datasource:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
-            )
 
         # Get the file from the database
         file = file_manager_session.query(File).filter(File.path == fs_path).first()

@@ -12,7 +12,7 @@ interface ProcessingStacksMenuProps {
 
 export function ProcessingStacksMenu({ path, isFolder = false, onOpenChange }: ProcessingStacksMenuProps) {
   const stacks = useProcessingStacksState(state => state.stacks);
-  const { processWithStack, processFolder } = useProcessing();
+  const { processWithStack } = useProcessing();
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleProcess = useCallback(async (stackId: string) => {
@@ -20,18 +20,14 @@ export function ProcessingStacksMenu({ path, isFolder = false, onOpenChange }: P
     
     try {
       setIsProcessing(true);
-      if (isFolder) {
-        await processFolder(path, stackId);
-      } else {
-        await processWithStack([path], stackId);
-      }
+      await processWithStack([path], stackId);
       onOpenChange?.(false);
     } catch (error) {
       console.error('Error processing item:', error);
     } finally {
       setIsProcessing(false);
     }
-  }, [isFolder, path, processFolder, processWithStack, onOpenChange, isProcessing]);
+  }, [path, processWithStack, onOpenChange, isProcessing]);
 
   if (stacks.length === 0) return null;
 

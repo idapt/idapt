@@ -36,9 +36,9 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
   //const [settings, setSettings] = useState( || '');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { getDatasource, getAllDatasources, deleteDatasource, createDatasource, updateDatasource } = useDatasources();
+  const { deleteDatasource, updateDatasource } = useDatasources();
   const { stacks } = useProcessingStacks();
-  const { processFolder, processWithStack } = useProcessing();
+  const { processWithStack } = useProcessing();
 
   useEffect(() => {
     setDescription(datasource.description || '');
@@ -60,7 +60,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
     try {
       setError(null);
       setIsSaving(true);
-      await updateDatasource(datasource.identifier, {
+      await updateDatasource(datasource.name, {
         description,
         embedding_setting_identifier: embeddingSettingIdentifier
       });
@@ -76,7 +76,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
 
   const handleDelete = async () => {
     if (confirm(`Are you sure you want to delete datasource "${datasource.name}"?`)) {
-      await deleteDatasource(datasource.identifier);
+      await deleteDatasource(datasource.name);
       onRefresh?.();
     }
   };
@@ -109,7 +109,7 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
                 className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
                 key={stack.identifier}
                 onSelect={() => {
-                  processFolder(datasource.name, stack.identifier);
+                  processWithStack([datasource.name], stack.identifier);
                 }}
               >
                 <Layers className="h-4 w-4 mr-2" />

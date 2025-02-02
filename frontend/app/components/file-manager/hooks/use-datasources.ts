@@ -2,11 +2,11 @@ import { useApiClient } from '@/app/lib/api-client';
 import { DatasourceCreate, DatasourceUpdate } from '@/app/client';
 import { useUser } from '@/app/contexts/user-context';
 import { 
-  getDatasourcesRouteApiDatasourcesGet,
-  getDatasourceRouteApiDatasourcesIdentifierGet,
-  deleteDatasourceRouteApiDatasourcesIdentifierDelete,
-  createDatasourceRouteApiDatasourcesPost,
-  updateDatasourceRouteApiDatasourcesIdentifierPatch
+  getAllDatasourcesRouteApiDatasourcesGet,
+  getDatasourceRouteApiDatasourcesDatasourceNameGet,
+  deleteDatasourceRouteApiDatasourcesDatasourceNameDelete,
+  createDatasourceRouteApiDatasourcesDatasourceNamePost,
+  updateDatasourceRouteApiDatasourcesDatasourceNamePatch
 } from '@/app/client';
 
 export const useDatasources = () => {
@@ -14,27 +14,27 @@ export const useDatasources = () => {
   const { userId } = useUser();
 
   const getAllDatasources = async () => {
-    const response = await getDatasourcesRouteApiDatasourcesGet({
+    const response = await getAllDatasourcesRouteApiDatasourcesGet({
       client,
       query: { user_id: userId }
     });
     return response;
   };
 
-  const getDatasource = async (identifier: string) => {
-    const response = await getDatasourceRouteApiDatasourcesIdentifierGet({
+  const getDatasource = async (datasource_name: string) => {
+    const response = await getDatasourceRouteApiDatasourcesDatasourceNameGet({
       client,
-      path: { identifier },
+      path: { datasource_name },
       query: { user_id: userId }
     });
     return response;
   };
 
-  const deleteDatasource = async (identifier: string) => {
+  const deleteDatasource = async (datasource_name: string) => {
     try {
-      await deleteDatasourceRouteApiDatasourcesIdentifierDelete({
+      await deleteDatasourceRouteApiDatasourcesDatasourceNameDelete({
         client,
-        path: { identifier },
+        path: { datasource_name },
         query: { user_id: userId }
       });
     } catch (error) {
@@ -43,18 +43,19 @@ export const useDatasources = () => {
     }
   };
 
-  const createDatasource = async (datasourceCreate: DatasourceCreate) => {
-    await createDatasourceRouteApiDatasourcesPost({
+  const createDatasource = async (datasource_name: string, datasourceCreate: DatasourceCreate) => {
+    await createDatasourceRouteApiDatasourcesDatasourceNamePost({
       client,
+      path: { datasource_name },
       query: { user_id: userId },
       body: datasourceCreate
     });
   };
 
-  const updateDatasource = async (identifier: string, datasourceUpdate: DatasourceUpdate) => {
-    await updateDatasourceRouteApiDatasourcesIdentifierPatch({
+  const updateDatasource = async (datasource_name: string, datasourceUpdate: DatasourceUpdate) => {
+    await updateDatasourceRouteApiDatasourcesDatasourceNamePatch({
       client,
-      path: { identifier },
+      path: { datasource_name },
       query: { user_id: userId },
       body: datasourceUpdate
     });

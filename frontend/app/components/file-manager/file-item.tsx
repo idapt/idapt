@@ -18,10 +18,10 @@ import { useUser } from "@/app/contexts/user-context";
 import { useProcessingStacks } from '@/app/components/processing/hooks/use-processing-stacks';
 import { useProcessing } from '@/app/components/file-manager/hooks/use-processing';
 import {
-  downloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGet,
-  downloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGet,
-  deleteRouteApiDatasourcesFileManagerEncodedOriginalPathDelete,
-  deleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDelete
+  downloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGet,
+  downloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGet,
+  deleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDelete,
+  deleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDelete
   // renameFileRouteApiFileManagerFilePathRenamePost,
   // renameFolderRouteApiFileManagerFolderPathRenamePost
 } from '@/app/client';
@@ -62,7 +62,7 @@ export function FileItem({
   viewMode = 'list'
 }: FileItemProps) {
   const { stacks } = useProcessingStacks();
-  const { processWithStack, processFolder } = useProcessing();
+  const { processWithStack } = useProcessing();
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(name);
   const [showDetails, setShowDetails] = useState(false);
@@ -123,10 +123,14 @@ export function FileItem({
     if (confirm(`Are you sure you want to delete ${name}?`)) {
       try {
         const deletionId = startDeletion(name, path);
+        const datasourceName = path.split('/')[0];
+        if (!datasourceName) {
+          throw new Error('Failed to get datasource name');
+        }
         const encodedPath = encodePathSafe(path);
-        const response = await deleteRouteApiDatasourcesFileManagerEncodedOriginalPathDelete({
+        const response = await deleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDelete({
           client,
-          path: { encoded_original_path: encodedPath },
+          path: { encoded_original_path: encodedPath, datasource_name: datasourceName },
           query: {
             user_id: userId
           }
@@ -182,10 +186,14 @@ export function FileItem({
     
     if (confirm(`Are you sure you want to delete all processed data for ${name}?`)) {
       try {
+        const datasourceName = path.split('/')[0];
+        if (!datasourceName) {
+          throw new Error('Failed to get datasource name');
+        }
         const encodedPath = encodePathSafe(path);
-        const response = await deleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDelete({
+        const response = await deleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDelete({
           client,
-          path: { encoded_original_path: encodedPath },
+          path: { encoded_original_path: encodedPath, datasource_name: datasourceName },
           query: {
             user_id: userId
           }
@@ -252,11 +260,7 @@ export function FileItem({
                 className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
                 key={stack.identifier}
                 onSelect={() => {
-                  if (type === 'folder') {
-                    processFolder(path, stack.identifier);
-                  } else {
-                    processWithStack([path], stack.identifier);
-                  }
+                  processWithStack([path], stack.identifier);
                 }}
               >
                 <Layers className="h-4 w-4 mr-2" />

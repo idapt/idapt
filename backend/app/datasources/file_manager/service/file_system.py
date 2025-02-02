@@ -216,7 +216,7 @@ def get_new_fs_path(original_path: str, file_manager_session: Session, last_path
                 parent_id=parent_folder.id
             )
             file_manager_session.add(folder)
-            file_manager_session.flush()
+            file_manager_session.commit()
 
             # We are at the last item of the path and it is a folder
             if part_index == len(original_path_parts) - 1:

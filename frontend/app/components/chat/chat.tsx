@@ -46,7 +46,7 @@ export function Chat({
     stop,
     reload,
   } = useChat({
-    api: `${backend}/api/chat?user_id=${userId}&datasource_identifier=Chats`,
+    api: `${backend}/api/chat?user_id=${userId}&datasource_name=Chats`,
     headers: {
       "X-User-Id": userId
     },

@@ -21,7 +21,7 @@ export function useSettingsAPI() {
         client,
         query: { user_id: userId }
       });
-      return [];
+      return response.data ?? [];
     } catch (error) {
       console.error('Error fetching settings:', error);
       return [];

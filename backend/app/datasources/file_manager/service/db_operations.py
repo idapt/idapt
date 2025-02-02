@@ -2,40 +2,9 @@ from sqlalchemy.orm import Session
 import logging
 from typing import List, Tuple
 
-from app.api.user_path import get_user_data_dir
 from app.datasources.file_manager.database.models import File, Folder
 
 logger = logging.getLogger("uvicorn")
-    
-def create_default_db_filestructure_if_needed(file_manager_session: Session, user_id: str):
-    """Create the default filestructure in the database if needed"""
-    try:
-        # Check if user folder exists
-        user_folder_fs_path = get_user_data_dir(user_id)
-        user_folder = file_manager_session.query(Folder).filter(Folder.path == user_folder_fs_path).first()
-        if user_folder:
-            return
-        
-        user_folder = Folder(
-            name=user_id,
-            path=user_folder_fs_path,
-            original_path="",
-            parent_id=None
-        )
-        file_manager_session.add(user_folder)
-        file_manager_session.flush()
-        logger.info(f"Created default user folder in database for user {user_id}")
-
-        file_manager_session.commit()
-
-        logger.info("Default folders initialized")
-
-            
-        
-    except Exception as e:
-        file_manager_session.rollback()
-        logger.error(f"Error creating default filestructure: {str(e)}")
-        raise
 
 def delete_db_folder_recursive(file_manager_session: Session, fs_path: str) -> bool:
     """Delete a folder and all its contents from the database"""

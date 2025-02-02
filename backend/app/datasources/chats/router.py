@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.api.utils import get_user_id
 from app.datasources.chats.service import get_all_chats, get_chat, add_message_to_chat, create_chat, update_chat_title, delete_chat
-from app.datasources.chats.utils import get_datasources_chats_db_session
+from app.datasources.chats.database.session import get_datasources_chats_db_session
+from app.datasources.dependencies import validate_datasource_and_get_identifier
 from app.datasources.chats.schemas import ChatResponse, MessageResponse, MessageCreate
 from typing import List
 
@@ -19,9 +20,10 @@ chats_router = r = APIRouter()
     summary="Get all chats"
 )
 async def get_all_chats_route(
+    datasource_name: str,
     include_messages: bool = False,
-    datasource_identifier: str = "Chats",
     user_id: str = Depends(get_user_id),
+    datasource_identifier = Depends(validate_datasource_and_get_identifier),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ):
     try:
@@ -39,11 +41,12 @@ async def get_all_chats_route(
 )
 async def get_chat_route(
     chat_uuid: str,
+    datasource_name: str,
     include_messages: bool = False,
     create_if_not_found: bool = False,
     update_last_opened_at: bool = False,
-    datasource_identifier: str = "Chats",
     user_id: str = Depends(get_user_id),
+    datasource_identifier = Depends(validate_datasource_and_get_identifier),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ) -> ChatResponse:
     try:
@@ -62,12 +65,14 @@ async def get_chat_route(
     summary="Create a chat"
 )
 async def create_chat_route(
-    user_id: str = Depends(get_user_id),
-    datasource_identifier: str = "Chats",
-    chats_session: Session = Depends(get_datasources_chats_db_session),
+    datasource_name: str,
     chat_uuid: str = None,
+    user_id: str = Depends(get_user_id),
+    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    chats_session: Session = Depends(get_datasources_chats_db_session),
 ):
     try:
+        logger.info(f"Creating chat for user {user_id} and datasource {datasource_name}")
         return create_chat(chats_session, uuid=chat_uuid)
     except Exception as e:
         logger.error(f"Error creating chat: {str(e)}")
@@ -79,13 +84,15 @@ async def create_chat_route(
     summary="Add a message to a chat"
 )
 async def add_message_to_chat_route(
+    datasource_name: str,
     chat_uuid: str,
     message: MessageCreate,
     user_id: str = Depends(get_user_id),
-    datasource_identifier: str = "Chats",
+    datasource_identifier = Depends(validate_datasource_and_get_identifier),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ) -> None:
     try:
+        logger.info(f"Adding message to chat {chat_uuid}")
         add_message_to_chat(chats_session, chat_uuid, message)
     except Exception as e:
         logger.error(f"Error adding message to chat {chat_uuid}: {str(e)}")
@@ -97,13 +104,15 @@ async def add_message_to_chat_route(
     summary="Update a chat title"
 )
 async def update_chat_title_route(
+    datasource_name: str,
     chat_uuid: str,
     title: str,
     user_id: str = Depends(get_user_id),
-    datasource_identifier: str = "Chats",
+    datasource_identifier = Depends(validate_datasource_and_get_identifier),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ) -> None:
     try:
+        logger.info(f"Updating chat {chat_uuid} title to {title}")
         return update_chat_title(chats_session, chat_uuid, title)
     except Exception as e:
         logger.error(f"Error updating chat {chat_uuid} title: {str(e)}")
@@ -116,11 +125,13 @@ async def update_chat_title_route(
 )
 async def delete_chat_route(
     chat_uuid: str,
+    datasource_name: str,
     user_id: str = Depends(get_user_id),
-    datasource_identifier: str = "Chats",
+    datasource_identifier = Depends(validate_datasource_and_get_identifier),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ):
     try:
+        logger.info(f"Deleting chat {chat_uuid}")
         delete_chat(chats_session, chat_uuid)
     except Exception as e:
         logger.error(f"Error deleting chat {chat_uuid}: {str(e)}")

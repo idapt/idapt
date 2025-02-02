@@ -113,7 +113,6 @@ export type CreateSettingRequest = {
 };
 
 export type DatasourceCreate = {
-    name: string;
     type: 'FILES' | 'CHATS' | 'WINDOWS_SYNC';
     description?: string | null;
     settings_json?: string;
@@ -365,8 +364,9 @@ export type ChatStreamingRouteApiChatPostData = {
     };
     path?: never;
     query: {
-        datasource_identifier: string;
+        datasource_identifier?: string;
         user_id: string;
+        datasource_name: string;
     };
     url: '/api/chat';
 };
@@ -394,8 +394,9 @@ export type ChatRequestRouteApiChatRequestPostData = {
     };
     path?: never;
     query: {
-        datasource_identifier: string;
+        datasource_identifier?: string;
         user_id: string;
+        datasource_name: string;
     };
     url: '/api/chat/request';
 };
@@ -602,417 +603,427 @@ export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdenti
 
 export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetResponse = GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetResponses[keyof GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetResponses];
 
-export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostData = {
+export type UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostData = {
     body: FileUploadItem;
     headers?: {
         'x-user-id'?: string | null;
     };
-    path?: never;
+    path: {
+        datasource_name: string;
+    };
     query: {
         user_id: string;
     };
-    url: '/api/datasources/file-manager/upload-file';
+    url: '/api/datasources/{datasource_name}/file-manager/upload-file';
 };
 
-export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostErrors = {
+export type UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostError = UploadFileRouteApiDatasourcesFileManagerUploadFilePostErrors[keyof UploadFileRouteApiDatasourcesFileManagerUploadFilePostErrors];
+export type UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostError = UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostErrors[keyof UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostErrors];
 
-export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostResponses = {
+export type UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostResponses = {
     /**
      * Successful Response
      */
     200: FileInfoResponse;
 };
 
-export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostResponse = UploadFileRouteApiDatasourcesFileManagerUploadFilePostResponses[keyof UploadFileRouteApiDatasourcesFileManagerUploadFilePostResponses];
+export type UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostResponse = UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostResponses[keyof UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostResponses];
 
-export type DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteData = {
+export type DeleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDeleteData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
         encoded_original_path: string;
+        datasource_name: string;
     };
     query: {
         user_id: string;
     };
-    url: '/api/datasources/file-manager/{encoded_original_path}';
+    url: '/api/datasources/{datasource_name}/file-manager/{encoded_original_path}';
 };
 
-export type DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteErrors = {
+export type DeleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDeleteErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteError = DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteErrors[keyof DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteErrors];
+export type DeleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDeleteError = DeleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDeleteErrors[keyof DeleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDeleteErrors];
 
-export type DeleteRouteApiDatasourcesFileManagerEncodedOriginalPathDeleteResponses = {
+export type DeleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDeleteResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetData = {
+export type GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
         encoded_original_path: string;
+        datasource_name: string;
     };
     query: {
         include_child_folders_files_recursively?: boolean;
         user_id: string;
     };
-    url: '/api/datasources/file-manager/folder/{encoded_original_path}';
+    url: '/api/datasources/{datasource_name}/file-manager/folder/{encoded_original_path}';
 };
 
-export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetErrors = {
+export type GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetError = GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetErrors[keyof GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetErrors];
+export type GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetError = GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetErrors[keyof GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetErrors];
 
-export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetResponses = {
+export type GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetResponses = {
     /**
      * Successful Response
      */
     200: FolderInfoResponse;
 };
 
-export type GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetResponse = GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetResponses[keyof GetFolderInfoRouteApiDatasourcesFileManagerFolderEncodedOriginalPathGetResponses];
+export type GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetResponse = GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetResponses[keyof GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetResponses];
 
-export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetData = {
+export type GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
         encoded_original_path: string;
+        datasource_name: string;
     };
     query: {
         include_content?: boolean;
         user_id: string;
     };
-    url: '/api/datasources/file-manager/file/{encoded_original_path}';
+    url: '/api/datasources/{datasource_name}/file-manager/file/{encoded_original_path}';
 };
 
-export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetErrors = {
+export type GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetError = GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetErrors[keyof GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetErrors];
+export type GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetError = GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetErrors[keyof GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetErrors];
 
-export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetResponses = {
+export type GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetResponses = {
     /**
      * Successful Response
      */
     200: FileInfoResponse;
 };
 
-export type GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetResponse = GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetResponses[keyof GetFileInfoRouteApiDatasourcesFileManagerFileEncodedOriginalPathGetResponses];
+export type GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetResponse = GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetResponses[keyof GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetResponses];
 
-export type DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetData = {
+export type DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
         encoded_original_path: string;
+        datasource_name: string;
     };
     query: {
         user_id: string;
     };
-    url: '/api/datasources/file-manager/file/{encoded_original_path}/download';
+    url: '/api/datasources/{datasource_name}/file-manager/file/{encoded_original_path}/download';
 };
 
-export type DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetErrors = {
+export type DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetError = DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetErrors[keyof DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetErrors];
+export type DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGetError = DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGetErrors[keyof DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGetErrors];
 
-export type DownloadFileRouteApiDatasourcesFileManagerFileEncodedOriginalPathDownloadGetResponses = {
+export type DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGetResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetData = {
+export type DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
         encoded_original_path: string;
+        datasource_name: string;
     };
     query: {
         user_id: string;
     };
-    url: '/api/datasources/file-manager/folder/{encoded_original_path}/download';
+    url: '/api/datasources/{datasource_name}/file-manager/folder/{encoded_original_path}/download';
 };
 
-export type DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetErrors = {
+export type DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetError = DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetErrors[keyof DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetErrors];
+export type DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGetError = DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGetErrors[keyof DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGetErrors];
 
-export type DownloadFolderRouteApiDatasourcesFileManagerFolderEncodedOriginalPathDownloadGetResponses = {
+export type DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGetResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteData = {
+export type DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDeleteData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
         encoded_original_path: string;
+        datasource_name: string;
     };
     query: {
         user_id: string;
     };
-    url: '/api/datasources/file-manager/processed-data/{encoded_original_path}';
+    url: '/api/datasources/{datasource_name}/file-manager/processed-data/{encoded_original_path}';
 };
 
-export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteErrors = {
+export type DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDeleteErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteError = DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteErrors[keyof DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteErrors];
+export type DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDeleteError = DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDeleteErrors[keyof DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDeleteErrors];
 
-export type DeleteProcessedDataRouteApiDatasourcesFileManagerProcessedDataEncodedOriginalPathDeleteResponses = {
+export type DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDeleteResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type GetAllChatsRouteApiDatasourcesChatsGetData = {
+export type GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
-    path?: never;
+    path: {
+        datasource_name: string;
+    };
     query: {
         include_messages?: boolean;
-        datasource_identifier: string;
         user_id: string;
     };
-    url: '/api/datasources/chats';
+    url: '/api/datasources/{datasource_name}/chats';
 };
 
-export type GetAllChatsRouteApiDatasourcesChatsGetErrors = {
+export type GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetAllChatsRouteApiDatasourcesChatsGetError = GetAllChatsRouteApiDatasourcesChatsGetErrors[keyof GetAllChatsRouteApiDatasourcesChatsGetErrors];
+export type GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetError = GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetErrors[keyof GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetErrors];
 
-export type GetAllChatsRouteApiDatasourcesChatsGetResponses = {
+export type GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetResponses = {
     /**
      * Successful Response
      */
     200: Array<ChatResponse>;
 };
 
-export type GetAllChatsRouteApiDatasourcesChatsGetResponse = GetAllChatsRouteApiDatasourcesChatsGetResponses[keyof GetAllChatsRouteApiDatasourcesChatsGetResponses];
+export type GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetResponse = GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetResponses[keyof GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetResponses];
 
-export type CreateChatRouteApiDatasourcesChatsPostData = {
+export type CreateChatRouteApiDatasourcesDatasourceNameChatsPostData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
-    path?: never;
+    path: {
+        datasource_name: string;
+    };
     query: {
-        datasource_identifier: string;
         chat_uuid?: string;
         user_id: string;
     };
-    url: '/api/datasources/chats';
+    url: '/api/datasources/{datasource_name}/chats';
 };
 
-export type CreateChatRouteApiDatasourcesChatsPostErrors = {
+export type CreateChatRouteApiDatasourcesDatasourceNameChatsPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type CreateChatRouteApiDatasourcesChatsPostError = CreateChatRouteApiDatasourcesChatsPostErrors[keyof CreateChatRouteApiDatasourcesChatsPostErrors];
+export type CreateChatRouteApiDatasourcesDatasourceNameChatsPostError = CreateChatRouteApiDatasourcesDatasourceNameChatsPostErrors[keyof CreateChatRouteApiDatasourcesDatasourceNameChatsPostErrors];
 
-export type CreateChatRouteApiDatasourcesChatsPostResponses = {
+export type CreateChatRouteApiDatasourcesDatasourceNameChatsPostResponses = {
     /**
      * Successful Response
      */
     201: ChatResponse;
 };
 
-export type CreateChatRouteApiDatasourcesChatsPostResponse = CreateChatRouteApiDatasourcesChatsPostResponses[keyof CreateChatRouteApiDatasourcesChatsPostResponses];
+export type CreateChatRouteApiDatasourcesDatasourceNameChatsPostResponse = CreateChatRouteApiDatasourcesDatasourceNameChatsPostResponses[keyof CreateChatRouteApiDatasourcesDatasourceNameChatsPostResponses];
 
-export type DeleteChatRouteApiDatasourcesChatsChatUuidDeleteData = {
+export type DeleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDeleteData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
         chat_uuid: string;
+        datasource_name: string;
     };
     query: {
-        datasource_identifier: string;
         user_id: string;
     };
-    url: '/api/datasources/chats/{chat_uuid}';
+    url: '/api/datasources/{datasource_name}/chats/{chat_uuid}';
 };
 
-export type DeleteChatRouteApiDatasourcesChatsChatUuidDeleteErrors = {
+export type DeleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDeleteErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DeleteChatRouteApiDatasourcesChatsChatUuidDeleteError = DeleteChatRouteApiDatasourcesChatsChatUuidDeleteErrors[keyof DeleteChatRouteApiDatasourcesChatsChatUuidDeleteErrors];
+export type DeleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDeleteError = DeleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDeleteErrors[keyof DeleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDeleteErrors];
 
-export type DeleteChatRouteApiDatasourcesChatsChatUuidDeleteResponses = {
+export type DeleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDeleteResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type GetChatRouteApiDatasourcesChatsChatUuidGetData = {
+export type GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
         chat_uuid: string;
+        datasource_name: string;
     };
     query: {
         include_messages?: boolean;
         create_if_not_found?: boolean;
         update_last_opened_at?: boolean;
-        datasource_identifier: string;
         user_id: string;
     };
-    url: '/api/datasources/chats/{chat_uuid}';
+    url: '/api/datasources/{datasource_name}/chats/{chat_uuid}';
 };
 
-export type GetChatRouteApiDatasourcesChatsChatUuidGetErrors = {
+export type GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetChatRouteApiDatasourcesChatsChatUuidGetError = GetChatRouteApiDatasourcesChatsChatUuidGetErrors[keyof GetChatRouteApiDatasourcesChatsChatUuidGetErrors];
+export type GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetError = GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetErrors[keyof GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetErrors];
 
-export type GetChatRouteApiDatasourcesChatsChatUuidGetResponses = {
+export type GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetResponses = {
     /**
      * Successful Response
      */
     200: ChatResponse;
 };
 
-export type GetChatRouteApiDatasourcesChatsChatUuidGetResponse = GetChatRouteApiDatasourcesChatsChatUuidGetResponses[keyof GetChatRouteApiDatasourcesChatsChatUuidGetResponses];
+export type GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetResponse = GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetResponses[keyof GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetResponses];
 
-export type UpdateChatTitleRouteApiDatasourcesChatsChatUuidPutData = {
+export type UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
+        datasource_name: string;
         chat_uuid: string;
     };
     query: {
         title: string;
-        datasource_identifier: string;
         user_id: string;
     };
-    url: '/api/datasources/chats/{chat_uuid}';
+    url: '/api/datasources/{datasource_name}/chats/{chat_uuid}';
 };
 
-export type UpdateChatTitleRouteApiDatasourcesChatsChatUuidPutErrors = {
+export type UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type UpdateChatTitleRouteApiDatasourcesChatsChatUuidPutError = UpdateChatTitleRouteApiDatasourcesChatsChatUuidPutErrors[keyof UpdateChatTitleRouteApiDatasourcesChatsChatUuidPutErrors];
+export type UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutError = UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutErrors[keyof UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutErrors];
 
-export type UpdateChatTitleRouteApiDatasourcesChatsChatUuidPutResponses = {
+export type UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatUuidMessagesPostData = {
+export type AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessagesPostData = {
     body: MessageCreate;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
+        datasource_name: string;
         chat_uuid: string;
     };
     query: {
-        datasource_identifier: string;
         user_id: string;
     };
-    url: '/api/datasources/chats/{chat_uuid}/messages';
+    url: '/api/datasources/{datasource_name}/chats/{chat_uuid}/messages';
 };
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatUuidMessagesPostErrors = {
+export type AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessagesPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatUuidMessagesPostError = AddMessageToChatRouteApiDatasourcesChatsChatUuidMessagesPostErrors[keyof AddMessageToChatRouteApiDatasourcesChatsChatUuidMessagesPostErrors];
+export type AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessagesPostError = AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessagesPostErrors[keyof AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessagesPostErrors];
 
-export type AddMessageToChatRouteApiDatasourcesChatsChatUuidMessagesPostResponses = {
+export type AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessagesPostResponses = {
     /**
      * Successful Response
      */
     201: unknown;
 };
 
-export type GetDatasourcesRouteApiDatasourcesGetData = {
+export type GetAllDatasourcesRouteApiDatasourcesGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
@@ -1024,138 +1035,140 @@ export type GetDatasourcesRouteApiDatasourcesGetData = {
     url: '/api/datasources';
 };
 
-export type GetDatasourcesRouteApiDatasourcesGetErrors = {
+export type GetAllDatasourcesRouteApiDatasourcesGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type GetDatasourcesRouteApiDatasourcesGetError = GetDatasourcesRouteApiDatasourcesGetErrors[keyof GetDatasourcesRouteApiDatasourcesGetErrors];
+export type GetAllDatasourcesRouteApiDatasourcesGetError = GetAllDatasourcesRouteApiDatasourcesGetErrors[keyof GetAllDatasourcesRouteApiDatasourcesGetErrors];
 
-export type GetDatasourcesRouteApiDatasourcesGetResponses = {
+export type GetAllDatasourcesRouteApiDatasourcesGetResponses = {
     /**
      * Successful Response
      */
     200: Array<DatasourceResponse>;
 };
 
-export type GetDatasourcesRouteApiDatasourcesGetResponse = GetDatasourcesRouteApiDatasourcesGetResponses[keyof GetDatasourcesRouteApiDatasourcesGetResponses];
+export type GetAllDatasourcesRouteApiDatasourcesGetResponse = GetAllDatasourcesRouteApiDatasourcesGetResponses[keyof GetAllDatasourcesRouteApiDatasourcesGetResponses];
 
-export type CreateDatasourceRouteApiDatasourcesPostData = {
-    body: DatasourceCreate;
+export type DeleteDatasourceRouteApiDatasourcesDatasourceNameDeleteData = {
+    body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
-    path?: never;
+    path: {
+        datasource_name: string;
+    };
     query: {
         user_id: string;
     };
-    url: '/api/datasources';
+    url: '/api/datasources/{datasource_name}';
 };
 
-export type CreateDatasourceRouteApiDatasourcesPostErrors = {
+export type DeleteDatasourceRouteApiDatasourcesDatasourceNameDeleteErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type CreateDatasourceRouteApiDatasourcesPostError = CreateDatasourceRouteApiDatasourcesPostErrors[keyof CreateDatasourceRouteApiDatasourcesPostErrors];
+export type DeleteDatasourceRouteApiDatasourcesDatasourceNameDeleteError = DeleteDatasourceRouteApiDatasourcesDatasourceNameDeleteErrors[keyof DeleteDatasourceRouteApiDatasourcesDatasourceNameDeleteErrors];
 
-export type CreateDatasourceRouteApiDatasourcesPostResponses = {
+export type DeleteDatasourceRouteApiDatasourcesDatasourceNameDeleteResponses = {
     /**
      * Successful Response
      */
     200: unknown;
 };
 
-export type DeleteDatasourceRouteApiDatasourcesIdentifierDeleteData = {
+export type GetDatasourceRouteApiDatasourcesDatasourceNameGetData = {
     body?: never;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
-        identifier: string;
+        datasource_name: string;
     };
     query: {
         user_id: string;
     };
-    url: '/api/datasources/{identifier}';
+    url: '/api/datasources/{datasource_name}';
 };
 
-export type DeleteDatasourceRouteApiDatasourcesIdentifierDeleteErrors = {
+export type GetDatasourceRouteApiDatasourcesDatasourceNameGetErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type DeleteDatasourceRouteApiDatasourcesIdentifierDeleteError = DeleteDatasourceRouteApiDatasourcesIdentifierDeleteErrors[keyof DeleteDatasourceRouteApiDatasourcesIdentifierDeleteErrors];
+export type GetDatasourceRouteApiDatasourcesDatasourceNameGetError = GetDatasourceRouteApiDatasourcesDatasourceNameGetErrors[keyof GetDatasourceRouteApiDatasourcesDatasourceNameGetErrors];
 
-export type DeleteDatasourceRouteApiDatasourcesIdentifierDeleteResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
-
-export type GetDatasourceRouteApiDatasourcesIdentifierGetData = {
-    body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
-    path: {
-        identifier: string;
-    };
-    query: {
-        user_id: string;
-    };
-    url: '/api/datasources/{identifier}';
-};
-
-export type GetDatasourceRouteApiDatasourcesIdentifierGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetDatasourceRouteApiDatasourcesIdentifierGetError = GetDatasourceRouteApiDatasourcesIdentifierGetErrors[keyof GetDatasourceRouteApiDatasourcesIdentifierGetErrors];
-
-export type GetDatasourceRouteApiDatasourcesIdentifierGetResponses = {
+export type GetDatasourceRouteApiDatasourcesDatasourceNameGetResponses = {
     /**
      * Successful Response
      */
     200: DatasourceResponse;
 };
 
-export type GetDatasourceRouteApiDatasourcesIdentifierGetResponse = GetDatasourceRouteApiDatasourcesIdentifierGetResponses[keyof GetDatasourceRouteApiDatasourcesIdentifierGetResponses];
+export type GetDatasourceRouteApiDatasourcesDatasourceNameGetResponse = GetDatasourceRouteApiDatasourcesDatasourceNameGetResponses[keyof GetDatasourceRouteApiDatasourcesDatasourceNameGetResponses];
 
-export type UpdateDatasourceRouteApiDatasourcesIdentifierPatchData = {
+export type UpdateDatasourceRouteApiDatasourcesDatasourceNamePatchData = {
     body: DatasourceUpdate;
     headers?: {
         'x-user-id'?: string | null;
     };
     path: {
-        identifier: string;
+        datasource_name: string;
     };
     query: {
         user_id: string;
     };
-    url: '/api/datasources/{identifier}';
+    url: '/api/datasources/{datasource_name}';
 };
 
-export type UpdateDatasourceRouteApiDatasourcesIdentifierPatchErrors = {
+export type UpdateDatasourceRouteApiDatasourcesDatasourceNamePatchErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type UpdateDatasourceRouteApiDatasourcesIdentifierPatchError = UpdateDatasourceRouteApiDatasourcesIdentifierPatchErrors[keyof UpdateDatasourceRouteApiDatasourcesIdentifierPatchErrors];
+export type UpdateDatasourceRouteApiDatasourcesDatasourceNamePatchError = UpdateDatasourceRouteApiDatasourcesDatasourceNamePatchErrors[keyof UpdateDatasourceRouteApiDatasourcesDatasourceNamePatchErrors];
 
-export type UpdateDatasourceRouteApiDatasourcesIdentifierPatchResponses = {
+export type UpdateDatasourceRouteApiDatasourcesDatasourceNamePatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type CreateDatasourceRouteApiDatasourcesDatasourceNamePostData = {
+    body: DatasourceCreate;
+    headers?: {
+        'x-user-id'?: string | null;
+    };
+    path: {
+        datasource_name: string;
+    };
+    query: {
+        user_id: string;
+    };
+    url: '/api/datasources/{datasource_name}';
+};
+
+export type CreateDatasourceRouteApiDatasourcesDatasourceNamePostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateDatasourceRouteApiDatasourcesDatasourceNamePostError = CreateDatasourceRouteApiDatasourcesDatasourceNamePostErrors[keyof CreateDatasourceRouteApiDatasourcesDatasourceNamePostErrors];
+
+export type CreateDatasourceRouteApiDatasourcesDatasourceNamePostResponses = {
     /**
      * Successful Response
      */
@@ -1198,8 +1211,8 @@ export type GetProcessingStatusRouteApiProcessingStatusGetData = {
         'x-user-id'?: string | null;
     };
     path?: never;
-    query: {
-        user_id: string;
+    query?: {
+        user_id?: string | null;
     };
     url: '/api/processing/status';
 };

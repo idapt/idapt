@@ -29,10 +29,11 @@ export function CreateDatasourceDialog({ open, onClose, onCreated }: CreateDatas
       setLoading(true);
       setError(null);
 
-      await createDatasource({
-        name: name.trim(),
-        type: 'files',
+      await createDatasource(name.trim(), {
+        type: "FILES",
         description: description,
+        settings_json: "{}",
+        embedding_setting_identifier: embeddingSettingIdentifier,
       });
 
       onCreated();

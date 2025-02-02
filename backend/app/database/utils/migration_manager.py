@@ -61,21 +61,21 @@ def run_migrations(engine: Engine, db_path: str, script_location: str, models_de
         with FileLock(lock_file, timeout=60):
             if needs_init:
                 # Database is empty or not initialized
-                logger.info("Initializing empty database...")
+                logger.info(f"Initializing empty database at {db_path}")
                 # Create all tables
                 models_declarative_base_class.metadata.create_all(engine)
                 logger.info("Database tables created")
                 # Stamp with current head
                 command.stamp(alembic_cfg, "head")
-                logger.info("Database initialized and stamped with head revision")
+                logger.info(f"Database initialized and stamped with head revision at {db_path}")
             
             elif needs_migration:
-                logger.info("Database not up to date, running migrations...")
+                logger.info(f"Database not up to date, running migrations at {db_path}")
                 command.upgrade(alembic_cfg, "head")
-                logger.info("Database migrations completed successfully")
+                logger.info(f"Database migrations completed successfully at {db_path}")
                 
     except Exception as e:
-        logger.error(f"Error running database migrations: {str(e)}")
+        logger.error(f"Error running database migrations at {db_path}: {str(e)}")
         raise
     finally:
         # Only try to remove the lock file if it was created
@@ -83,5 +83,5 @@ def run_migrations(engine: Engine, db_path: str, script_location: str, models_de
             try:
                 os.remove(lock_file)
             except Exception as e:
-                logger.error(f"Error removing lock file: {str(e)}")
+                logger.error(f"Error removing lock file at {lock_file}: {str(e)}")
                 pass 

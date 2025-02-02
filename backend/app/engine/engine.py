@@ -18,7 +18,8 @@ import logging
 logger = logging.getLogger("uvicorn")
 
 
-def get_chat_engine(session: Session,
+def get_chat_engine(datasources_db_session: Session,
+                    settings_db_session: Session,
                     user_id: str,
                     llm: LLM,
                     max_iterations: int,
@@ -37,32 +38,44 @@ def get_chat_engine(session: Session,
         # Get the datasources tools
         if datasource_identifier:
             # Get the corresponding datasource
-            datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
+            datasource = datasources_db_session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
             # Get the vector store and doc store from the datasource identifier
             vector_store = create_vector_store(datasource.identifier, user_id)
             doc_store = create_doc_store(datasource.identifier, user_id)
             # Get the embedding model setting for the datasource
-            embedding_model_setting = get_setting(session, datasource.embedding_setting_identifier)
+            embedding_model_setting = get_setting(settings_db_session=settings_db_session, identifier=datasource.embedding_setting_identifier)
             # Init the embedding model from the app settings
             embed_model = init_embedding_model(embedding_model_setting.schema_identifier, embedding_model_setting.value_json)
             # Get specific datasource tool
-            tool = create_query_tool(session, datasource.identifier, vector_store, doc_store, embed_model, llm)
+            tool = create_query_tool(
+                settings_db_session=settings_db_session, 
+                datasources_db_session=datasources_db_session,
+                datasource_identifier=datasource.identifier, 
+                vector_store=vector_store, 
+                doc_store=doc_store, 
+                embed_model=embed_model, 
+                llm=llm)
             tools.append(tool)
         else:
             # Get all datasource tools
-            datasources = session.query(Datasource).all()
+            datasources = datasources_db_session.query(Datasource).all()
             for datasource in datasources:
                 # Get the vector store and doc store from the datasource identifier
                 vector_store = create_vector_store(datasource.identifier, user_id)
                 doc_store = create_doc_store(datasource.identifier, user_id)
                 # Get the embedding model setting for the datasource
-                embedding_model_setting = get_setting(session, datasource.embedding_setting_identifier)
+                embedding_model_setting = get_setting(settings_db_session=settings_db_session, identifier=datasource.embedding_setting_identifier)
                 # Init the embedding model from the app settings
                 embed_model = init_embedding_model(embedding_model_setting.schema_identifier, embedding_model_setting.value_json)
                 # Get specific datasource tool
                 tool = create_query_tool(
-                    file_manager_session=session, 
-                    datasource_identifier=datasource.identifier, vector_store=vector_store, doc_store=doc_store, embed_model=embed_model, llm=llm)
+                    settings_db_session=settings_db_session, 
+                    datasources_db_session=datasources_db_session,
+                    datasource_identifier=datasource.identifier, 
+                    vector_store=vector_store, 
+                    doc_store=doc_store, 
+                    embed_model=embed_model, 
+                    llm=llm)
                 tools.append(tool)
 
         # For each tool, set the callback manager to be able to display the events in the steps ui

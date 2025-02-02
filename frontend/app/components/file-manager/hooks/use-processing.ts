@@ -12,45 +12,37 @@ export function useProcessing() {
 
   const processWithStack = async (files: string[], stackIdentifier: string) => {
     try {
-      const processFiles: ProcessingItem[] = files.map(original_path => ({
-        original_path,
-        stacks_identifiers_to_queue: [stackIdentifier]
-      }));
-
-      const response = await processingRouteApiProcessingPost({
-        client,
-        body: { items: processFiles },
-        query: { user_id: userId }
-      });
-      
-      return response;
+      // Pack the files together by datasources in a list of list of ProcessingItem
+      const processFiles: ProcessingItem[][] = [];
+      const datasources: string[] = [];
+      for (const file of files) { 
+        const datasourceName = file.split('/')[0];
+        if (!datasources.includes(datasourceName)) {
+          datasources.push(datasourceName);
+          processFiles.push([]);
+        }
+        processFiles[datasources.indexOf(datasourceName)].push({
+          original_path: file,
+          stacks_identifiers_to_queue: [stackIdentifier]
+        });
+      } 
+      for (const datasourceName in processFiles) {
+        const response = await processingRouteApiProcessingPost({
+          client,
+          body: { items: processFiles[datasourceName] },
+          query: { user_id: userId, datasource_name: datasourceName }
+        });
+        if (response.error) {
+          throw new Error(response.error.detail?.[0]?.msg || 'Unknown error');
+        }
+      }
     } catch (error) {
       console.error('Processing error:', error);
       throw error;
     }
   };
 
-  const processFolder = async (folderPath: string, stackIdentifier: string) => {
-    try {
-      const response = await processingRouteApiProcessingPost({
-        client,
-        body: {
-          items: [{
-            original_path: folderPath,
-            stacks_identifiers_to_queue: [stackIdentifier]
-          }]
-        },
-        query: { user_id: userId }
-      });
-      
-      return response;
-    } catch (error) {
-      console.error('Processing folder error:', error);
-      throw error;
-    }
-  };
-
-  return { processWithStack, processFolder };
+  return { processWithStack };
 }
 
 export default useProcessing;

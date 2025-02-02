@@ -16,7 +16,8 @@ export function useProcessingStatus() {
 
   const fetchInitialStatus = useCallback(async () => {
     if (!backend) return;
-    const response = await getProcessingStatusRouteApiProcessingStatusGet({ client, query: { user_id: userId } });
+    // TODO !
+    const response = await getProcessingStatusRouteApiProcessingStatusGet({ client, query: { user_id: userId, datasource_name: 'Files' } }); 
     const data = response.data;
     setStatus(data ?? null);
     return data;
