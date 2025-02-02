@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
-from app.api.utils import get_user_id, get_file_manager_db_session
+from app.api.utils import get_user_id
+from app.database.utils.utils import get_file_manager_db_session
 from app.processing_stacks.schemas import (
     ProcessingStackCreate,
     ProcessingStackUpdate,

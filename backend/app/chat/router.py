@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from app.chat.schemas import (
     ChatData
 )
-from app.api.utils import get_file_manager_db_session, get_user_id
+from app.api.utils import get_user_id
+from app.database.utils.utils import get_file_manager_db_session
 from app.datasources.chats.utils import get_datasources_chats_db_session
 from app.chat.service import chat_streaming_response, chat_request_response
 chat_router = r = APIRouter()

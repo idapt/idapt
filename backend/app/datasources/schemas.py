@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, Literal
-from app.datasources.models import DatasourceType
+from app.datasources.database.models import DatasourceType
 
 class DatasourceCreate(BaseModel):
     name: str

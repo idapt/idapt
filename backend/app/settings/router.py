@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
-from app.api.utils import get_file_manager_db_session, get_user_id
+from app.api.utils import get_user_id
 from app.settings.service import get_setting, update_setting, create_setting, delete_setting, get_all_settings, get_all_settings_with_schema_identifier
 from app.settings.schemas import CreateSettingRequest, UpdateSettingRequest, SettingResponse
 from app.settings.utils import get_settings_db_session

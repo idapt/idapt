@@ -2,7 +2,7 @@ from app.datasources.utils import get_datasource_identifier_from_path
 from app.datasources.file_manager.service.service import get_file_info
 from app.datasources.file_manager.service.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.datasources.file_manager.models import File, FileStatus, Folder
-from app.datasources.models import Datasource
+from app.datasources.database.models import Datasource
 from app.processing_stacks.models import ProcessingStack
 from app.datasources.file_manager.service.llama_index import get_llama_index_datasource_folder_path, create_vector_store, create_doc_store
 from app.processing_stacks.service import get_transformations_for_stack

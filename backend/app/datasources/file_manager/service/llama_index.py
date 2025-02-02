@@ -8,7 +8,7 @@ import shutil
 
 from sqlalchemy.orm import Session
 from app.datasources.file_manager.models import File, FileStatus, Folder
-from app.datasources.models import Datasource
+from app.datasources.database.models import Datasource
 from app.datasources.file_manager.service.db_operations import get_db_folder_files_recursive
 from app.settings.schemas import AppSettings, SettingResponse
 from app.settings.service import get_setting

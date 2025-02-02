@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, WebSocket
-from app.api.utils import get_user_id, get_file_manager_db_session
+from app.api.utils import get_user_id
+from app.settings.utils import get_settings_db_session
 from sqlalchemy.orm import Session
 import logging
 from app.api.websocket import StatusWebSocket
@@ -15,12 +16,12 @@ ollama_status_router = r = APIRouter()
 async def get_ollama_status_route(
     background_tasks: BackgroundTasks,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_file_manager_db_session),
+    settings_db_session: Session = Depends(get_settings_db_session),
 ):
     """Get the current status of Ollama model downloads"""
     try:
         #logger.info(f"Getting Ollama status")
-        if not await can_process(session, True): # Don't download models, it will be done on file processing
+        if not await can_process(settings_db_session, True): # Don't download models, it will be done on file processing
             return {"is_downloading": True}
         else:
             return {"is_downloading": False}
@@ -34,11 +35,11 @@ async def get_ollama_status_route(
 async def ollama_status_websocket_route(
     websocket: WebSocket,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_file_manager_db_session)
+    settings_db_session: Session = Depends(get_settings_db_session)
 ):
     """WebSocket endpoint for Ollama status updates"""
     async def get_status():
-        is_downloading = not await can_process(session, False)
+        is_downloading = not await can_process(settings_db_session, False)
         return {"is_downloading": is_downloading}
     
     status_ws = StatusWebSocket(websocket, get_status)

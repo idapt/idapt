@@ -1,7 +1,9 @@
 from sqlalchemy import Column, String, JSON, DateTime, Integer, ForeignKey, func
 from sqlalchemy.orm import relationship
 import enum
-from app.database.models import Base
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 class DatasourceType(enum.Enum):
     FILES = "files"
@@ -21,10 +23,6 @@ class Datasource(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
-    # The root folder for this datasource
-    folder_id = Column(Integer, ForeignKey('folders.id'), nullable=True)
-    folder = relationship("Folder", backref="datasource", uselist=False)
-    
     # Relationship to embedding settings
-    embedding_setting_identifier = Column(String, ForeignKey('settings.identifier'), nullable=False)
-    embedding_setting = relationship("Setting", backref="datasource")
+    embedding_setting_identifier = Column(String, nullable=False)
+    #embedding_setting = relationship("Setting", backref="datasource")

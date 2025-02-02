@@ -1,3 +1,6 @@
+from pathlib import Path
+from app.api.user_path import get_user_data_dir
+
 def get_datasource_identifier_from_path(path: str) -> str:
     """Get the datasource identifier from a path"""
     try:
@@ -47,3 +50,7 @@ def validate_name(name: str) -> str:
         return name
     except Exception as e:
         raise ValueError(f"Invalid name: {name}")
+    
+def get_datasource_folder_path(user_id: str, identifier: str) -> str:
+    """Get the folder path of a datasource"""
+    return str(Path(get_user_data_dir(user_id), identifier))

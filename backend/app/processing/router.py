@@ -6,7 +6,8 @@ from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
 from app.processing.service import get_queue_status, mark_items_as_queued, start_processing_if_needed_and_get_queue_status
 from app.processing.schemas import ProcessingRequest, ProcessingStatusResponse
-from app.api.utils import get_user_id, get_file_manager_db_session
+from app.api.utils import get_user_id
+from app.database.utils.utils import get_file_manager_db_session
 from app.api.websocket import StatusWebSocket
 
 logger = logging.getLogger("uvicorn")

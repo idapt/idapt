@@ -63,12 +63,12 @@ async def is_ollama_server_reachable(base_url: str) -> bool:
         return False
 
 # If you dont want to pull the models if not available, set background_tasks to None
-async def can_process(session: Session, download_models: bool = True) -> bool:
+async def can_process(settings_db_session: Session, download_models: bool = True) -> bool:
     """Check if Ollama models are ready for processing"""
     try:
         # TODO Also check for other models
         # Get all embedding settings that have the schema_identifier "ollama_embed"
-        embedding_settings : List[SettingResponse] = get_all_settings_with_schema_identifier(session, "ollama_embed")
+        embedding_settings : List[SettingResponse] = get_all_settings_with_schema_identifier(settings_db_session, "ollama_embed")
         # TODO Check only for the ones currently used in datasources
         # Check if any datasource is using ollama
         for embedding_setting in embedding_settings:
@@ -90,10 +90,10 @@ async def can_process(session: Session, download_models: bool = True) -> bool:
                     return False
                     
         # Check llm model
-        app_settings_response : SettingResponse = get_setting(session, "app")
+        app_settings_response : SettingResponse = get_setting(settings_db_session, "app")
         app_settings : AppSettings = AppSettings.model_validate_json(app_settings_response.value_json)
         # Get the llm setting
-        llm_setting : SettingResponse = get_setting(session, app_settings.llm_setting_identifier)
+        llm_setting : SettingResponse = get_setting(settings_db_session, app_settings.llm_setting_identifier)
         # TODO Check only for the ones currently used in agents
         if llm_setting.schema_identifier == "ollama_llm":
             ollama_llm_settings : OllamaLLMSettings = OllamaLLMSettings.model_validate_json(llm_setting.value_json)
@@ -119,11 +119,11 @@ async def can_process(session: Session, download_models: bool = True) -> bool:
         logger.error(f"Error checking if can process: {str(e)}")
         return False 
     
-async def trigger_download_and_wait_for_ollama_models_to_be_downloaded(session: Session):
+async def trigger_download_and_wait_for_ollama_models_to_be_downloaded(settings_db_session: Session):
     """Wait for Ollama models to be ready"""
     while True:
         # Check if we need to wait for Ollama models without pulling them if they don't exist
-        if await can_process(session, True):
+        if await can_process(settings_db_session, True):
             return
         
         logger.info("Waiting for Ollama models to be ready before processing files...")

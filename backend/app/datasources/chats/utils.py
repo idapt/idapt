@@ -1,4 +1,4 @@
-from app.api.utils import get_user_data_dir
+from app.api.user_path import get_user_data_dir
 from app.database.utils.service import get_session
 from pathlib import Path
 import logging
