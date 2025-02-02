@@ -1,5 +1,7 @@
 from sqlalchemy import Column, String, JSON
-from app.database.models import Base
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 class Setting(Base):
     __tablename__ = 'settings'

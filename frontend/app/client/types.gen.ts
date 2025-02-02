@@ -8,10 +8,6 @@ export type AgentAnnotation = {
     text: string;
 };
 
-export type AllSettingsResponse = {
-    data: Array<SettingResponse>;
-};
-
 /**
  * An annotation on a message used to pass additional data about the message.
  * The type of the annotation is a string that can be one of the following:
@@ -569,10 +565,42 @@ export type GetAllSettingsRouteApiSettingsGetResponses = {
     /**
      * Successful Response
      */
-    200: AllSettingsResponse;
+    200: Array<SettingResponse>;
 };
 
 export type GetAllSettingsRouteApiSettingsGetResponse = GetAllSettingsRouteApiSettingsGetResponses[keyof GetAllSettingsRouteApiSettingsGetResponses];
+
+export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetData = {
+    body?: never;
+    headers?: {
+        'x-user-id'?: string | null;
+    };
+    path: {
+        schema_identifier: string;
+    };
+    query: {
+        user_id: string;
+    };
+    url: '/api/settings/schema/{schema_identifier}';
+};
+
+export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetError = GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetErrors[keyof GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetErrors];
+
+export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: Array<SettingResponse>;
+};
+
+export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetResponse = GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetResponses[keyof GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetResponses];
 
 export type UploadFileRouteApiDatasourcesFileManagerUploadFilePostData = {
     body: FileUploadItem;

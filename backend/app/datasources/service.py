@@ -11,19 +11,24 @@ from app.datasources.file_manager.service.llama_index import delete_datasource_l
 from app.datasources.schemas import DatasourceResponse, DatasourceUpdate, DatasourceCreate
 from app.datasources.utils import validate_name
 from app.datasources.models import Datasource, DatasourceType
-from app.settings.models import Setting
-from app.datasources.chats.utils import get_datasources_chats_db_session
+from app.settings.schemas import SettingResponse
+from app.settings.service import get_all_settings, get_setting
 
 logger = logging.getLogger("uvicorn")
 
-def init_default_datasources_if_needed(session: Session):
+def init_default_datasources_if_needed(session: Session, settings_db_session: Session):
     """Initialize default datasources if they don't exist"""
     try:
         # If there is no existing datasource create one, otherwise dont as the user explicitly deleted it, it will be recreated only if there are no other datasources
         if session.query(Datasource).count() != 0:
             return
         # Get the last embedding setting created from the database that ends with "_embed"
-        last_embedding_setting = session.query(Setting).filter(Setting.identifier.endswith("_embed")).first()
+        all_settings : List[SettingResponse] = get_all_settings(settings_db_session)
+        # Get the last embedding setting
+        last_embedding_setting : SettingResponse = next((setting for setting in all_settings if setting.identifier.endswith("_embed")), None)
+        # If there is no embedding setting, raise an error
+        if not last_embedding_setting:
+            raise Exception("No embedding setting found, create one first")
 
         # Create the default files datasource
         create_datasource(
@@ -57,6 +62,7 @@ def init_default_datasources_if_needed(session: Session):
 
 def create_datasource(
     session: Session, 
+    settings_db_session: Session,
     datasource_create: DatasourceCreate
 ) -> None:
     """Create a new datasource with its root folder and all required components"""
@@ -71,7 +77,10 @@ def create_datasource(
         # If no embedding setting is provided, use the last one with the schema_identifier ending with "_embed"
         embedding_setting_identifier = None
         if not datasource_create.embedding_setting_identifier:
-            embedding_setting = session.query(Setting).filter(Setting.schema_identifier.endswith("_embed")).first()
+            # Get the last embedding setting created from the database that ends with "_embed"
+            all_settings : List[SettingResponse] = get_all_settings(settings_db_session)
+            # Get the last embedding setting
+            embedding_setting : SettingResponse = next((setting for setting in all_settings if setting.identifier.endswith("_embed")), None)
             if not embedding_setting:
                 raise ValueError(f"No embedding setting with schema_identifier ending with '_embed' found, create one first")
             embedding_setting_identifier = embedding_setting.identifier
@@ -81,7 +90,7 @@ def create_datasource(
             if not datasource_create.embedding_setting_identifier.endswith("_embed"):
                 raise ValueError(f"Embedding setting with identifier '{datasource_create.embedding_setting_identifier}' is not of type '_embed'")
             # Check if the embedding setting exists
-            embedding_setting = session.query(Setting).filter(Setting.identifier == datasource_create.embedding_setting_identifier).first()
+            embedding_setting : SettingResponse = get_setting(settings_db_session, datasource_create.embedding_setting_identifier)
             if not embedding_setting:
                 raise ValueError(f"Embedding setting with identifier '{datasource_create.embedding_setting_identifier}' does not exist")
             embedding_setting_identifier = datasource_create.embedding_setting_identifier
@@ -183,7 +192,7 @@ def get_all_datasources(session: Session) -> List[DatasourceResponse]:
         logger.error(f"Error getting all datasources: {str(e)}")
         raise
 
-async def update_datasource(session: Session, user_id: str, identifier: str, datasource_update: DatasourceUpdate):
+async def update_datasource(session: Session, settings_db_session: Session, user_id: str, identifier: str, datasource_update: DatasourceUpdate):
     """Update a datasource's description and its associated query tool"""
     try:
         # Get the datasource to update
@@ -191,13 +200,13 @@ async def update_datasource(session: Session, user_id: str, identifier: str, dat
         if not datasource:
             raise Exception("Datasource not found")
         # Try to get the embedding setting to see if it exists
-        embedding_setting = session.query(Setting).filter(Setting.identifier == datasource_update.embedding_setting_identifier).first()
+        embedding_setting : SettingResponse = get_setting(settings_db_session, datasource_update.embedding_setting_identifier)
         if not embedding_setting:
             raise Exception(f"Embedding setting not found: {datasource_update.embedding_setting_identifier}")
         # If the provider has changed
         if datasource.embedding_setting_identifier != datasource_update.embedding_setting_identifier:
             # Get the old embedding setting
-            old_embedding_setting = session.query(Setting).filter(Setting.identifier == datasource.embedding_setting_identifier).first()
+            old_embedding_setting : SettingResponse = get_setting(settings_db_session, datasource.embedding_setting_identifier)
             if not old_embedding_setting:
                 raise Exception(f"Old embedding setting not found: {datasource.embedding_setting_identifier}")
             # Get the old embedding model

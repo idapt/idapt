@@ -13,9 +13,6 @@ class SettingResponse(BaseModel):
     setting_schema_json: str
     value_json: str
 
-class AllSettingsResponse(BaseModel):
-    data: List[SettingResponse]
-
 class SettingBase(BaseModel):
 
     def update_value(self, new_values: dict):

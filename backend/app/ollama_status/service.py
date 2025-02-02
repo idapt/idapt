@@ -1,10 +1,10 @@
 import logging
+from typing import List
 from app.settings.schemas import OllamaLLMSettings, OllamaEmbedSettings, SettingResponse, AppSettings
 import httpx
 import time
 from sqlalchemy.orm import Session
-from app.settings.service import get_setting
-from app.settings.models import Setting
+from app.settings.service import get_setting, get_all_settings_with_schema_identifier
 
 logger = logging.getLogger("uvicorn")
 
@@ -68,7 +68,8 @@ async def can_process(session: Session, download_models: bool = True) -> bool:
     try:
         # TODO Also check for other models
         # Get all embedding settings that have the schema_identifier "ollama_embed"
-        embedding_settings = session.query(Setting).filter(Setting.schema_identifier == "ollama_embed").all()
+        embedding_settings : List[SettingResponse] = get_all_settings_with_schema_identifier(session, "ollama_embed")
+        # TODO Check only for the ones currently used in datasources
         # Check if any datasource is using ollama
         for embedding_setting in embedding_settings:
             ollama_embed_settings : OllamaEmbedSettings = OllamaEmbedSettings.model_validate_json(embedding_setting.value_json)
@@ -93,6 +94,7 @@ async def can_process(session: Session, download_models: bool = True) -> bool:
         app_settings : AppSettings = AppSettings.model_validate_json(app_settings_response.value_json)
         # Get the llm setting
         llm_setting : SettingResponse = get_setting(session, app_settings.llm_setting_identifier)
+        # TODO Check only for the ones currently used in agents
         if llm_setting.schema_identifier == "ollama_llm":
             ollama_llm_settings : OllamaLLMSettings = OllamaLLMSettings.model_validate_json(llm_setting.value_json)
             # Check if the ollama server is reachable

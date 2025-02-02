@@ -19,7 +19,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from app.database.models import Base
+from models import Base # Use this when running alembic dev commands
+#from app.database.models import Base # Use this when running the app # TODO
 #from models import Base
 target_metadata = Base.metadata
 
