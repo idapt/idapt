@@ -22,6 +22,8 @@ async def get_user_id(
 # Get a session for the file manager database
 def get_file_manager_db_session(user_id: str):
     db_path = get_user_data_dir(user_id) + "/file_manager.db"
+    # Create the parent directories if they don't exist
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     script_location = Path(__file__).parent.parent / "database" / "alembic"
     from app.database.models import Base
     models_declarative_base_class = Base

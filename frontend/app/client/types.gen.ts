@@ -118,7 +118,7 @@ export type CreateSettingRequest = {
 
 export type DatasourceCreate = {
     name: string;
-    type: 'files' | 'windows_sync';
+    type: 'FILES' | 'CHATS' | 'WINDOWS_SYNC';
     description?: string | null;
     settings_json?: string;
     embedding_setting_identifier?: string;
@@ -127,13 +127,11 @@ export type DatasourceCreate = {
 export type DatasourceResponse = {
     identifier: string;
     name: string;
-    type: DatasourceType;
+    type: 'FILES' | 'CHATS' | 'WINDOWS_SYNC';
     description?: string | null;
     settings_json?: string;
     embedding_setting_identifier: string;
 };
-
-export type DatasourceType = 'files' | 'windows_sync';
 
 export type DatasourceUpdate = {
     description?: string | null;
@@ -235,7 +233,7 @@ export type MessageDataInput = {
     id: string;
     role: MessageRole;
     content: string;
-    createdAt: string;
+    createdAt?: string | null;
     annotations?: Array<AnnotationInput> | null;
     is_upvoted?: boolean | null;
 };
@@ -248,7 +246,7 @@ export type MessageDataOutput = {
     id: string;
     role: MessageRole;
     content: string;
-    createdAt: string;
+    createdAt?: string | null;
     annotations?: Array<AnnotationOutput> | null;
     is_upvoted?: boolean | null;
 };
@@ -371,6 +369,7 @@ export type ChatStreamingRouteApiChatPostData = {
     };
     path?: never;
     query: {
+        datasource_identifier: string;
         user_id: string;
     };
     url: '/api/chat';
@@ -399,6 +398,7 @@ export type ChatRequestRouteApiChatRequestPostData = {
     };
     path?: never;
     query: {
+        datasource_identifier: string;
         user_id: string;
     };
     url: '/api/chat/request';
@@ -798,6 +798,7 @@ export type GetAllChatsRouteApiDatasourcesChatsGetData = {
     path?: never;
     query: {
         include_messages?: boolean;
+        datasource_identifier: string;
         user_id: string;
     };
     url: '/api/datasources/chats';
@@ -828,6 +829,7 @@ export type CreateChatRouteApiDatasourcesChatsPostData = {
     };
     path?: never;
     query: {
+        datasource_identifier: string;
         chat_uuid?: string;
         user_id: string;
     };
@@ -861,6 +863,7 @@ export type DeleteChatRouteApiDatasourcesChatsChatUuidDeleteData = {
         chat_uuid: string;
     };
     query: {
+        datasource_identifier: string;
         user_id: string;
     };
     url: '/api/datasources/chats/{chat_uuid}';
@@ -894,6 +897,7 @@ export type GetChatRouteApiDatasourcesChatsChatUuidGetData = {
         include_messages?: boolean;
         create_if_not_found?: boolean;
         update_last_opened_at?: boolean;
+        datasource_identifier: string;
         user_id: string;
     };
     url: '/api/datasources/chats/{chat_uuid}';
@@ -927,6 +931,7 @@ export type UpdateChatTitleRouteApiDatasourcesChatsChatUuidPutData = {
     };
     query: {
         title: string;
+        datasource_identifier: string;
         user_id: string;
     };
     url: '/api/datasources/chats/{chat_uuid}';
@@ -957,6 +962,7 @@ export type AddMessageToChatRouteApiDatasourcesChatsChatUuidMessagesPostData = {
         chat_uuid: string;
     };
     query: {
+        datasource_identifier: string;
         user_id: string;
     };
     url: '/api/datasources/chats/{chat_uuid}/messages';

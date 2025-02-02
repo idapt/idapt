@@ -6,7 +6,7 @@ from app.chat.schemas import (
     ChatData
 )
 from app.api.utils import get_file_manager_db_session, get_user_id
-from app.datasources.chats.utils import get_chats_db_session
+from app.datasources.chats.utils import get_datasources_chats_db_session
 from app.chat.service import chat_streaming_response, chat_request_response
 chat_router = r = APIRouter()
 
@@ -19,9 +19,10 @@ async def chat_streaming_route(
     request: Request,
     data: ChatData,
     background_tasks: BackgroundTasks,
+    datasource_identifier: str = "Chats",
     user_id: str = Depends(get_user_id),
     file_manager_session: Session = Depends(get_file_manager_db_session),
-    chat_db_session: Session = Depends(get_chats_db_session),
+    chat_db_session: Session = Depends(get_datasources_chats_db_session),
 ):
     """
     Streaming endpoint for chat requests.
@@ -48,8 +49,9 @@ async def chat_streaming_route(
 async def chat_request_route(
     data: ChatData,
     user_id: str = Depends(get_user_id),
+    datasource_identifier: str = "Chats",
     file_manager_session: Session = Depends(get_file_manager_db_session),
-    chat_db_session: Session = Depends(get_chats_db_session),
+    chat_db_session: Session = Depends(get_datasources_chats_db_session),
 ) -> ChatData:
     """
     Non-streaming endpoint for chat requests.

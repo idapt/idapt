@@ -4,7 +4,7 @@ from app.datasources.models import DatasourceType
 
 class DatasourceCreate(BaseModel):
     name: str
-    type: Literal[DatasourceType.FILES, DatasourceType.WINDOWS_SYNC]
+    type: Literal[DatasourceType.FILES.name, DatasourceType.CHATS.name, DatasourceType.WINDOWS_SYNC.name]
     description: Optional[str] = None
     settings_json: str = "{}"
     embedding_setting_identifier: str = None
@@ -12,7 +12,7 @@ class DatasourceCreate(BaseModel):
 class DatasourceResponse(BaseModel):
     identifier: str
     name: str
-    type: DatasourceType
+    type: Literal[DatasourceType.FILES.name, DatasourceType.CHATS.name, DatasourceType.WINDOWS_SYNC.name]
     description: Optional[str] = None
     settings_json: str = "{}"
     embedding_setting_identifier: str

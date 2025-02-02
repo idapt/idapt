@@ -53,6 +53,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         },
         query: {
           user_id: userId,
+          datasource_identifier: "Chats",
           include_messages: true,
           create_if_not_found: true,
           update_last_opened_at: true
@@ -77,7 +78,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       //await mutate(`/api/datasources/chats?user_id=${userId}`);
       const response = await getAllChatsRouteApiDatasourcesChatsGet({
         query: {
-          user_id: userId
+          user_id: userId,
+          datasource_identifier: "Chats"
         }
       });
       setChats(response.data);
@@ -99,7 +101,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           chat_uuid: uuid
       },
         query: {
-          user_id: userId
+          user_id: userId,
+          datasource_identifier: "Chats"
         }
       });
       await refreshChats();

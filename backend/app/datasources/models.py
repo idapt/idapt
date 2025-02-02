@@ -1,11 +1,12 @@
-from sqlalchemy import Column, String, JSON, Boolean, DateTime, Integer, ForeignKey, func
+from sqlalchemy import Column, String, JSON, DateTime, Integer, ForeignKey, func
 from sqlalchemy.orm import relationship
-from enum import Enum as PyEnum
+import enum
 from app.database.models import Base
 
-class DatasourceType(str, PyEnum):
+class DatasourceType(enum.Enum):
     FILES = "files"
     WINDOWS_SYNC = "windows_sync"
+    CHATS = "chats"
 
 class Datasource(Base):
     __tablename__ = 'datasources'

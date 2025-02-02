@@ -6,10 +6,8 @@ logger = logging.getLogger("uvicorn")
 
 
 # Get a session for the chat history database
-def get_chats_db_session(user_id: str):
-    # TODO Implement datasource arg
-    db_path = Path(get_user_data_dir(user_id), "chats", "chats.db")
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+def get_datasources_chats_db_session(user_id: str, datasource_identifier: str):
+    db_path = Path(get_user_data_dir(user_id), datasource_identifier, "chats.db")
     script_location = Path(__file__).parent / "database"
     from app.datasources.chats.database.models import Base
     models_declarative_base_class = Base

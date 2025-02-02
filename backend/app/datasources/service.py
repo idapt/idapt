@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from typing import List
 import json
+import logging
+from pathlib import Path
 
 from app.datasources.file_manager.models import Folder
 from app.datasources.file_manager.service.service import delete_folder
@@ -10,10 +12,7 @@ from app.datasources.schemas import DatasourceResponse, DatasourceUpdate, Dataso
 from app.datasources.utils import validate_name
 from app.datasources.models import Datasource, DatasourceType
 from app.settings.models import Setting
-
-import logging
-
-
+from app.datasources.chats.utils import get_datasources_chats_db_session
 
 logger = logging.getLogger("uvicorn")
 
@@ -31,12 +30,25 @@ def init_default_datasources_if_needed(session: Session):
             session=session,
             datasource_create=DatasourceCreate(
                 name="Files",
-                type=DatasourceType.FILES,
+                type=DatasourceType.FILES.name,
                 description="Various files, prefer using another datasource if it seems more relevant",
                 settings_json="{}",
                 embedding_setting_identifier=last_embedding_setting.identifier
             )
-        )        
+        )
+
+        # Create the chat history datasource
+        create_datasource(
+            session=session,
+            datasource_create=DatasourceCreate(
+                name="Chats",
+                type=DatasourceType.CHATS.name,
+                description="The chat history of the user with his AI assistant",
+                settings_json="{}",
+                embedding_setting_identifier=last_embedding_setting.identifier
+            )
+        )
+        
         logger.info("Default datasources initialized")
 
     except Exception as e:

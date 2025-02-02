@@ -46,12 +46,14 @@ export function Chat({
     stop,
     reload,
   } = useChat({
-    api: `${backend}/api/chat?user_id=${userId}`,
+    api: `${backend}/api/chat?user_id=${userId}&datasource_identifier=Chats`,
     headers: {
       "X-User-Id": userId
     },
     id: currentChatId,
-    body: { id: currentChatId },
+    body: { 
+      id: currentChatId
+     },
     initialMessages: convertToUIMessages(currentChat?.messages || []),
     experimental_throttle: 100,
     sendExtraMessageFields: true,
