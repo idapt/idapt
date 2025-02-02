@@ -1,7 +1,7 @@
 from app.datasources.utils import get_datasource_identifier_from_path
 from app.datasources.file_manager.service.service import get_file_info
 from app.datasources.file_manager.service.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
-from app.datasources.file_manager.models import File, FileStatus, Folder
+from app.datasources.file_manager.database.models import File, FileStatus, Folder
 from app.datasources.database.models import Datasource
 from app.processing_stacks.models import ProcessingStack
 from app.datasources.file_manager.service.llama_index import get_llama_index_datasource_folder_path, create_vector_store, create_doc_store
@@ -227,7 +227,7 @@ async def _process_files_marked_as_processing(session: Session, user_id: str):
 
                 logger.info(f"Reprocessing interrupted file: {oldest_processing_file.path}")
                 try:
-                    delete_file_llama_index(session=session, user_id=user_id, file=oldest_processing_file)
+                    delete_file_llama_index(file_manager_session=session, user_id=user_id, file=oldest_processing_file)
                 except Exception as e:
                     logger.error(f"Failed to delete {oldest_processing_file.path} from stores: {str(e)}")
                 
@@ -454,7 +454,7 @@ async def _process_single_file(session: Session, file: File, user_id: str):
                 session.rollback()
                 # try to delete the processing stack from llama index as it failed to try to avoid partially processed states
                 try:
-                    delete_file_processing_stack_from_llama_index(session=session, user_id=user_id, fs_path=file.path, processing_stack_identifier=stack_identifier)
+                    delete_file_processing_stack_from_llama_index(file_manager_session=session, user_id=user_id, fs_path=file.path, processing_stack_identifier=stack_identifier)
                 except Exception as e:
                     logger.error(f"Failed to delete erroring file stack {file.path} from stores: {str(e)}")
                 # Add the stack to the stacks_to_process list as it failed to process and if we retry to process the file we want it there

@@ -1,8 +1,9 @@
 from sqlalchemy import Column, String, JSON, Boolean, DateTime, Integer, ForeignKey, func, Enum
 from sqlalchemy.orm import relationship
 import enum
+from sqlalchemy.ext.declarative import declarative_base
 
-from app.database.models import Base
+Base = declarative_base()
 
 class Folder(Base):
     __tablename__ = 'folders'

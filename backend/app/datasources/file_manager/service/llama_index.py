@@ -7,7 +7,7 @@ from fastapi import HTTPException
 import shutil
 
 from sqlalchemy.orm import Session
-from app.datasources.file_manager.models import File, FileStatus, Folder
+from app.datasources.file_manager.database.models import File, FileStatus, Folder
 from app.datasources.database.models import Datasource
 from app.datasources.file_manager.service.db_operations import get_db_folder_files_recursive
 from app.settings.schemas import AppSettings, SettingResponse
@@ -84,7 +84,8 @@ def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocument
         raise
 
 def create_query_tool(
-    session: Session, 
+    file_manager_session: Session, 
+    datasources_db_session: Session,
     datasource_identifier: str,
     vector_store: ChromaVectorStore,
     doc_store: SimpleDocumentStore, 
@@ -106,7 +107,7 @@ def create_query_tool(
         )
 
         # Get the app settings
-        app_settings_response : SettingResponse = get_setting(session, "app")
+        app_settings_response : SettingResponse = get_setting(file_manager_session, "app")
         app_settings : AppSettings = AppSettings.model_validate_json(app_settings_response.value_json)
     
         retriever = VectorIndexRetriever(
@@ -131,7 +132,7 @@ def create_query_tool(
         
         # Get datasource info within session and extract needed data
         description = ""
-        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
+        datasource = datasources_db_session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
         if not datasource or not datasource.description or datasource.description == "":
             description = f"Query engine for the {datasource_identifier} datasource"
         else:
@@ -143,7 +144,7 @@ def create_query_tool(
         return QueryEngineTool(
             query_engine=query_engine,
             metadata=ToolMetadata(
-                name=f"{datasource_identifier}_query_engine",
+                name=f"{datasource.identifier}_query_engine",
                 description=tool_description
             ),
             resolve_input_errors=True
@@ -153,7 +154,7 @@ def create_query_tool(
         raise
 
 # ? Move to file manager ?
-async def delete_item_from_llama_index(session: Session, user_id: str, original_path: str):
+async def delete_item_from_llama_index(file_manager_session: Session, user_id: str, original_path: str):
     """
     Delete an item from the llama index
     If it is a file, delete the file from the llama index
@@ -164,16 +165,16 @@ async def delete_item_from_llama_index(session: Session, user_id: str, original_
         validate_path(original_path)
 
         # Check if it's a file
-        file = session.query(File).filter(File.original_path == original_path).first()
+        file = file_manager_session.query(File).filter(File.original_path == original_path).first()
         if file:
             # Delete llama index data
-            delete_file_llama_index(session=session, user_id=user_id, file=file)
+            delete_file_llama_index(file_manager_session=file_manager_session, user_id=user_id, file=file)
             return {"success": True}
             
         # If not a file, check if it's a folder
-        folder = session.query(Folder).filter(Folder.original_path == original_path).first()
+        folder = file_manager_session.query(Folder).filter(Folder.original_path == original_path).first()
         if folder:
-            delete_files_in_folder_recursive_from_llama_index(session=session, user_id=user_id, full_folder_path=folder.path)
+            delete_files_in_folder_recursive_from_llama_index(file_manager_session=file_manager_session, user_id=user_id, full_folder_path=folder.path)
             return {"success": True}
             
         raise HTTPException(status_code=404, detail="Item not found")
@@ -181,20 +182,20 @@ async def delete_item_from_llama_index(session: Session, user_id: str, original_
         logger.error(f"Error deleting item from LlamaIndex: {str(e)}")
         raise
 
-def delete_files_in_folder_recursive_from_llama_index(session: Session, user_id: str, full_folder_path: str):
+def delete_files_in_folder_recursive_from_llama_index(file_manager_session: Session, user_id: str, full_folder_path: str):
     try:
         # Get the files in the folder recursively from the database
-        files, _ = get_db_folder_files_recursive(session, full_folder_path)
+        files, _ = get_db_folder_files_recursive(file_manager_session, full_folder_path)
         
         # Delete each file from the llama index
         for file in files:
             try:
-                delete_file_llama_index(session, user_id, file)
+                delete_file_llama_index(file_manager_session, user_id, file)
             except Exception as e:
                 logger.warning(f"Failed to delete {file.path} from LlamaIndex: {str(e)}")
 
     except Exception as e:
-        session.rollback()
+        file_manager_session.rollback()
         logger.error(f"Error deleting files in folder from LlamaIndex: {str(e)}")
         raise
 
@@ -252,18 +253,16 @@ def delete_datasource_llama_index_components(datasource_identifier: str, user_id
         logger.error(f"Error deleting datasource llama index components: {str(e)}")
         raise
 
-def delete_file_llama_index(session: Session, user_id: str, file: File):
+def delete_file_llama_index(file_manager_session: Session, user_id: str, file: File):
     try:
         if file.status == FileStatus.PROCESSING:
             raise Exception(f"File {file.path} is currently being processed, please wait for it to finish or cancel the processing before deleting it")
 
         from app.datasources.utils import get_datasource_identifier_from_path
-        # Get the datasource name from the path
-        datasource_identifier = get_datasource_identifier_from_path(file.path)
-        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
         # Get the datasource vector store and docstore
-        vector_store = create_vector_store(datasource.identifier, user_id)
-        doc_store = create_doc_store(datasource.identifier, user_id)
+        datasource_identifier = get_datasource_identifier_from_path(file.path)
+        vector_store = create_vector_store(datasource_identifier, user_id)
+        doc_store = create_doc_store(datasource_identifier, user_id)
 
         # Delete each ref_doc_id from the vector store and docstore
         # Parse the json ref_doc_ids as a list
@@ -288,7 +287,7 @@ def delete_file_llama_index(session: Session, user_id: str, file: File):
                 processed_stacks = [stack_id for stack_id in processed_stacks if stack_id != processing_stack_identifier]
                 file.processed_stacks = json.dumps(processed_stacks)
                 # Commit the changes to the file the database
-                session.flush() # Commit ?
+                file_manager_session.flush() # Commit ?
 
         # Mark the file statuis as pending
         file.status = FileStatus.PENDING
@@ -297,21 +296,21 @@ def delete_file_llama_index(session: Session, user_id: str, file: File):
         # Remove all pending stacks from the file # ?
         file.stacks_to_process = json.dumps([])
         # Commit the changes to the file the database
-        session.commit()
+        file_manager_session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
-        docstore_file = Path(get_llama_index_datasource_folder_path(datasource.identifier, user_id)) / "docstores" / f"docstore.json"
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "docstores" / f"docstore.json"
         doc_store.persist(persist_path= str(docstore_file))
 
     except Exception as e:
-        session.rollback()
+        file_manager_session.rollback()
         logger.error(f"Error deleting file from LlamaIndex: {str(e)}")
         raise e
 
-def delete_file_processing_stack_from_llama_index(session: Session, user_id: str, fs_path: str, processing_stack_identifier: str):
+def delete_file_processing_stack_from_llama_index(file_manager_session: Session, user_id: str, fs_path: str, processing_stack_identifier: str):
     try:
         # Get the file's ref_doc_ids from the database
-        file = session.query(File).filter(File.path == fs_path).first()
+        file = file_manager_session.query(File).filter(File.path == fs_path).first()
         if not file or not file.ref_doc_ids:
             logger.warning(f"No ref_doc_ids found for file: {fs_path}")
             return
@@ -319,11 +318,11 @@ def delete_file_processing_stack_from_llama_index(session: Session, user_id: str
         from app.datasources.utils import get_datasource_identifier_from_path
         # Get the datasource name from the path
         datasource_identifier = get_datasource_identifier_from_path(fs_path)
-        datasource = session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
+
 
         # Get the datasource vector store and docstore
-        vector_store = create_vector_store(datasource.identifier, user_id)
-        doc_store = create_doc_store(datasource.identifier, user_id)
+        vector_store = create_vector_store(datasource_identifier, user_id)
+        doc_store = create_doc_store(datasource_identifier, user_id)
 
         # Delete each ref_doc_id from the vector store and docstore
         # Parse the json ref_doc_ids as a list
@@ -350,10 +349,10 @@ def delete_file_processing_stack_from_llama_index(session: Session, user_id: str
                 processed_stacks = [stack_id for stack_id in processed_stacks if stack_id != processing_stack_identifier]
                 file.processed_stacks = json.dumps(processed_stacks)
                 # Commit the changes to the file the database
-                session.commit()
+                file_manager_session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
-        docstore_file = Path(get_llama_index_datasource_folder_path(datasource.identifier, user_id)) / "docstores" / f"docstore.json"
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "docstores" / f"docstore.json"
         doc_store.persist(persist_path=str(docstore_file))
         
     except Exception as e:

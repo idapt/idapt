@@ -61,7 +61,7 @@ def get_chat_engine(session: Session,
                 embed_model = init_embedding_model(embedding_model_setting.schema_identifier, embedding_model_setting.value_json)
                 # Get specific datasource tool
                 tool = create_query_tool(
-                    session=session, 
+                    file_manager_session=session, 
                     datasource_identifier=datasource.identifier, vector_store=vector_store, doc_store=doc_store, embed_model=embed_model, llm=llm)
                 tools.append(tool)
 
