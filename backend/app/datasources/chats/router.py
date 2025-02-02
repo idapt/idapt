@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.utils import get_user_id
 from app.datasources.chats.service import get_all_chats, get_chat, add_message_to_chat, create_chat, update_chat_title, delete_chat
 from app.datasources.chats.database.session import get_datasources_chats_db_session
-from app.datasources.dependencies import validate_datasource_and_get_identifier
+from app.datasources.chats.dependencies import validate_datasource_is_of_type_chats
 from app.datasources.chats.schemas import ChatResponse, MessageResponse, MessageCreate
 from typing import List
 
@@ -23,7 +23,7 @@ async def get_all_chats_route(
     datasource_name: str,
     include_messages: bool = False,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ):
     try:
@@ -46,7 +46,7 @@ async def get_chat_route(
     create_if_not_found: bool = False,
     update_last_opened_at: bool = False,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ) -> ChatResponse:
     try:
@@ -68,7 +68,7 @@ async def create_chat_route(
     datasource_name: str,
     chat_uuid: str = None,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ):
     try:
@@ -88,7 +88,7 @@ async def add_message_to_chat_route(
     chat_uuid: str,
     message: MessageCreate,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ) -> None:
     try:
@@ -108,7 +108,7 @@ async def update_chat_title_route(
     chat_uuid: str,
     title: str,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ) -> None:
     try:
@@ -127,7 +127,7 @@ async def delete_chat_route(
     chat_uuid: str,
     datasource_name: str,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
     chats_session: Session = Depends(get_datasources_chats_db_session),
 ):
     try:

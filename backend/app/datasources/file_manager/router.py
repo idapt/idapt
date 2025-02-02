@@ -10,7 +10,7 @@ from app.datasources.file_manager.database.session import get_datasources_file_m
 from app.datasources.database.session import get_datasources_db_session
 from app.datasources.file_manager.utils import decode_path_safe
 from app.datasources.file_manager.service.llama_index import delete_item_from_llama_index
-from app.datasources.dependencies import validate_datasource_and_get_identifier
+from app.datasources.file_manager.dependencies import validate_datasource_is_of_type_files
 
 import logging
 
@@ -28,7 +28,7 @@ async def upload_file_route(
     datasource_name: str,
     item: FileUploadItem,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_files),
     file_manager_session: Session = Depends(get_datasources_file_manager_db_session),
 ):
     try:
@@ -47,7 +47,7 @@ async def delete_route(
     encoded_original_path: str,
     datasource_name: str,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_files),
     file_manager_session: Session = Depends(get_datasources_file_manager_db_session),
     original_path: str = Depends(decode_path_safe),
 ):
@@ -73,7 +73,7 @@ async def get_folder_info_route(
     datasource_name: str,
     include_child_folders_files_recursively: bool = False,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_files),
     file_manager_session: Session = Depends(get_datasources_file_manager_db_session),
     original_path: str = Depends(decode_path_safe),
 ) -> FolderInfoResponse:
@@ -99,7 +99,7 @@ async def get_file_info_route(
     include_content: bool = False,
     user_id: str = Depends(get_user_id),
     original_path: str = Depends(decode_path_safe),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_files),
     file_manager_session: Session = Depends(get_datasources_file_manager_db_session),
 ):
     try:
@@ -119,7 +119,7 @@ async def download_file_route(
     encoded_original_path: str,
     datasource_name: str,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_files),
     file_manager_session: Session = Depends(get_datasources_file_manager_db_session),
     original_path: str = Depends(decode_path_safe),
 ):
@@ -151,7 +151,7 @@ async def download_folder_route(
     encoded_original_path: str,
     datasource_name: str,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_files),
     file_manager_session: Session = Depends(get_datasources_file_manager_db_session),
     original_path: str = Depends(decode_path_safe),
 ):
@@ -177,7 +177,7 @@ async def delete_processed_data_route(
     encoded_original_path: str,
     datasource_name: str,
     user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    datasource_identifier = Depends(validate_datasource_is_of_type_files),
     file_manager_session: Session = Depends(get_datasources_file_manager_db_session),
     original_path: str = Depends(decode_path_safe),
 ):

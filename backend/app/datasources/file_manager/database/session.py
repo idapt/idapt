@@ -3,7 +3,7 @@ from app.database.utils.service import get_session
 from app.api.user_path import get_user_data_dir
 from app.datasources.file_manager.service.service import initialize_file_manager_db
 from app.api.utils import get_user_id
-from app.datasources.database.models import Datasource
+from app.datasources.database.models import Datasource, DatasourceType
 from app.datasources.database.session import get_datasources_db_session
 
 from sqlalchemy.orm import Session
@@ -24,6 +24,10 @@ def get_datasources_file_manager_db_session(
     """
     try:
         datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
+        if not datasource:
+            raise HTTPException(status_code=400, detail="Datasource not found")
+        if datasource.type != DatasourceType.FILES.name:
+            raise HTTPException(status_code=400, detail="Datasource is not of type files")
         db_path = Path(get_user_data_dir(user_id), datasource.identifier, "file_manager.db")
         # Create the parent directories if they don't exist
         db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -45,6 +49,10 @@ def get_datasources_file_manager_session(
     ) -> Session:
     try:
         datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
+        if not datasource:
+            raise HTTPException(status_code=400, detail="Datasource not found")
+        if datasource.type != DatasourceType.FILES.name:
+            raise HTTPException(status_code=400, detail="Datasource is not of type files")
         db_path = Path(get_user_data_dir(user_id), datasource.identifier, "file_manager.db")
         # Create the parent directories if they don't exist
         db_path.parent.mkdir(parents=True, exist_ok=True)

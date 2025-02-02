@@ -15,8 +15,7 @@ from app.datasources.file_manager.service.file_system import get_path_from_fs_pa
 from app.datasources.file_manager.service.llama_index import delete_file_llama_index
 from app.datasources.file_manager.schemas import FileUploadItem, FileDownloadResponse, FileInfoResponse, FolderInfoResponse, FolderDownloadResponse
 from app.datasources.file_manager.database.models import FileStatus, File, Folder
-from app.datasources.database.models import Datasource
-from app.datasources.file_manager.utils import validate_path, preprocess_base64_file
+from app.datasources.file_manager.utils import validate_path, preprocess_base64_file 
 from app.api.user_path import get_user_data_dir
 
 import logging

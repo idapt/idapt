@@ -54,3 +54,15 @@ def validate_name(name: str) -> str:
 def get_datasource_folder_path(user_id: str, identifier: str) -> str:
     """Get the folder path of a datasource"""
     return str(Path(get_user_data_dir(user_id), identifier))
+
+from app.datasources.database.models import Datasource
+from app.datasources.database.models import DatasourceType
+from sqlalchemy.orm import Session
+def validate_datasource_is_of_type(datasources_db_session: Session, datasource_name: str, datasource_type: DatasourceType) -> bool:
+    try:
+        datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()
+        if datasource.type != datasource_type.value:
+            return False
+        return True
+    except Exception:
+        return False
