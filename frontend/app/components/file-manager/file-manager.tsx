@@ -63,7 +63,9 @@ export function FileManager() {
   };
 
   const handleDatasourceClick = (datasource: DatasourceResponse) => {
-    navigateToFolder(`${datasource.name}`); // The name is used as the original path equivalent
+    if (datasource.type == "FILES") {
+      navigateToFolder(`${datasource.name}`); // The name is used as the original path equivalent
+    }
   };
 
   const displayItems = currentPath === '' ? {
