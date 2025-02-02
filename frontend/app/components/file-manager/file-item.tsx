@@ -214,42 +214,38 @@ export function FileItem({
   return (
     <>
       <div 
-        className="group relative flex items-center space-x-4 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+        className="group relative flex flex-col items-center w-full h-full hover:bg-gray-50 rounded-lg cursor-pointer"
         onClick={handleClick}
       >
-        <div className="relative">
+        <div className="flex-1 flex items-center justify-center relative">
           {type === 'folder' ? (
-            <Folder className="h-8 w-8 text-blue-500" />
+            <Folder className="h-12 w-12 text-blue-500" />
           ) : (
-            <File className="h-8 w-8 text-gray-500" />
+            <File className="h-12 w-12 text-gray-500" />
           )}
 
-          {status == "pending" && (
-            <CircleDashed className="h-4 w-4 text-red-500 absolute -top-1 -right-1 bg-white rounded-full" />
-          )}
-          {status == "queued" && (
-            <Clock className="h-4 w-4 text-yellow-500 absolute -top-1 -right-1 bg-white rounded-full" />
-          )}
-          {status == "completed" && (
-            <CheckCircle2 className="h-4 w-4 text-green-500 absolute -top-1 -right-1 bg-white rounded-full" />
-          )}
-          {status == "processing" && (
-            <RefreshCcw className="h-4 w-4 text-blue-500 absolute -top-1 -right-1 bg-white rounded-full" />
-          )}
-          {status == "error" && (
-            <AlertCircle className="h-4 w-4 text-red-500 absolute -top-1 -right-1 bg-white rounded-full" />
+          {status && (
+            <div className="absolute bottom-2 -right-1 bg-white rounded-full">
+              {status === "pending" && <CircleDashed className="h-5 w-5 text-red-500" />}
+              {status === "queued" && <Clock className="h-5 w-5 text-yellow-500" />}
+              {status === "completed" && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+              {status === "processing" && <RefreshCcw className="h-5 w-5 text-blue-500" />}
+              {status === "error" && <AlertCircle className="h-5 w-5 text-red-500" />}
+            </div>
           )}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
-          {size && <p className="text-sm text-gray-500">{size}</p>}
+
+        <div className="w-full px-1 mt-2">
+          <p className="text-sm font-medium text-gray-900 text-center truncate">{name}</p>
+          {size && <p className="text-xs text-gray-500 text-center truncate">{size}</p>}
         </div>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="opacity-0 group-hover:opacity-100"
+              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>

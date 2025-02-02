@@ -26,47 +26,54 @@ export function FileList({
   onUploadComplete 
 }: FileListProps) {  
   return (
-    <div className={viewMode === 'grid' ? "grid grid-cols-4 gap-4 p-4" : "space-y-1 p-4"}>
+    <div className={
+      viewMode === 'grid' 
+        ? "grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 p-4"
+        : "space-y-1 p-4"
+    }>
       {datasources?.map((datasource) => (
-        <DatasourceItem
-          key={`datasource-${datasource.identifier}`}
-          datasource={datasource}
-          onClick={() => onDatasourceClick?.(datasource)}
-          onRefresh={onUploadComplete}
-        />
+        <div key={`datasource-${datasource.identifier}`} className="w-[120px] h-[120px]">
+          <DatasourceItem
+            datasource={datasource}
+            onClick={() => onDatasourceClick?.(datasource)}
+            onRefresh={onUploadComplete}
+          />
+        </div>
       ))}
       {folders.map((folder) => (
-        <FileItem
-          key={`folder-${folder.id}`}
-          id={folder.id}
-          name={folder.name}
-          type="folder"
-          path={folder.original_path}
-          modified={folder.uploaded_at.toString()}
-          accessed={folder.uploaded_at.toString()}
-          onClick={() => onFolderClick(folder.original_path)}
-          onRefresh={onUploadComplete}
-          viewMode={viewMode}
-        />
+        <div key={`folder-${folder.id}`} className="w-[120px] h-[120px]">
+          <FileItem
+            id={folder.id}
+            name={folder.name}
+            type="folder"
+            path={folder.original_path}
+            modified={folder.uploaded_at.toString()}
+            accessed={folder.uploaded_at.toString()}
+            onClick={() => onFolderClick(folder.original_path)}
+            onRefresh={onUploadComplete}
+            viewMode={viewMode}
+          />
+        </div>
       ))}
       {files.map((file) => (
-        <FileItem
-          key={`file-${file.id}`}
-          id={file.id}
-          name={file.name}
-          type="file"
-          size={file.size?.toString()}
-          modified={file.uploaded_at.toString()}
-          accessed={file.uploaded_at.toString()}
-          path={file.original_path}
-          mimeType={file.mime_type ?? undefined}
-          stacks_to_process={file.stacks_to_process ?? undefined}
-          processed_stacks={file.processed_stacks ?? undefined}
-          status={file.status}
-          error_message={file.error_message ?? undefined}
-          onRefresh={onUploadComplete}
-          viewMode={viewMode}
-        />
+        <div key={`file-${file.id}`} className="h-[120px] w-[120px]">
+          <FileItem
+            id={file.id}
+            name={file.name}
+            type="file"
+            size={file.size?.toString()}
+            modified={file.uploaded_at.toString()}
+            accessed={file.uploaded_at.toString()}
+            path={file.original_path}
+            mimeType={file.mime_type ?? undefined}
+            stacks_to_process={file.stacks_to_process ?? undefined}
+            processed_stacks={file.processed_stacks ?? undefined}
+            status={file.status}
+            error_message={file.error_message ?? undefined}
+            onRefresh={onUploadComplete}
+            viewMode={viewMode}
+          />
+        </div>
       ))}
     </div>
   );

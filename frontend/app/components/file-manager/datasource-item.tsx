@@ -22,6 +22,7 @@ import {
 } from "@/app/components/ui/select";
 import { Input } from "@/app/components/ui/input";
 import { useDatasources } from "./hooks/use-datasources";
+import { DatasourceTypeIcon } from "./datasource-type-icon";
 
 interface DatasourceItemProps {
   datasource: DatasourceResponse;
@@ -84,27 +85,33 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
   return (
     <>
       <div 
-        className="group relative flex items-center space-x-4 p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+        className={`group relative flex flex-col items-center w-full h-full p-2 hover:bg-gray-100 rounded-lg ${
+          datasource.type === 'FILES' ? 'cursor-pointer' : 'cursor-default'
+        }`}
         onClick={handleClick}
       >
-        <Database className="h-8 w-8 text-gray-400" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">{datasource.name}</p>
-          <p className="text-xs text-gray-500">Datasource</p>
+        <div className="flex-1 flex items-center justify-center">
+          <DatasourceTypeIcon type={datasource.type} />
         </div>
-        
+
+        <div className="w-full px-1">
+          <p className="text-sm font-medium text-gray-900 text-center truncate">{datasource.name}</p>
+          <p className="text-xs text-gray-500 text-center truncate">Datasource</p>
+        </div>
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="opacity-0 group-hover:opacity-100"
+              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[200px] p-0.5 bg-white rounded-md shadow-md z-50">
-          {stacks.map((stack) => (
+          {datasource.type === 'FILES' && (
+            stacks.map((stack) => (
               <DropdownMenuItem
                 className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
                 key={stack.identifier}
@@ -114,8 +121,9 @@ export function DatasourceItem({ datasource, onClick, onRefresh }: DatasourceIte
               >
                 <Layers className="h-4 w-4 mr-2" />
                 <span>Process with {stack.display_name}</span>
-              </DropdownMenuItem>
-            ))}
+                </DropdownMenuItem>
+              ))
+            )}
             <DropdownMenuItem 
               className="cursor-pointer p-2 hover:bg-gray-100 rounded-md flex items-center"
               onSelect={() => setShowSettings(true)}
