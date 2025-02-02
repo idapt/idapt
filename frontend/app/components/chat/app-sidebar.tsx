@@ -87,7 +87,7 @@ export function AppSidebar({ userId, onViewChange, currentView }: AppSidebarProp
       <div className="h-[1px] bg-border my-2 mx-2" />
       
       <SidebarContent>
-        <SidebarHistory userId={userId} />
+        <SidebarHistory userId={userId} setCurrentView={onViewChange} />
       </SidebarContent>
 
       <SidebarFooter>

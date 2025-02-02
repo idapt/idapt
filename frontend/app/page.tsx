@@ -10,7 +10,7 @@ import { ProcessingStacks } from "@/app/components/processing/processing-stacks"
 import { useState } from 'react';
 import { SidebarToggle } from "./components/chat/sidebar-toggle";
 
-type View = 'chat' | 'files' | 'settings' | 'processing';
+export type View = 'chat' | 'files' | 'settings' | 'processing';
 
 export default function App() {
   const { userId } = useUser();

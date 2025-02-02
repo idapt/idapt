@@ -7,6 +7,7 @@ import { memo, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import useSWR from 'swr';
 
+import { View } from '@/app/page';
 import {
   CheckCircleFillIcon,
   GlobeIcon,
@@ -48,7 +49,6 @@ import {
 //import type { Chat } from '@/app/lib/db/schema';*
 import type { ChatResponse } from '@/app/client/types.gen';
 import { fetcher } from '@/app/lib/utils';
-import { deleteChatRouteApiDatasourcesChatsChatUuidDelete } from '@/app/client/sdk.gen';
 //import { useChatVisibility } from '@/app/hooks/use-chat-visibility';
 import { useChatResponse } from '@/app/contexts/chat-response-context';
 
@@ -63,11 +63,13 @@ type GroupedChats = {
 const PureChatItem = ({
   chat,
   isActive,
+  onClick,
   onDelete,
   setOpenMobile,
 }: {
   chat: ChatResponse;
   isActive: boolean;
+  onClick: () => void;
   onDelete: (chatId: string) => void;
   setOpenMobile: (open: boolean) => void;
 }) => {
@@ -76,17 +78,12 @@ const PureChatItem = ({
     initialVisibility: chat.visibility,
   });*/
 
-  const { tryToSetCurrentChat } = useChatResponse();
-
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
         isActive={isActive}
-        onClick={() => {
-          tryToSetCurrentChat(chat.uuid);
-          setOpenMobile(false);
-        }}
+        onClick={onClick}
       >
         <button>{chat.title}</button>
       </SidebarMenuButton>
@@ -158,9 +155,9 @@ export const ChatItem = memo(PureChatItem, (prevProps, nextProps) => {
   return true;
 });
 
-export function SidebarHistory({ userId }: { userId: string | undefined }) {
+export function SidebarHistory({ userId, setCurrentView }: { userId: string | undefined, setCurrentView: (view: View) => void }) {
   const { setOpenMobile } = useSidebar();
-  const { deleteChat, currentChatId, chats, isChatsLoading } = useChatResponse();
+  const { deleteChat, currentChatId, chats, isChatsLoading, tryToSetCurrentChat } = useChatResponse();
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -178,6 +175,12 @@ export function SidebarHistory({ userId }: { userId: string | undefined }) {
       toast.error('Failed to delete chat');
       console.error('Error deleting chat:', error);
     }
+  };
+
+  const handleChatClick = (chat: ChatResponse) => {
+    tryToSetCurrentChat(chat.uuid);
+    setOpenMobile(false);
+    setCurrentView('chat');
   };
 
   if (!userId) {
@@ -303,6 +306,7 @@ export function SidebarHistory({ userId }: { userId: string | undefined }) {
                           key={chat.uuid}
                           chat={chat}
                           isActive={chat.uuid === currentChatId}
+                          onClick={() => handleChatClick(chat)}
                           onDelete={(chatId) => {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
@@ -323,6 +327,7 @@ export function SidebarHistory({ userId }: { userId: string | undefined }) {
                           key={chat.uuid}
                           chat={chat}
                           isActive={chat.uuid === currentChatId}
+                          onClick={() => handleChatClick(chat)}
                           onDelete={(chatId) => {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
@@ -343,6 +348,7 @@ export function SidebarHistory({ userId }: { userId: string | undefined }) {
                           key={chat.uuid}
                           chat={chat}
                           isActive={chat.uuid === currentChatId}
+                          onClick={() => handleChatClick(chat)}
                           onDelete={(chatId) => {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
@@ -363,6 +369,7 @@ export function SidebarHistory({ userId }: { userId: string | undefined }) {
                           key={chat.uuid}
                           chat={chat}
                           isActive={chat.uuid === currentChatId}
+                          onClick={() => handleChatClick(chat)}
                           onDelete={(chatId) => {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
@@ -383,6 +390,7 @@ export function SidebarHistory({ userId }: { userId: string | undefined }) {
                           key={chat.uuid}
                           chat={chat}
                           isActive={chat.uuid === currentChatId}
+                          onClick={() => handleChatClick(chat)}
                           onDelete={(chatId) => {
                             setDeleteId(chatId);
                             setShowDeleteDialog(true);
