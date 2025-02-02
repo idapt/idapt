@@ -3,13 +3,16 @@ from app.datasources.file_manager.service.service import get_file_info
 from app.datasources.file_manager.service.llama_index import delete_file_llama_index, delete_file_processing_stack_from_llama_index
 from app.datasources.file_manager.database.models import File, FileStatus, Folder
 from app.datasources.database.models import Datasource
-from app.processing_stacks.models import ProcessingStack
+from app.processing_stacks.database.models import ProcessingStack
 from app.datasources.file_manager.service.llama_index import get_llama_index_datasource_folder_path, create_vector_store, create_doc_store
 from app.processing_stacks.service import get_transformations_for_stack
 from app.ollama_status.service import can_process
 from app.datasources.file_manager.utils import validate_path
 from app.settings.service import get_setting
 from app.processing.schemas import ProcessingItem, ProcessingRequest, ProcessingStatusResponse, ItemProcessingStatusResponse
+from app.settings.database.session import get_settings_db_session
+from app.processing_stacks.database.session import get_processing_stacks_db_session
+
 
 # Set the llama index default llm and embed model to none otherwise it will raise an error.
 # We use on demand initialization of the llm and embed model when needed as it can change depending on the request.
@@ -382,10 +385,12 @@ async def _process_single_file(session: Session, file: File, user_id: str):
                     document.doc_id = f"{original_doc_id}_{stack_identifier}"
 
                     # Get the embedding settings for this datasource
-                    embedding_settings_response = get_setting(session, datasource.embedding_setting_identifier)
+                    with get_settings_db_session(user_id) as settings_db_session:
+                        embedding_settings_response = get_setting(settings_db_session, datasource.embedding_setting_identifier)
 
                     # Get the transformations stack
-                    transformations = get_transformations_for_stack(session, stack_identifier, datasource, file_response, embedding_settings_response)
+                    with get_processing_stacks_db_session(user_id, datasource.identifier) as processing_stacks_db_session:
+                        transformations = get_transformations_for_stack(processing_stacks_db_session, stack_identifier, datasource, file_response, embedding_settings_response)
 
                     # Update the file in the database with the ref_doc_ids
                     # Do this before the ingestion so that if it crashes we can try to delete the file from the vector store and docstore with its ref_doc_ids and reprocess

@@ -4,7 +4,7 @@ from typing import List
 from app.api.utils import get_user_id
 from app.settings.service import get_setting, update_setting, create_setting, delete_setting, get_all_settings, get_all_settings_with_schema_identifier
 from app.settings.schemas import CreateSettingRequest, UpdateSettingRequest, SettingResponse
-from app.settings.utils import get_settings_db_session
+from app.settings.database.session import get_settings_db_session
 import logging
 
 logger = logging.getLogger("uvicorn")

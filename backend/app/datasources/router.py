@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.api.utils import get_user_id
-from app.datasources.database.utils import get_datasources_db_session
+from app.datasources.database.session import get_datasources_db_session
 from app.datasources.schemas import DatasourceCreate, DatasourceResponse, DatasourceUpdate
 from app.datasources.service import (
     get_datasource,

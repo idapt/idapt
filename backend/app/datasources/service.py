@@ -9,7 +9,7 @@ from app.datasources.utils import validate_name, get_datasource_folder_path
 from app.datasources.database.models import Datasource, DatasourceType
 from app.settings.schemas import SettingResponse
 from app.settings.service import get_all_settings, get_setting
-from app.settings.utils import get_settings_db_session
+from app.settings.database.session import get_settings_db_session
 
 logger = logging.getLogger("uvicorn")
 

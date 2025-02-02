@@ -2,9 +2,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
+from app.processing_stacks.database.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.api.utils import get_user_id
-from app.database.utils.utils import get_file_manager_db_session
+from app.processing_stacks.database.session import get_processing_stacks_db_session
 from app.processing_stacks.schemas import (
     ProcessingStackCreate,
     ProcessingStackUpdate,
@@ -32,10 +32,10 @@ processing_stacks_router = r = APIRouter()
 )
 async def get_processing_steps_route(
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_file_manager_db_session)
+    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
 ):
     try:
-        steps = session.query(ProcessingStep).all()
+        steps = processing_stacks_db_session.query(ProcessingStep).all()
         return [
             ProcessingStepResponse(
                 identifier=step.identifier,
@@ -56,10 +56,10 @@ async def get_processing_steps_route(
 )
 async def get_processing_stacks_route(
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_file_manager_db_session)
+    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
 ):
     try:
-        return get_processing_stacks(session=session)
+        return get_processing_stacks(processing_stacks_db_session=processing_stacks_db_session)
     except Exception as e:
         logger.error(f"Error getting processing stacks: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -71,9 +71,9 @@ async def get_processing_stacks_route(
 async def get_processing_stack_route(
     stack_identifier: str,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_file_manager_db_session)
+    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
 ):
-    return get_processing_stack(session=session, stack_identifier=stack_identifier)
+    return get_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack_identifier=stack_identifier)
 
 @r.post(
     "/stacks",
@@ -82,11 +82,11 @@ async def get_processing_stack_route(
 async def create_processing_stack_route(
     stack: ProcessingStackCreate,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_file_manager_db_session)
+    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
 ):
     try:
         logger.info(f"Creating processing stack {stack.display_name} for user {user_id}")
-        response = create_processing_stack(session=session, stack=stack)
+        response = create_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack=stack)
         return response
 
     except Exception as e:
@@ -101,12 +101,12 @@ async def update_processing_stack_route(
     stack_identifier: str,
     stack_update: ProcessingStackUpdate,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_file_manager_db_session)
+    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
 ):
     try:
-        return update_processing_stack(session=session, stack_identifier=stack_identifier, stack_update=stack_update)
+        return update_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack_identifier=stack_identifier, stack_update=stack_update)
     except Exception as e:
-        session.rollback()
+        processing_stacks_db_session.rollback()
         logger.error(f"Error updating processing stack: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -114,10 +114,10 @@ async def update_processing_stack_route(
 async def delete_processing_stack_route(
     stack_identifier: str,
     user_id: str = Depends(get_user_id),
-    session: Session = Depends(get_file_manager_db_session)
+    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
 ):
     try:
-        delete_processing_stack(session=session, stack_identifier=stack_identifier)
+        delete_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack_identifier=stack_identifier)
         return {"message": "Stack deleted successfully"}
     except Exception as e:
         logger.error(f"Error deleting processing stack: {e}")

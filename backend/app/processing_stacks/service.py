@@ -9,7 +9,7 @@ import os
 from app.settings.model_initialization import init_embedding_model
 from app.settings.schemas import SettingResponse
 from app.constants.file_extensions import TEXT_FILE_EXTENSIONS, CODE_FILE_EXTENSIONS
-from app.processing_stacks.models import ProcessingStack, ProcessingStep, ProcessingStackStep
+from app.processing_stacks.database.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.datasources.database.models import Datasource
 from app.datasources.file_manager.schemas import FileInfoResponse
 from app.processing_stacks.schemas import (
@@ -36,11 +36,11 @@ from llama_index.core.node_parser.text.token import TokenTextSplitter
 #from app.processing_stacks.utils import get_language_from_extension
 logger = logging.getLogger("uvicorn")
 
-def create_default_processing_stacks_if_needed(session: Session):
+def create_default_processing_stacks_if_needed(processing_stacks_db_session: Session):
     """Create default processing stacks in the database"""
     try:
         # Create processing steps
-        sentence_splitter_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "sentence_splitter").first()
+        sentence_splitter_step = processing_stacks_db_session.query(ProcessingStep).filter(ProcessingStep.identifier == "sentence_splitter").first()
         if not sentence_splitter_step:
             step = ProcessingStep(
                 type="node_parser",
@@ -49,11 +49,11 @@ def create_default_processing_stacks_if_needed(session: Session):
                 description="Splits text into sentences with configurable chunk size and overlap",
                 parameters_schema=SentenceSplitterParameters.model_json_schema()
             )
-            session.add(step)
-            session.commit()
+            processing_stacks_db_session.add(step)
+            processing_stacks_db_session.commit()
             logger.info("Created default processing step 'Sentence Splitter'")
 
-        embedding_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "embedding").first()
+        embedding_step = processing_stacks_db_session.query(ProcessingStep).filter(ProcessingStep.identifier == "embedding").first()
         if not embedding_step:
             step = ProcessingStep(
                 type="embedding",
@@ -62,11 +62,11 @@ def create_default_processing_stacks_if_needed(session: Session):
                 description="Converts text into vector embeddings for semantic search",
                 parameters_schema={}
             )
-            session.add(step)
-            session.commit()
+            processing_stacks_db_session.add(step)
+            processing_stacks_db_session.commit()
             logger.info("Created default processing step 'Embedding'")
 
-        token_splitter_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "token_splitter").first()
+        token_splitter_step = processing_stacks_db_session.query(ProcessingStep).filter(ProcessingStep.identifier == "token_splitter").first()
         if not token_splitter_step:
             step = ProcessingStep(
                 type="node_parser",
@@ -75,8 +75,8 @@ def create_default_processing_stacks_if_needed(session: Session):
                 description="Splits text into chunks based on token count with configurable chunk size and overlap",
                 parameters_schema=TokenSplitterParameters.model_json_schema()
             )
-            session.add(step)
-            session.commit()
+            processing_stacks_db_session.add(step)
+            processing_stacks_db_session.commit()
             logger.info("Created default processing step 'Token Splitter'")
 
         #code_splitter_step = session.query(ProcessingStep).filter(ProcessingStep.identifier == "code_splitter").first()
@@ -115,7 +115,7 @@ def create_default_processing_stacks_if_needed(session: Session):
                 )
             ]
         )
-        create_processing_stack(session=session, stack=text_processing_stack_create)
+        create_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack=text_processing_stack_create)
 
         # Create code processing stack
         code_processing_stack_create = ProcessingStackCreate(
@@ -149,17 +149,17 @@ def create_default_processing_stacks_if_needed(session: Session):
                 )
             ]
         )
-        create_processing_stack(session=session, stack=code_processing_stack_create)
+        create_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack=code_processing_stack_create)
 
         # TODO Add image, video, audio, code processing stacks
 
-        session.commit()
+        processing_stacks_db_session.commit()
     except Exception as e:
-        session.rollback()
+        processing_stacks_db_session.rollback()
         logger.error(f"Error creating default processing stacks: {e}")
         raise e    
 
-def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> ProcessingStackResponse:
+def create_processing_stack(processing_stacks_db_session: Session, stack: ProcessingStackCreate) -> ProcessingStackResponse:
     """Create a processing stack"""
     try:
         
@@ -174,7 +174,7 @@ def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> P
         stack_identifier = generate_stack_identifier(stack.display_name)
 
         # Try to get the stack from the database
-        stack_to_create = session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_identifier).first()
+        stack_to_create = processing_stacks_db_session.query(ProcessingStack).filter(ProcessingStack.identifier == stack_identifier).first()
         if stack_to_create:
             #logger.info(f"Processing stack already exists: {stack_to_create.display_name}")
             pass
@@ -187,13 +187,13 @@ def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> P
                 supported_extensions=json.dumps(stack.supported_extensions),
                 steps=[]
             )
-            session.add(stack_to_create)
-            session.commit()
+            processing_stacks_db_session.add(stack_to_create)
+            processing_stacks_db_session.commit()
         
             # Add steps with this function so that validation is done there
             for step in stack.steps:
                 add_processing_stack_step(
-                    session=session,
+                    processing_stacks_db_session=processing_stacks_db_session,
                     stack_identifier=stack_identifier,
                     step_identifier=step.step_identifier,
                     order=step.order,
@@ -224,15 +224,15 @@ def create_processing_stack(session: Session, stack: ProcessingStackCreate) -> P
         return response
     
     except Exception as e:
-        session.rollback()
+        processing_stacks_db_session.rollback()
         logger.error(f"Error creating processing stack: {e}")
         raise e
     
-def update_processing_stack(session: Session, stack_identifier: str, stack_update: ProcessingStackUpdate) -> ProcessingStackResponse:
+def update_processing_stack(processing_stacks_db_session: Session, stack_identifier: str, stack_update: ProcessingStackUpdate) -> ProcessingStackResponse:
     """Update a processing stack"""
     try:
 
-        db_stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
+        db_stack = processing_stacks_db_session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
         if not db_stack:
             raise HTTPException(status_code=404, detail="Stack not found")
         
@@ -242,7 +242,7 @@ def update_processing_stack(session: Session, stack_identifier: str, stack_updat
             parser_count = 0
             embedding_count = 0
             for stack_step in stack_update.steps:
-                db_step = session.query(ProcessingStep).filter_by(identifier=stack_step.step_identifier).first()
+                db_step = processing_stacks_db_session.query(ProcessingStep).filter_by(identifier=stack_step.step_identifier).first()
                 # If the step is not found, raise an error
                 if not db_step:
                     raise ValueError(f"Step not found: {stack_step.step_identifier}")
@@ -271,22 +271,22 @@ def update_processing_stack(session: Session, stack_identifier: str, stack_updat
         db_stack.supported_extensions = json.dumps(stack_update.supported_extensions)
         
         # Delete existing steps
-        session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier).delete()
+        processing_stacks_db_session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier).delete()
         
         # Add new steps
         for stack_step in stack_update.steps:
             add_processing_stack_step(
-                session=session,
+                processing_stacks_db_session=processing_stacks_db_session,
                 stack_identifier=stack_identifier,
                 step_identifier=stack_step.step_identifier,
                 order=stack_step.order,
                 parameters=stack_step.parameters or {}
             )
         
-        session.commit()
+        processing_stacks_db_session.commit()
         
         # Return updated stack
-        updated_stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
+        updated_stack = processing_stacks_db_session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
         return ProcessingStackResponse(
             identifier=updated_stack.identifier,
             display_name=updated_stack.display_name,
@@ -312,23 +312,23 @@ def update_processing_stack(session: Session, stack_identifier: str, stack_updat
         )
 
     except Exception as e:
-        session.rollback()
+        processing_stacks_db_session.rollback()
         logger.error(f"Error updating processing stack: {e}")
         raise e
     
-def get_processing_stacks(session: Session) -> List[ProcessingStackResponse]:
+def get_processing_stacks(processing_stacks_db_session: Session) -> List[ProcessingStackResponse]:
     """Get all processing stacks"""
     try:
-        stacks = session.query(ProcessingStack).all()
-        return [get_processing_stack(session=session, stack_identifier=stack.identifier) for stack in stacks]
+        stacks = processing_stacks_db_session.query(ProcessingStack).all()
+        return [get_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack_identifier=stack.identifier) for stack in stacks]
     except Exception as e:
         logger.error(f"Error getting processing stacks: {e}")
         raise e
     
-def get_processing_stack(session: Session, stack_identifier: str) -> ProcessingStackResponse:
+def get_processing_stack(processing_stacks_db_session: Session, stack_identifier: str) -> ProcessingStackResponse:
     """Get a processing stack"""
     try:
-        stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
+        stack = processing_stacks_db_session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
         return ProcessingStackResponse(
             identifier=stack.identifier,
             display_name=stack.display_name,
@@ -364,11 +364,11 @@ def get_default_parameters(parameters_schema: dict) -> dict:
                 default_params[prop_name] = prop_schema['default']
     return default_params
 
-def add_processing_stack_step(session: Session, stack_identifier: str, step_identifier: str, order: int, parameters: dict | None = None):
+def add_processing_stack_step(processing_stacks_db_session: Session, stack_identifier: str, step_identifier: str, order: int, parameters: dict | None = None):
     """Add a processing stack step to a processing stack in the database"""
     try:
         # Get the step to access its schema
-        step = session.query(ProcessingStep).filter_by(identifier=step_identifier).first()
+        step = processing_stacks_db_session.query(ProcessingStep).filter_by(identifier=step_identifier).first()
         if not step:
             raise ValueError(f"Step not found: {step_identifier}")
 
@@ -378,33 +378,33 @@ def add_processing_stack_step(session: Session, stack_identifier: str, step_iden
         # Merge provided parameters with defaults
         final_parameters = {**default_params, **(parameters or {})}
 
-        session.add(ProcessingStackStep(
+        processing_stacks_db_session.add(ProcessingStackStep(
             stack_identifier=stack_identifier, 
             step_identifier=step_identifier, 
             order=order, 
             parameters=final_parameters
         ))
-        session.commit()
+        processing_stacks_db_session.commit()
     except Exception as e:
-        session.rollback()
+        processing_stacks_db_session.rollback()
         logger.error(f"Error adding processing stack step: {e}")
         raise e
     
-def delete_processing_stack_step(session: Session, stack_identifier: str, step_identifier: str):
+def delete_processing_stack_step(processing_stacks_db_session: Session, stack_identifier: str, step_identifier: str):
     """Delete a processing stack step from the database"""
     try:
-        session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier, step_identifier=step_identifier).delete()
-        session.commit()
+        processing_stacks_db_session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier, step_identifier=step_identifier).delete()
+        processing_stacks_db_session.commit()
     except Exception as e:
-        session.rollback()
+        processing_stacks_db_session.rollback()
         logger.error(f"Error deleting processing stack step: {e}")
         raise e
 
-def change_processing_stack_step_order(session: Session, stack_identifier: str, step_identifier: str, new_order: int):
+def change_processing_stack_step_order(processing_stacks_db_session: Session, stack_identifier: str, step_identifier: str, new_order: int):
     """Change the order of a processing stack step in the database"""
     try:
         # Get the step to move and its current order
-        step_to_move = session.query(ProcessingStackStep).filter_by(
+        step_to_move = processing_stacks_db_session.query(ProcessingStackStep).filter_by(
             stack_identifier=stack_identifier,
             step_identifier=step_identifier
         ).first()
@@ -419,7 +419,7 @@ def change_processing_stack_step_order(session: Session, stack_identifier: str, 
             return
             
         # Get all other steps for the stack
-        other_steps = session.query(ProcessingStackStep).filter_by(
+        other_steps = processing_stacks_db_session.query(ProcessingStackStep).filter_by(
             stack_identifier=stack_identifier
         ).filter(
             ProcessingStackStep.step_identifier != step_identifier
@@ -440,9 +440,9 @@ def change_processing_stack_step_order(session: Session, stack_identifier: str, 
         # Set new order for the moved step
         step_to_move.order = new_order
         
-        session.commit()
+        processing_stacks_db_session.commit()
     except Exception as e:
-        session.rollback()
+        processing_stacks_db_session.rollback()
         logger.error(f"Error changing processing stack step order: {e}")
         raise e
 
@@ -503,15 +503,15 @@ def get_transformer_for_step(step: ProcessingStep, parameters: dict, datasource:
         logger.error(f"Error getting transformer for step: {e}")
         raise e
 
-def get_transformations_for_stack(session: Session, stack_identifier: str, datasource: Datasource, file_response: FileInfoResponse, embedding_settings_response: SettingResponse):
+def get_transformations_for_stack(processing_stacks_db_session: Session, stack_identifier: str, datasource: Datasource, file_response: FileInfoResponse, embedding_settings_response: SettingResponse):
     """Get all transformations for a processing stack"""
     try:
-        stack = session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
+        stack = processing_stacks_db_session.query(ProcessingStack).filter_by(identifier=stack_identifier).first()
         if not stack:
             raise ValueError(f"Stack not found: {stack_identifier}")
           
         transformations = []
-        stack_steps = (session.query(ProcessingStackStep)
+        stack_steps = (processing_stacks_db_session.query(ProcessingStackStep)
                       .filter_by(stack_identifier=stack_identifier)
                       .order_by(ProcessingStackStep.order)
                       .all())
@@ -536,30 +536,30 @@ def generate_stack_identifier(name: str) -> str:
     except Exception as e:
         raise ValueError(f"Invalid name: {name}")
 
-def delete_processing_stack(session: Session, stack_identifier: str) -> bool:
+def delete_processing_stack(processing_stacks_db_session: Session, stack_identifier: str) -> bool:
     """Delete a processing stack and its steps from the database"""
     try:
         # Delete all steps first
-        session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier).delete()
+        processing_stacks_db_session.query(ProcessingStackStep).filter_by(stack_identifier=stack_identifier).delete()
         
         # Delete the stack
-        result = session.query(ProcessingStack).filter_by(identifier=stack_identifier).delete()
+        result = processing_stacks_db_session.query(ProcessingStack).filter_by(identifier=stack_identifier).delete()
         
-        session.commit()
+        processing_stacks_db_session.commit()
         return result > 0
     except Exception as e:
-        session.rollback()
+        processing_stacks_db_session.rollback()
         logger.error(f"Error deleting processing stack: {e}")
         raise e
 
-def validate_processing_stack_steps(session: Session, steps: List[ProcessingStackStepCreate]) -> None:
+def validate_processing_stack_steps(processing_stacks_db_session: Session, steps: List[ProcessingStackStepCreate]) -> None:
     if not steps:
         raise ValueError("At least one step is required")
         
     # Get all steps from database to check their types
     step_types = {
         step.identifier: step.type 
-        for step in session.query(ProcessingStep).filter(
+        for step in processing_stacks_db_session.query(ProcessingStep).filter(
             ProcessingStep.identifier.in_([s.step_identifier for s in steps])
         ).all()
     }

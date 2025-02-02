@@ -1,8 +1,8 @@
 from sqlalchemy import Column, String, JSON, Boolean, DateTime, Integer, ForeignKey, func
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
 
-# Use the Base class from the database models
-from app.database.models import Base
+Base = declarative_base()
 
 class ProcessingStep(Base):
     __tablename__ = 'processing_steps'

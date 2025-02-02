@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, WebSocket
 from app.api.utils import get_user_id
-from app.settings.utils import get_settings_db_session
+from app.settings.database.session import get_settings_db_session
 from sqlalchemy.orm import Session
 import logging
 from app.api.websocket import StatusWebSocket
