@@ -5,12 +5,13 @@ import logging
 from app.datasources.database.models import Datasource, DatasourceType
 from app.datasources.utils import validate_name
 from app.datasources.database.session import get_datasources_db_session
+from typing import Annotated
 
 logger = logging.getLogger("uvicorn")
 
 async def validate_datasource_is_of_type_files(
     datasource_name: str,
-    datasources_db_session: Session = Depends(get_datasources_db_session),
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ):
     """Dependency to validate if a datasource exists"""
     try:

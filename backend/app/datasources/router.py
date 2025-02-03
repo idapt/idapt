@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Annotated
 
 from app.api.utils import get_user_id
 from app.datasources.database.session import get_datasources_db_session
@@ -37,7 +37,7 @@ datasources_router.include_router(
 
 @datasources_router.get("", response_model=List[DatasourceResponse])
 async def get_all_datasources_route(
-    datasources_db_session: Session = Depends(get_datasources_db_session),
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ):
     try:
         logger.info(f"Getting all datasources")
@@ -51,8 +51,8 @@ async def get_all_datasources_route(
 @datasources_router.get("/{datasource_name}", response_model=DatasourceResponse)
 async def get_datasource_route(
     datasource_name: str,
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
-    datasources_db_session: Session = Depends(get_datasources_db_session),
+    datasource_identifier: Annotated[str, Depends(validate_datasource_and_get_identifier)],
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ):
     try:
         logger.info(f"Getting datasource {datasource_name}")
@@ -65,10 +65,10 @@ async def get_datasource_route(
 async def create_datasource_route(
     datasource: DatasourceCreate,
     datasource_name: str,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
-    datasources_db_session: Session = Depends(get_datasources_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_and_get_identifier)],
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ) -> None:
     try:
         logger.info(f"Creating datasource {datasource_name}")
@@ -88,9 +88,9 @@ async def create_datasource_route(
 @datasources_router.delete("/{datasource_name}")
 async def delete_datasource_route(
     datasource_name: str,
-    user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
-    datasources_db_session: Session = Depends(get_datasources_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_and_get_identifier)],
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ) -> None:
     try:
         logger.info(f"Deleting datasource {datasource_name} for user {user_id}")
@@ -104,10 +104,10 @@ async def delete_datasource_route(
 async def update_datasource_route(
     datasource_name: str,
     update: DatasourceUpdate,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
-    datasources_db_session: Session = Depends(get_datasources_db_session),
-    datasource_identifier = Depends(validate_datasource_and_get_identifier),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_and_get_identifier)],
 ) -> None:
     try:
         logger.info(f"Updating datasource {datasource_name} for user {user_id}")

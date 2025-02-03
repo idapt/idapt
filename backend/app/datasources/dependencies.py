@@ -1,6 +1,7 @@
 from fastapi import HTTPException, Depends
 from sqlalchemy.orm import Session
 import logging
+from typing import Annotated
 
 from app.datasources.database.models import Datasource
 from app.datasources.utils import validate_name
@@ -10,7 +11,7 @@ logger = logging.getLogger("uvicorn")
 
 async def validate_datasource_and_get_identifier(
     datasource_name: str,
-    datasources_db_session: Session = Depends(get_datasources_db_session),
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ):
     """Dependency to validate if a datasource exists"""
     try:

@@ -1,4 +1,5 @@
 import logging
+from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, Depends
 from sqlalchemy.orm import Session
 
@@ -15,18 +16,15 @@ chat_router = r = APIRouter()
 
 logger = logging.getLogger("uvicorn")
 
-
-# streaming endpoint - delete if not needed
 @r.post("")
 async def chat_streaming_route(
     request: Request,
     data: ChatData,
     background_tasks: BackgroundTasks,
-    datasource_identifier: str = "Chats",
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
-    datasources_db_session: Session = Depends(get_datasources_db_session),
-    chat_db_session: Session = Depends(get_datasources_chats_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
+    chat_db_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
 ):
     """
     Streaming endpoint for chat requests.
@@ -53,11 +51,10 @@ async def chat_streaming_route(
 @r.post("/request", response_model=ChatData)
 async def chat_request_route(
     data: ChatData,
-    user_id: str = Depends(get_user_id),
-    datasource_identifier: str = "Chats",
-    settings_db_session: Session = Depends(get_settings_db_session),
-    datasources_db_session: Session = Depends(get_datasources_db_session),
-    chat_db_session: Session = Depends(get_datasources_chats_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
+    chat_db_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
 ) -> ChatData:
     """
     Non-streaming endpoint for chat requests.

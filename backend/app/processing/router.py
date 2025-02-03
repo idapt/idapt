@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import asyncio
 from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
+from typing import Annotated
 from app.processing.service import get_queue_status, mark_items_as_queued, start_processing_thread
 from app.processing.schemas import ProcessingRequest, ProcessingStatusResponse
 from app.api.utils import get_user_id
@@ -21,10 +22,10 @@ processing_router = r = APIRouter()
 async def processing_route(
     request: ProcessingRequest,
     background_tasks: BackgroundTasks,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
-    datasources_db_session: Session = Depends(get_datasources_db_session),
-    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
+    processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)],
 ) -> ProcessingStatusResponse:
     """Add files or folders to generation queue and start processing if needed"""
     try:
@@ -71,7 +72,7 @@ async def processing_route(
 
 @r.get("/status", response_model=ProcessingStatusResponse)
 async def get_processing_status_route(
-    user_id: str = Depends(get_user_id),
+    user_id: Annotated[str, Depends(get_user_id)],
 ) -> ProcessingStatusResponse:
     """Get the current status of the generation queue"""
     try:
@@ -85,7 +86,7 @@ async def get_processing_status_route(
 @r.websocket("/status/ws")
 async def processing_status_websocket(
     websocket: WebSocket,
-    user_id: str = Depends(get_user_id),
+    user_id: Annotated[str, Depends(get_user_id)],
 ):
     """WebSocket endpoint for processing status updates"""
     # Convert ProcessingStatusResponse to dict before sending

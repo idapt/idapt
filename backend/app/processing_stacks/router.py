@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Annotated
 
 from app.processing_stacks.database.models import ProcessingStack, ProcessingStep, ProcessingStackStep
 from app.api.utils import get_user_id
@@ -31,8 +31,8 @@ processing_stacks_router = r = APIRouter()
     response_model=List[ProcessingStepResponse]
 )
 async def get_processing_steps_route(
-    user_id: str = Depends(get_user_id),
-    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
+    user_id: Annotated[str, Depends(get_user_id)],
+    processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)]
 ):
     try:
         steps = processing_stacks_db_session.query(ProcessingStep).all()
@@ -55,8 +55,8 @@ async def get_processing_steps_route(
     response_model=List[ProcessingStackResponse]
 )
 async def get_processing_stacks_route(
-    user_id: str = Depends(get_user_id),
-    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
+    user_id: Annotated[str, Depends(get_user_id)],
+    processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)]
 ):
     try:
         return get_processing_stacks(processing_stacks_db_session=processing_stacks_db_session)
@@ -70,8 +70,8 @@ async def get_processing_stacks_route(
 )
 async def get_processing_stack_route(
     stack_identifier: str,
-    user_id: str = Depends(get_user_id),
-    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
+    user_id: Annotated[str, Depends(get_user_id)],
+    processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)]
 ):
     return get_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack_identifier=stack_identifier)
 
@@ -81,8 +81,8 @@ async def get_processing_stack_route(
 )
 async def create_processing_stack_route(
     stack: ProcessingStackCreate,
-    user_id: str = Depends(get_user_id),
-    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
+    user_id: Annotated[str, Depends(get_user_id)],
+    processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)]
 ):
     try:
         logger.info(f"Creating processing stack {stack.display_name} for user {user_id}")
@@ -100,8 +100,8 @@ async def create_processing_stack_route(
 async def update_processing_stack_route(
     stack_identifier: str,
     stack_update: ProcessingStackUpdate,
-    user_id: str = Depends(get_user_id),
-    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
+    user_id: Annotated[str, Depends(get_user_id)],
+    processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)]
 ):
     try:
         return update_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack_identifier=stack_identifier, stack_update=stack_update)
@@ -113,8 +113,8 @@ async def update_processing_stack_route(
 @r.delete("/stacks/{stack_identifier}")
 async def delete_processing_stack_route(
     stack_identifier: str,
-    user_id: str = Depends(get_user_id),
-    processing_stacks_db_session: Session = Depends(get_processing_stacks_db_session)
+    user_id: Annotated[str, Depends(get_user_id)],
+    processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)]
 ):
     try:
         delete_processing_stack(processing_stacks_db_session=processing_stacks_db_session, stack_identifier=stack_identifier)

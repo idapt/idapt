@@ -10,14 +10,15 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException
 from pathlib import Path
 import logging
+from typing import Annotated
 
 logger = logging.getLogger("uvicorn")
 
 # Get a session for the file manager database
 def get_datasources_file_manager_db_session(
     datasource_name: str,
-    user_id: str = Depends(get_user_id),
-    datasources_db_session: Session = Depends(get_datasources_db_session)
+    user_id: Annotated[str, Depends(get_user_id)],
+    datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)]
 ):
     """
     Get a session for the file manager database
@@ -45,7 +46,7 @@ def get_datasources_file_manager_db_session(
 def get_datasources_file_manager_session(
         user_id: str, 
         datasource_name: str, 
-        datasources_db_session: Session
+        datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)]
     ) -> Session:
     try:
         datasource = datasources_db_session.query(Datasource).filter(Datasource.name == datasource_name).first()

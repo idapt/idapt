@@ -7,6 +7,7 @@ from app.api.websocket import StatusWebSocket
 from fastapi import WebSocketDisconnect
 from app.ollama_status.schemas import OllamaStatusResponse
 from app.ollama_status.service import can_process
+from typing import Annotated
 
 logger = logging.getLogger("uvicorn")
 
@@ -15,8 +16,8 @@ ollama_status_router = r = APIRouter()
 @r.get("", response_model=OllamaStatusResponse)
 async def get_ollama_status_route(
     background_tasks: BackgroundTasks,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ):
     """Get the current status of Ollama model downloads"""
     try:
@@ -34,8 +35,8 @@ async def get_ollama_status_route(
 @r.websocket("/ws")
 async def ollama_status_websocket_route(
     websocket: WebSocket,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session)
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)]
 ):
     """WebSocket endpoint for Ollama status updates"""
     async def get_status():

@@ -6,6 +6,7 @@ from app.settings.service import get_setting, update_setting, create_setting, de
 from app.settings.schemas import CreateSettingRequest, UpdateSettingRequest, SettingResponse
 from app.settings.database.session import get_settings_db_session
 import logging
+from typing import Annotated
 
 logger = logging.getLogger("uvicorn")
 
@@ -15,8 +16,8 @@ settings_router = r = APIRouter()
 async def create_setting_route(
     identifier: str,
     create_setting_request: CreateSettingRequest,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> None:
     try:
         create_setting(settings_db_session, identifier, create_setting_request)
@@ -26,8 +27,8 @@ async def create_setting_route(
 
 @r.get("", response_model=List[SettingResponse])
 async def get_all_settings_route(
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> List[SettingResponse]:
     try:
         return get_all_settings(settings_db_session)
@@ -38,8 +39,8 @@ async def get_all_settings_route(
 @r.get("/schema/{schema_identifier}", response_model=List[SettingResponse])
 async def get_all_settings_with_schema_identifier_route(
     schema_identifier: str,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> List[SettingResponse]:
     try:
         return get_all_settings_with_schema_identifier(settings_db_session, schema_identifier)
@@ -50,8 +51,8 @@ async def get_all_settings_with_schema_identifier_route(
 @r.get("/{identifier}", response_model=SettingResponse)
 async def get_setting_route(
     identifier: str,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> SettingResponse:
     try:
         logger.info(f"Getting setting {identifier}")
@@ -64,8 +65,8 @@ async def get_setting_route(
 async def update_setting_route(
     identifier: str,
     update_setting_request: UpdateSettingRequest,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> None:
     try:
         logger.info(f"Updating setting {identifier} with value: {update_setting_request}")
@@ -80,8 +81,8 @@ async def update_setting_route(
 @r.delete("/{identifier}")
 async def delete_setting_route(
     identifier: str,
-    user_id: str = Depends(get_user_id),
-    settings_db_session: Session = Depends(get_settings_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> None:
     try:
         delete_setting(settings_db_session, identifier)

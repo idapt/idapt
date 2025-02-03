@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List, Annotated
 
 from app.api.utils import get_user_id
 from app.datasources.chats.service import get_all_chats, get_chat, add_message_to_chat, create_chat, update_chat_title, delete_chat
 from app.datasources.chats.database.session import get_datasources_chats_db_session
 from app.datasources.chats.dependencies import validate_datasource_is_of_type_chats
 from app.datasources.chats.schemas import ChatResponse, MessageResponse, MessageCreate
-from typing import List
 
 import logging
 logger = logging.getLogger("uvicorn")
@@ -21,10 +21,10 @@ chats_router = r = APIRouter()
 )
 async def get_all_chats_route(
     datasource_name: str,
+    user_id: Annotated[str, Depends(get_user_id)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
     include_messages: bool = False,
-    user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
-    chats_session: Session = Depends(get_datasources_chats_db_session),
 ):
     try:
         logger.info(f"Getting all chats for user {user_id}")
@@ -42,12 +42,12 @@ async def get_all_chats_route(
 async def get_chat_route(
     chat_uuid: str,
     datasource_name: str,
+    user_id: Annotated[str, Depends(get_user_id)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
     include_messages: bool = False,
     create_if_not_found: bool = False,
     update_last_opened_at: bool = False,
-    user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
-    chats_session: Session = Depends(get_datasources_chats_db_session),
 ) -> ChatResponse:
     try:
         logger.info(f"Getting chat {chat_uuid} for user {user_id}")
@@ -72,10 +72,10 @@ async def get_chat_route(
 )
 async def create_chat_route(
     datasource_name: str,
+    user_id: Annotated[str, Depends(get_user_id)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
     chat_uuid: str = None,
-    user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
-    chats_session: Session = Depends(get_datasources_chats_db_session),
 ):
     try:
         logger.info(f"Creating chat for user {user_id} and datasource {datasource_name}")
@@ -93,9 +93,9 @@ async def add_message_to_chat_route(
     datasource_name: str,
     chat_uuid: str,
     message: MessageCreate,
-    user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
-    chats_session: Session = Depends(get_datasources_chats_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
 ) -> None:
     try:
         logger.info(f"Adding message to chat {chat_uuid}")
@@ -113,9 +113,9 @@ async def update_chat_title_route(
     datasource_name: str,
     chat_uuid: str,
     title: str,
-    user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
-    chats_session: Session = Depends(get_datasources_chats_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
 ) -> None:
     try:
         logger.info(f"Updating chat {chat_uuid} title to {title}")
@@ -132,9 +132,9 @@ async def update_chat_title_route(
 async def delete_chat_route(
     chat_uuid: str,
     datasource_name: str,
-    user_id: str = Depends(get_user_id),
-    datasource_identifier = Depends(validate_datasource_is_of_type_chats),
-    chats_session: Session = Depends(get_datasources_chats_db_session),
+    user_id: Annotated[str, Depends(get_user_id)],
+    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
 ):
     try:
         logger.info(f"Deleting chat {chat_uuid}")
