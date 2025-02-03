@@ -86,6 +86,7 @@ def get_chat(chats_session: Session, chat_uuid: str, include_messages: bool = Fa
 
 def create_chat(chats_session: Session, uuid: str = None) -> ChatResponse:
     try:
+        logger.debug(f"Creating chat with uuid: {uuid}")
         chat = Chat(
             uuid=uuid or str(uuid.uuid4()),
             title="New Chat"

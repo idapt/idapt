@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import { Button } from '@/app/components/ui/button';
 import { ChatRequestOptions, CreateMessage, Message } from 'ai';
 import { memo } from 'react';
+import { generateUUID } from '@/app/lib/utils';
+import { useChatResponse } from '@/app/contexts/chat-response-context';
 
 interface SuggestedActionsProps {
   chatId: string;
@@ -50,8 +52,7 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
         >
           <Button
             variant="ghost"
-            onClick={async () => {
-              //window.history.replaceState({}, '', `/chat/${chatId}`);
+            onClick={() => {
               append({
                 role: 'user',
                 content: suggestedAction.action,

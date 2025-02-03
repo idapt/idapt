@@ -1,6 +1,6 @@
 'use client';
 
-import type { Attachment } from 'ai';
+import type { Attachment, CreateMessage, Message } from 'ai';
 import { useChat } from 'ai/react';
 import { useState, useEffect } from 'react';
 
@@ -33,7 +33,7 @@ export function Chat({
 }) {
   const { backend } = useClientConfig();
   const { userId } = useUser();
-  const { currentChatId, currentChat, refreshChats } = useChatResponse();
+  const { currentChatId, currentChat, refreshChats, tryToSetCurrentChat } = useChatResponse();
 
   const {
     messages,
@@ -64,6 +64,24 @@ export function Chat({
       refreshChats();
     }
   });
+
+  const wrappedHandleSubmit = async () => {
+    if (currentChat == undefined) {
+      // If the current chat is undefined, get and create it
+      await tryToSetCurrentChat(currentChatId);
+    }
+    return await handleSubmit({ preventDefault: () => {} });
+  }
+
+  const wrappedAppend = async (message: Message | CreateMessage) => {
+    if (currentChat == undefined) {
+      // If the current chat is undefined, get and create it
+      await tryToSetCurrentChat(currentChatId);
+    }
+    const res = await append(message);
+    refreshChats();
+    return res;
+  }
 
   // Update messages when chat data changes
   useEffect(() => {
@@ -116,14 +134,14 @@ export function Chat({
               chatId={currentChatId}
               input={input}
               setInput={setInput}
-              handleSubmit={handleSubmit}
+              handleSubmit={wrappedHandleSubmit}
               isLoading={isLoading}
               stop={stop}
               attachments={attachments}
               setAttachments={setAttachments}
               messages={messages}
               setMessages={setMessages}
-              append={append}
+              append={wrappedAppend}
             />
           )}
         </form>
@@ -138,7 +156,7 @@ export function Chat({
         stop={stop}
         attachments={attachments}
         setAttachments={setAttachments}
-        append={append}
+        append={wrappedAppend}
         messages={messages}
         setMessages={setMessages}
         reload={reload}

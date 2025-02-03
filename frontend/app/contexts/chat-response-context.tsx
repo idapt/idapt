@@ -12,8 +12,7 @@ import { error } from 'console';
 
 interface ChatContextType {
   currentChatId: string;
-  //setCurrentChatId: (id: number) => void;
-  tryToSetCurrentChat: (id: string) => Promise<void>;
+  tryToSetCurrentChat: (id: string | undefined) => Promise<void>;
   chats: ChatResponse[] | undefined;
   currentChat: ChatResponse | undefined;
   isChatsLoading: boolean;
@@ -44,8 +43,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     refreshChats();
   }, []);
 
-  const tryToSetCurrentChat = async (uuid: string) => {
+  const tryToSetCurrentChat = async (uuid: string | undefined) => {
     try {
+      if (uuid == undefined) {
+        uuid = generateUUID();
+      }
       // Try to get the chat with this id
       const chat = await getChatRouteApiDatasourcesDatasourceNameChatsChatUuidGet({
         path: {
@@ -75,6 +77,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const refreshChats = async () => {
     try {
+      setIsChatsLoading(true);
       //await mutate(`/api/datasources/chats?user_id=${userId}`);
       const response = await getAllChatsRouteApiDatasourcesDatasourceNameChatsGet({
         path: {
@@ -85,6 +88,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         }
       });
       setChats(response.data);
+      setIsChatsLoading(false);
     } catch (error) {
       alert('Failed to refresh chats');
       console.error('Failed to refresh chats:', error);
@@ -96,7 +100,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       if (uuid === currentChatId) {
         // Create a new chat and set it as the current chat before deleting the current one
-        await tryToSetCurrentChat(generateUUID());
+        setCurrentChatId(generateUUID());
+        setCurrentChat(undefined);
       }
       await deleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDelete({
         path: {

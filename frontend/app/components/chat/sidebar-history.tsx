@@ -48,7 +48,7 @@ import {
 } from '@/app/components/ui/sidebar';
 //import type { Chat } from '@/app/lib/db/schema';*
 import type { ChatResponse } from '@/app/client/types.gen';
-import { fetcher } from '@/app/lib/utils';
+//import { fetcher } from '@/app/lib/utils';
 //import { useChatVisibility } from '@/app/hooks/use-chat-visibility';
 import { useChatResponse } from '@/app/contexts/chat-response-context';
 

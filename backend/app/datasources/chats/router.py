@@ -51,7 +51,13 @@ async def get_chat_route(
 ) -> ChatResponse:
     try:
         logger.info(f"Getting chat {chat_uuid} for user {user_id}")
-        return get_chat(chats_session, chat_uuid, include_messages, create_if_not_found=create_if_not_found, update_last_opened_at=update_last_opened_at)
+        return get_chat(
+            chats_session=chats_session,
+            chat_uuid=chat_uuid,
+            include_messages=include_messages,
+            create_if_not_found=create_if_not_found,
+            update_last_opened_at=update_last_opened_at
+        )
     except Exception as e:
         if "not found" in str(e):
             raise HTTPException(status_code=404, detail="Chat not found")
