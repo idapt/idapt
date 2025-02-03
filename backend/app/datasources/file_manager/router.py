@@ -28,7 +28,7 @@ async def upload_file_route(
     datasource_name: str,
     item: FileUploadItem,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_files)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
 ):
     try:
@@ -45,9 +45,8 @@ async def upload_file_route(
 @r.delete("/{encoded_original_path}")
 async def delete_route(
     encoded_original_path: str,
-    datasource_name: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_files)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
 ):
@@ -70,9 +69,8 @@ async def delete_route(
 )
 async def get_folder_info_route(
     encoded_original_path: str,
-    datasource_name: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_files)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
     include_child_folders_files_recursively: bool = False,
@@ -95,10 +93,9 @@ async def get_folder_info_route(
     summary="Get file info"
 )
 async def get_file_info_route(
-    encoded_original_path: str,
     user_id: Annotated[str, Depends(get_user_id)],
     original_path: Annotated[str, Depends(decode_path_safe)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_files)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     include_content: bool = False,
 ):
@@ -116,10 +113,8 @@ async def get_file_info_route(
     summary="Download file"
 )
 async def download_file_route(
-    encoded_original_path: str,
-    datasource_name: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_files)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
 ):
@@ -148,15 +143,13 @@ async def download_file_route(
 
 @r.get("/folder/{encoded_original_path}/download")
 async def download_folder_route(
-    encoded_original_path: str,
-    datasource_name: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_files)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
 ):
     try:
-        logger.info(f"Downloading folder {encoded_original_path} for user {user_id}")
+        logger.info(f"Downloading folder {original_path} for user {user_id}")
 
         result: FolderDownloadResponse = await download_folder(file_manager_session=file_manager_session, user_id=user_id, original_path=original_path)
         return Response(
@@ -174,10 +167,8 @@ async def download_folder_route(
 
 @r.delete("/processed-data/{encoded_original_path}")
 async def delete_processed_data_route(
-    encoded_original_path: str,
-    datasource_name: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_files)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
 ):

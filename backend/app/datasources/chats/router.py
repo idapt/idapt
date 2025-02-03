@@ -20,9 +20,8 @@ chats_router = r = APIRouter()
     summary="Get all chats"
 )
 async def get_all_chats_route(
-    datasource_name: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
     chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
     include_messages: bool = False,
 ):
@@ -41,9 +40,8 @@ async def get_all_chats_route(
 )
 async def get_chat_route(
     chat_uuid: str,
-    datasource_name: str,
+    _: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
     chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
     include_messages: bool = False,
     create_if_not_found: bool = False,
@@ -71,14 +69,13 @@ async def get_chat_route(
     summary="Create a chat"
 )
 async def create_chat_route(
-    datasource_name: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
     chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
     chat_uuid: str = None,
 ):
     try:
-        logger.info(f"Creating chat for user {user_id} and datasource {datasource_name}")
+        logger.info(f"Creating chat for user {user_id}")
         return create_chat(chats_session, uuid=chat_uuid)
     except Exception as e:
         logger.error(f"Error creating chat: {str(e)}")
@@ -90,15 +87,14 @@ async def create_chat_route(
     summary="Add a message to a chat"
 )
 async def add_message_to_chat_route(
-    datasource_name: str,
     chat_uuid: str,
     message: MessageCreate,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
     chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
 ) -> None:
     try:
-        logger.info(f"Adding message to chat {chat_uuid}")
+        logger.info(f"Adding message to chat {chat_uuid} for user {user_id}")
         add_message_to_chat(chats_session, chat_uuid, message)
     except Exception as e:
         logger.error(f"Error adding message to chat {chat_uuid}: {str(e)}")
@@ -110,15 +106,14 @@ async def add_message_to_chat_route(
     summary="Update a chat title"
 )
 async def update_chat_title_route(
-    datasource_name: str,
     chat_uuid: str,
     title: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
     chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
 ) -> None:
     try:
-        logger.info(f"Updating chat {chat_uuid} title to {title}")
+        logger.info(f"Updating chat {chat_uuid} title to {title} for user {user_id}")
         return update_chat_title(chats_session, chat_uuid, title)
     except Exception as e:
         logger.error(f"Error updating chat {chat_uuid} title: {str(e)}")
@@ -131,13 +126,12 @@ async def update_chat_title_route(
 )
 async def delete_chat_route(
     chat_uuid: str,
-    datasource_name: str,
     user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
+    _: Annotated[str, Depends(validate_datasource_is_of_type_chats)],
     chats_session: Annotated[Session, Depends(get_datasources_chats_db_session)],
 ):
     try:
-        logger.info(f"Deleting chat {chat_uuid}")
+        logger.info(f"Deleting chat {chat_uuid} for user {user_id}")
         delete_chat(chats_session, chat_uuid)
     except Exception as e:
         logger.error(f"Error deleting chat {chat_uuid}: {str(e)}")

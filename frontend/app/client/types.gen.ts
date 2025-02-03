@@ -364,7 +364,6 @@ export type ChatStreamingRouteApiChatPostData = {
     };
     path?: never;
     query: {
-        datasource_identifier?: string;
         user_id: string;
         datasource_name: string;
     };
@@ -394,7 +393,6 @@ export type ChatRequestRouteApiChatRequestPostData = {
     };
     path?: never;
     query: {
-        datasource_identifier?: string;
         user_id: string;
         datasource_name: string;
     };
@@ -740,8 +738,8 @@ export type DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedO
         'x-user-id'?: string | null;
     };
     path: {
-        encoded_original_path: string;
         datasource_name: string;
+        encoded_original_path: string;
     };
     query: {
         user_id: string;
@@ -771,8 +769,8 @@ export type DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEnco
         'x-user-id'?: string | null;
     };
     path: {
-        encoded_original_path: string;
         datasource_name: string;
+        encoded_original_path: string;
     };
     query: {
         user_id: string;
@@ -802,8 +800,8 @@ export type DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProce
         'x-user-id'?: string | null;
     };
     path: {
-        encoded_original_path: string;
         datasource_name: string;
+        encoded_original_path: string;
     };
     query: {
         user_id: string;
@@ -966,8 +964,8 @@ export type UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutData
         'x-user-id'?: string | null;
     };
     path: {
-        datasource_name: string;
         chat_uuid: string;
+        datasource_name: string;
     };
     query: {
         title: string;
@@ -998,8 +996,8 @@ export type AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessag
         'x-user-id'?: string | null;
     };
     path: {
-        datasource_name: string;
         chat_uuid: string;
+        datasource_name: string;
     };
     query: {
         user_id: string;

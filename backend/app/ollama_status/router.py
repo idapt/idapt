@@ -21,7 +21,7 @@ async def get_ollama_status_route(
 ):
     """Get the current status of Ollama model downloads"""
     try:
-        #logger.info(f"Getting Ollama status")
+        #logger.info(f"Getting Ollama status for user {user_id}")
         if not await can_process(settings_db_session, True): # Don't download models, it will be done on file processing
             return {"is_downloading": True}
         else:
