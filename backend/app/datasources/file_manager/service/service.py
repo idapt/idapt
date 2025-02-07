@@ -22,17 +22,17 @@ import logging
 
 logger = logging.getLogger("uvicorn")
 
-def initialize_file_manager_db(file_manager_session: Session, user_id: str, datasource_name: str):
+def initialize_file_manager_db(file_manager_session: Session, user_uuid: str, datasource_name: str):
     # Create the parent directories if they don't exist
-    #db_path = Path(get_user_data_dir(user_id), datasource_name, "file_manager.db")    
+    #db_path = Path(get_user_data_dir(user_uuid), datasource_name, "file_manager.db")    
     # Create the files directory for this datasource
-    #files_dir = Path(get_user_data_dir(user_id), datasource_name, "files")
+    #files_dir = Path(get_user_data_dir(user_uuid), datasource_name, "files")
     #files_dir.mkdir(parents=True, exist_ok=True)
 
     # If the root folder for this datasource do not exist in the file manager db, create it
     root_folder = file_manager_session.query(Folder).filter(Folder.original_path == datasource_name).first()
     if not root_folder:
-        fs_path = Path(get_user_data_dir(user_id)) / datasource_name
+        fs_path = Path(get_user_data_dir(user_uuid)) / datasource_name
         #get_new_fs_path(datasource_name, file_manager_session, last_path_part_is_file=False)
         folder = Folder(
             name=datasource_name,
@@ -44,7 +44,7 @@ def initialize_file_manager_db(file_manager_session: Session, user_id: str, data
         file_manager_session.commit()
         logger.info(f"Initialized file manager db for datasource {datasource_name} with root folder {folder.path}")
 
-async def upload_file(file_manager_session: Session, item: FileUploadItem, user_id: str) -> FileInfoResponse:
+async def upload_file(file_manager_session: Session, item: FileUploadItem, user_uuid: str) -> FileInfoResponse:
     try:
 
         # Validate path and raise if invalid
@@ -102,7 +102,7 @@ async def upload_file(file_manager_session: Session, item: FileUploadItem, user_
                     detail="Cannot overwrite file that is currently being processed"
                 )
             # Delete existing file
-            await delete_file(file_manager_session, user_id, existing_file.path)
+            await delete_file(file_manager_session, user_uuid, existing_file.path)
             
         # Process file content and write to filesystem
         decoded_file_data, mime_type = preprocess_base64_file(item.base64_content)       
@@ -151,7 +151,7 @@ async def upload_file(file_manager_session: Session, item: FileUploadItem, user_
         return FileInfoResponse(
             id=file.id,
             name=file.name,
-            path=get_path_from_fs_path(file.path, user_id),
+            path=get_path_from_fs_path(file.path, user_uuid),
             original_path=file.original_path,
             content=None, # Not included here as not useful
             mime_type=file.mime_type,
@@ -173,7 +173,7 @@ async def upload_file(file_manager_session: Session, item: FileUploadItem, user_
             detail="An unexpected error occurred during file upload"
         )
     
-async def get_file_info(file_manager_session: Session, user_id: str, original_path: str, include_content: bool = False) -> FileInfoResponse:
+async def get_file_info(file_manager_session: Session, user_uuid: str, original_path: str, include_content: bool = False) -> FileInfoResponse:
     try:
         # Validate path
         validate_path(original_path)
@@ -192,7 +192,7 @@ async def get_file_info(file_manager_session: Session, user_id: str, original_pa
             id=file.id,
             name=file.name,
             # We are leaving the api so convert the full path to path
-            path=get_path_from_fs_path(file.path, user_id),
+            path=get_path_from_fs_path(file.path, user_uuid),
             original_path=file.original_path,
             content=file_content,
             mime_type=file.mime_type,
@@ -210,9 +210,9 @@ async def get_file_info(file_manager_session: Session, user_id: str, original_pa
         logger.error(f"Error getting file info: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get file info")
     
-def get_folder_info(file_manager_session: Session, user_id: str, original_path: str, include_child_folders_files_recursively: bool = False) -> FolderInfoResponse:
+def get_folder_info(file_manager_session: Session, user_uuid: str, original_path: str, include_child_folders_files_recursively: bool = False) -> FolderInfoResponse:
     try:
-        logger.info(f"Getting folder contents for path: {original_path} for user {user_id}")
+        logger.info(f"Getting folder contents for path: {original_path}")
         
         # Validate path
         validate_path(original_path)
@@ -231,7 +231,7 @@ def get_folder_info(file_manager_session: Session, user_id: str, original_path: 
         child_folders = [FolderInfoResponse(
             id=child_folder_db.id,
             name=child_folder_db.name,
-            path=get_path_from_fs_path(child_folder_db.path, user_id),
+            path=get_path_from_fs_path(child_folder_db.path, user_uuid),
             original_path=child_folder_db.original_path,
             uploaded_at=child_folder_db.uploaded_at.timestamp(),
             accessed_at=child_folder_db.accessed_at.timestamp(),
@@ -240,7 +240,7 @@ def get_folder_info(file_manager_session: Session, user_id: str, original_path: 
         ) for child_folder_db in child_folders_db]
         if include_child_folders_files_recursively:
             for child_folder_db in child_folders_db:
-                child_folders.append(get_folder_info(file_manager_session=file_manager_session, user_id=user_id, original_path=child_folder_db.original_path, include_child_folders_files_recursively=include_child_folders_files_recursively))
+                child_folders.append(get_folder_info(file_manager_session=file_manager_session, user_uuid=user_uuid, original_path=child_folder_db.original_path, include_child_folders_files_recursively=include_child_folders_files_recursively))
         
         # Get files in this folder
         child_files_db = file_manager_session.query(File).filter(File.folder_id == folder.id).all()
@@ -248,7 +248,7 @@ def get_folder_info(file_manager_session: Session, user_id: str, original_path: 
                 id=file.id,
                 name=file.name,
                 # We are leaving the api so convert the full path to path
-                path=get_path_from_fs_path(file.path, user_id),
+                path=get_path_from_fs_path(file.path, user_uuid),
                 original_path=file.original_path,
                 mime_type=file.mime_type,
                 size=file.size,
@@ -266,7 +266,7 @@ def get_folder_info(file_manager_session: Session, user_id: str, original_path: 
             id=folder.id,
             name=folder.name,
             # We are leaving the api so convert the full path to path
-            path=get_path_from_fs_path(folder.path, user_id),
+            path=get_path_from_fs_path(folder.path, user_uuid),
             original_path=folder.original_path,
             uploaded_at=folder.uploaded_at.timestamp(),
             accessed_at=folder.accessed_at.timestamp(),
@@ -278,7 +278,7 @@ def get_folder_info(file_manager_session: Session, user_id: str, original_path: 
         logger.error(f"Error getting folder content: {str(e)}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred while getting folder content")
 
-async def download_file(file_manager_session: Session, user_id: str, original_path: str) -> FileDownloadResponse:
+async def download_file(file_manager_session: Session, user_uuid: str, original_path: str) -> FileDownloadResponse:
     try:
         # Validate path and raise if invalid
         validate_path(original_path)
@@ -306,7 +306,7 @@ async def download_file(file_manager_session: Session, user_id: str, original_pa
         logger.error(f"Error downloading file: {str(e)}")
         raise
 
-async def delete_item(file_manager_session: Session, user_id: str, original_path: str):
+async def delete_item(file_manager_session: Session, user_uuid: str, original_path: str):
     """ 
     Delete the item at the given original path 
     If it's a file, delete it
@@ -322,13 +322,13 @@ async def delete_item(file_manager_session: Session, user_id: str, original_path
         # Check if it's a file first
         file = file_manager_session.query(File).filter(File.path == fs_path).first()
         if file:
-            await delete_file(file_manager_session=file_manager_session, user_id=user_id, fs_path=fs_path)
+            await delete_file(file_manager_session=file_manager_session, user_uuid=user_uuid, fs_path=fs_path)
             return {"success": True}
             
         # If not a file, check if it's a folder
         folder = file_manager_session.query(Folder).filter(Folder.path == fs_path).first()
         if folder:
-            await delete_folder(file_manager_session=file_manager_session, user_id=user_id, fs_path=fs_path)
+            await delete_folder(file_manager_session=file_manager_session, user_uuid=user_uuid, fs_path=fs_path)
             return {"success": True}
             
         # If neither found, return 404
@@ -337,9 +337,9 @@ async def delete_item(file_manager_session: Session, user_id: str, original_path
         logger.error(f"Error deleting file from database: {str(e)}")
         raise e
 
-async def delete_file(file_manager_session: Session, user_id: str, fs_path: str):
+async def delete_file(file_manager_session: Session, user_uuid: str, fs_path: str):
     try:
-        logger.info(f"Deleting file {fs_path} for user {user_id}")
+        logger.info(f"Deleting file {fs_path}")
 
         
         file = file_manager_session.query(File).filter(File.path == fs_path).first()
@@ -355,7 +355,7 @@ async def delete_file(file_manager_session: Session, user_id: str, fs_path: str)
 
         # Proceed with deletion
         await delete_file_filesystem(fs_path)
-        delete_file_llama_index(file_manager_session=file_manager_session, user_id=user_id, file=file)
+        delete_file_llama_index(file_manager_session=file_manager_session, user_uuid=user_uuid, file=file)
         # Delete from database
         file_manager_session.delete(file)
         file_manager_session.commit()
@@ -365,10 +365,10 @@ async def delete_file(file_manager_session: Session, user_id: str, fs_path: str)
         logger.error(f"Error deleting file: {str(e)}")
         raise
 
-async def delete_folder(file_manager_session: Session, user_id: str, fs_path: str):
+async def delete_folder(file_manager_session: Session, user_uuid: str, fs_path: str):
     # TODO Make more robust to avoid partial deletion by implementing a trash folder and moving the files to it and restoring them in case of an error
     try:
-        logger.info(f"Deleting folder: {fs_path} for user {user_id}")
+        logger.info(f"Deleting folder: {fs_path}")
 
 
         folder = file_manager_session.query(Folder).filter(Folder.path == fs_path).first()
@@ -390,8 +390,8 @@ async def delete_folder(file_manager_session: Session, user_id: str, fs_path: st
                     processing_files.append(file.path)
                     continue
 
-                await delete_file(file_manager_session=file_manager_session, user_id=user_id, fs_path=file.path)
-                delete_file_llama_index(file_manager_session=file_manager_session, user_id=user_id, file=file)
+                await delete_file(file_manager_session=file_manager_session, user_uuid=user_uuid, fs_path=file.path)
+                delete_file_llama_index(file_manager_session=file_manager_session, user_uuid=user_uuid, file=file)
                 file_manager_session.delete(file)
                 file_manager_session.commit()
                 deleted_files.append(file.path)
@@ -426,7 +426,7 @@ async def delete_folder(file_manager_session: Session, user_id: str, fs_path: st
         raise HTTPException(status_code=500, detail=str(e))
 
 # Unused
-async def rename_file(file_manager_session: Session, user_id: str, fs_path: str, new_name: str):
+async def rename_file(file_manager_session: Session, user_uuid: str, fs_path: str, new_name: str):
     try:
 
         file = file_manager_session.query(File).filter(File.path == fs_path).first()
@@ -444,13 +444,13 @@ async def rename_file(file_manager_session: Session, user_id: str, fs_path: str,
         #    raise HTTPException(status_code=500, detail="Failed to update file in database")
 
         # Update in LlamaIndex
-        #rename_file_llama_index(session=session, user_id=user_id, full_old_path=fs_path, full_new_path=new_fs_path) 
+        #rename_file_llama_index(session=session, user_uuid=user_uuid, full_old_path=fs_path, full_new_path=new_fs_path) 
 
     except Exception as e:
         logger.error(f"Error renaming file: {str(e)}")
         raise
 
-async def download_folder(file_manager_session: Session, user_id: str, original_path: str) -> FolderDownloadResponse:
+async def download_folder(file_manager_session: Session, user_uuid: str, original_path: str) -> FolderDownloadResponse:
     try:
         # Validate path and raise if invalid
         validate_path(original_path)

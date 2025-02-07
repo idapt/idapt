@@ -4,19 +4,19 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.routing import APIRouter
 from fastapi import Depends, HTTPException, status
 
-from app.auth.service import get_token_with_password, get_keyring_with_token, create_jwt_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.auth.service import get_new_access_sk_token_with_password, get_keyring_with_access_sk_token_from_auth_header, create_jwt_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from app.auth.schemas import Token, Keyring
 
 auth_router = r = APIRouter()
 
 @r.post("/token", response_model=Token)
-async def login_for_access_token(
+async def login_for_access_sk_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
     """
     Login with user password to get an access token
     """
-    token_data = get_token_with_password(form_data.username, form_data.password)
+    token_data = get_new_access_sk_token_with_password(form_data.username, form_data.password)
     if not token_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -26,8 +26,9 @@ async def login_for_access_token(
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_jwt_access_token(
         data={
-            "sub": token_data.user_uuid,
-            "keyring_key": token_data.keyring_key
+            "user_uuid": token_data.user_uuid,
+            "sk_uuid": token_data.sk_uuid,
+            "sk_str": token_data.sk_str,
         }, 
         expires_delta=access_token_expires
     )
@@ -50,13 +51,13 @@ async def register(
     
 @r.get("/keyring", response_model=Keyring)
 async def read_keyring(
-    keyring: Annotated[Keyring, Depends(get_keyring_with_token)],
+    keyring: Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
 ):
     return keyring
 
 
 @r.get("/keyring/datasources")
 async def read_keyring_datasources(
-    keyring: Annotated[Keyring, Depends(get_keyring_with_token)],
+    keyring: Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
 ):
-    return keyring.datasources_encryption_key
+    return keyring.kek_datasources

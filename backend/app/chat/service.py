@@ -34,13 +34,13 @@ def chat_streaming_response(
     datasources_db_session: Session,
     request: Request,
     background_tasks: BackgroundTasks,
-    user_id: str,
+    user_uuid: str,
   ) -> VercelStreamResponse:
   """
   Get the chat streaming response for a given chat id.
   """
   try:
-    logger.info(f"Chat route called for user {user_id}")    
+    logger.info(f"Chat route called")    
     last_message_content = data.get_last_message_content()
 
     # Get the llama index messages
@@ -78,7 +78,7 @@ def chat_streaming_response(
     agent_runner = get_chat_engine(
         datasources_db_session=datasources_db_session,
         settings_db_session=settings_db_session,
-        user_id=user_id,
+        user_uuid=user_uuid,
         llm=llm,
         max_iterations=app_setting.max_iterations,
         system_prompt=app_setting.system_prompt,
@@ -112,7 +112,7 @@ async def chat_request_response(
     chat_db_session: Session,
     settings_db_session: Session,
     datasources_db_session: Session,
-    user_id: str,
+    user_uuid: str,
   ) -> ChatData:
   """
   Get the chat request response for a given chat id.
@@ -131,7 +131,7 @@ async def chat_request_response(
     chat_engine = get_chat_engine(
         datasources_db_session=datasources_db_session,
         settings_db_session=settings_db_session,
-        user_id=user_id,
+        user_uuid=user_uuid,
         filters=filters,
         params=params
     )

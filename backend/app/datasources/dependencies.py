@@ -9,11 +9,11 @@ from app.datasources.database.session import get_datasources_db_session
 
 logger = logging.getLogger("uvicorn")
 
-async def validate_datasource_and_get_identifier(
+async def validate_datasource_and_get_db_item(
     datasource_name: str,
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
-):
-    """Dependency to validate if a datasource exists"""
+) -> Datasource:
+    """Dependency to validate if a datasource exists and return the db item"""
     try:
       try:
         validate_name(datasource_name)
@@ -30,9 +30,9 @@ async def validate_datasource_and_get_identifier(
       if not datasource:
           raise HTTPException(
               status_code=400,
-              detail=f"Invalid datasource identifier '{datasource_name}'. Create a datasource first or use a valid datasource identifier"
+              detail=f"Invalid datasource name '{datasource_name}'. Create a datasource first or use a valid datasource name"
           )
-      return datasource.identifier
+      return datasource
     except Exception as e:
         logger.error(f"Error validating datasource: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to validate datasource")

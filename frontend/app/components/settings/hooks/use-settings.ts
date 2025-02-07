@@ -1,5 +1,4 @@
 import { useApiClient } from '@/app/lib/api-client';
-import { useUser } from '@/app/contexts/user-context';
 import { useState } from 'react';
 import {
   getAllSettingsRouteApiSettingsGet,
@@ -13,13 +12,11 @@ import {
 export function useSettingsAPI() {
   const [isLoading, setIsLoading] = useState(false);
   const client = useApiClient();
-  const { userId } = useUser();
 
   const getAllSettings = async (): Promise<SettingResponse[]> => {
     try {
       const response = await getAllSettingsRouteApiSettingsGet({
         client,
-        query: { user_id: userId }
       });
       return response.data ?? [];
     } catch (error) {
@@ -32,8 +29,7 @@ export function useSettingsAPI() {
     try {
       const response = await getSettingRouteApiSettingsIdentifierGet({
         client,
-        path: { identifier },
-        query: { user_id: userId }
+        path: { identifier }
       });
       return response.data ?? null;
     } catch (error) {
@@ -48,7 +44,6 @@ export function useSettingsAPI() {
       await createSettingRouteApiSettingsIdentifierPost({
         client,
         path: { identifier },
-        query: { user_id: userId },
         body: { schema_identifier }
       });
     } catch (error) {
@@ -65,7 +60,6 @@ export function useSettingsAPI() {
       await updateSettingRouteApiSettingsIdentifierPatch({
         client,
         path: { identifier },
-        query: { user_id: userId },
         body: { values_to_update_json: JSON.stringify(valuesToUpdate) }
       });
     } catch (error) {
@@ -81,8 +75,7 @@ export function useSettingsAPI() {
     try {
       await deleteSettingRouteApiSettingsIdentifierDelete({
         client,
-        path: { identifier },
-        query: { user_id: userId }
+        path: { identifier }
       });
     } catch (error) {
       console.error('Error deleting setting:', error);

@@ -5,7 +5,6 @@ import { Message } from 'ai';
 import { ChatResponse } from '@/app/client/types.gen';
 import useSWR, { mutate } from 'swr';
 import { fetcher, generateUUID } from '@/app/lib/utils';
-import { useUser } from './user-context';
 import { createChatRouteApiDatasourcesDatasourceNameChatsPost, deleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDelete } from '@/app/client/sdk.gen';
 import { getChatRouteApiDatasourcesDatasourceNameChatsChatUuidGet, getAllChatsRouteApiDatasourcesDatasourceNameChatsGet } from '@/app/client/sdk.gen';
 import { error } from 'console';
@@ -23,18 +22,17 @@ interface ChatContextType {
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { userId } = useUser();
   const [currentChatId, setCurrentChatId] = useState<string>(generateUUID());
   const [currentChat, setCurrentChat] = useState<ChatResponse | undefined>(undefined);
   const [chats, setChats] = useState<ChatResponse[] | undefined>();
   const [isChatsLoading, setIsChatsLoading] = useState<boolean>(false);
   //const { data: chats, isLoading: isChatsLoading } = useSWR<ChatResponse[]>(
-  //  userId ? `/api/datasources/chats?user_id=${userId}` : null,
+  //  userUuid ? `/api/datasources/chats?user_uuid=${userUuid}` : null,
   //  fetcher
   //);
 
   /*const { data: currentChat, isChatsLoading: isChatLoading } = useSWR<ChatResponseOutput>(
-    currentChatId ? `/api/datasources/chats/${currentChatId}?user_id=${userId}&include_messages=true` : null,
+    currentChatId ? `/api/datasources/chats/${currentChatId}?user_uuid=${userUuid}&include_messages=true` : null,
     fetcher
   );*/
 
@@ -55,7 +53,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         datasource_name: "Chats"
         },
         query: {
-          user_id: userId,
           include_messages: true,
           create_if_not_found: true,
           update_last_opened_at: true
@@ -78,14 +75,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const refreshChats = async () => {
     try {
       setIsChatsLoading(true);
-      //await mutate(`/api/datasources/chats?user_id=${userId}`);
+      //await mutate(`/api/datasources/chats?user_uuid=${userUuid}`);
       const response = await getAllChatsRouteApiDatasourcesDatasourceNameChatsGet({
         path: {
           datasource_name: "Chats"
         },
-        query: {
-          user_id: userId,
-        }
       });
       setChats(response.data);
       setIsChatsLoading(false);
@@ -108,9 +102,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           chat_uuid: uuid,
           datasource_name: "Chats"
       },
-        query: {
-          user_id: userId,
-        }
       });
       await refreshChats();
     } catch (error) {

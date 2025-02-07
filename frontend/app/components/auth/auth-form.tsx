@@ -1,61 +1,63 @@
-/*import Form from 'next/form';
-
+import { useAuth } from '@/app/components/auth/auth-context';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
+import { Button } from '@/app/components/ui/button';
+import { useState } from 'react';
 
-export function AuthForm({
-  action,
-  children,
-  defaultEmail = '',
-}: {
-  action: NonNullable<
-    string | ((formData: FormData) => void | Promise<void>) | undefined
-  >;
-  children: React.ReactNode;
-  defaultEmail?: string;
-}) {
+export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
+  const { login } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    try {
+      await login(email, password);
+    } catch (err) {
+      setError('Invalid credentials. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <Form action={action} className="flex flex-col gap-4 px-4 sm:px-16">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-4 sm:px-16">
       <div className="flex flex-col gap-2">
-        <Label
-          htmlFor="email"
-          className="text-zinc-600 font-normal dark:text-zinc-400"
-        >
-          Email Address
-        </Label>
-
+        <Label htmlFor="email">Email Address</Label>
         <Input
           id="email"
           name="email"
-          className="bg-muted text-md md:text-sm"
           type="email"
-          placeholder="user@acme.com"
+          placeholder="user@example.com"
           autoComplete="email"
           required
           autoFocus
-          defaultValue={defaultEmail}
         />
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label
-          htmlFor="password"
-          className="text-zinc-600 font-normal dark:text-zinc-400"
-        >
-          Password
-        </Label>
-
+        <Label htmlFor="password">Password</Label>
         <Input
           id="password"
           name="password"
-          className="bg-muted text-md md:text-sm"
           type="password"
           required
+          minLength={8}
         />
       </div>
 
-      {children}
-    </Form>
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? 'Signing in...' : mode === 'login' ? 'Sign In' : 'Sign Up'}
+      </Button>
+    </form>
   );
 }
-*/

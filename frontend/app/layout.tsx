@@ -4,13 +4,13 @@ import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
 
 import { SettingsProvider } from "@/app/components/settings/settings-provider";
-import { UserProvider } from "@/app/contexts/user-context";
 import { ProcessingStacksProvider } from "@/app/components/processing/processing-stacks-provider";
 import { ThemeProvider } from '@/app/components/theme/theme-provider';
 import { ToastContextProvider } from './contexts/toast-context';
 import { SidebarProvider } from './components/ui/sidebar';
 import { OllamaProvider } from '@/app/contexts/ollama-context';
 import { ProcessingProvider } from '@/app/contexts/processing-context';
+import { AuthProvider } from '@/app/components/auth/auth-context';
 
 import "@/app/globals.css";
 import "@/app/markdown.css";
@@ -74,7 +74,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <UserProvider>
+          <AuthProvider>
             <ToastContextProvider>
               <OllamaProvider>
                 <ProcessingProvider>
@@ -93,7 +93,7 @@ export default function RootLayout({
                 </ProcessingProvider>
               </OllamaProvider>
             </ToastContextProvider>
-          </UserProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

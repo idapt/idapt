@@ -3,11 +3,11 @@ import { useClientConfig } from '@/app/hooks/use-config';
 import { useApiClient } from '@/app/lib/api-client';
 import { withBackoff } from '@/app/lib/backoff';
 import { getProcessingStatusRouteApiProcessingStatusGet, ProcessingStatusResponse } from '@/app/client';
-import { useUser } from '@/app/contexts/user-context';
+import { useAuth } from '@/app/components/auth/auth-context';
 
 export function useProcessingStatus() {
   const { backend } = useClientConfig();
-  const { userId } = useUser();
+  const { token } = useAuth();
   const client = useApiClient();
   const [status, setStatus] = useState<ProcessingStatusResponse | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -15,9 +15,9 @@ export function useProcessingStatus() {
   const isConnectingRef = useRef(false);
 
   const fetchInitialStatus = useCallback(async () => {
-    if (!backend) return;
+    if (!backend || !token || token === null) return;
     // TODO !
-    const response = await getProcessingStatusRouteApiProcessingStatusGet({ client, query: { user_id: userId, datasource_name: 'Files' } }); 
+    const response = await getProcessingStatusRouteApiProcessingStatusGet({ client }); // query: { datasource_name: 'Files' } }); 
     const data = response.data;
     setStatus(data ?? null);
     return data;
@@ -29,12 +29,15 @@ export function useProcessingStatus() {
     }
 
     try {
+      if (!token || token === null) {
+        throw new Error('No token');
+      }
       isConnectingRef.current = true;
       // First verify the backend is available with backoff
       await withBackoff(fetchInitialStatus);
 
       const wsUrl = backend.replace(/^http/, 'ws');
-      const ws = new WebSocket(`${wsUrl}/api/processing/status/ws?user_id=${userId}`);
+      const ws = new WebSocket(`${wsUrl}/api/processing/status/ws?token=${token}`);
       wsRef.current = ws;
 
       ws.onmessage = (event) => {

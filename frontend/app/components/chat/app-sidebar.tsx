@@ -15,18 +15,17 @@ import {
 import { SidebarUserNav } from '@/app/components/chat/sidebar-user-nav';
 import Header from '@/app/components/header';
 import { ToastIndicator } from '@/app/components/toasts/toast-indicator';
-
-type View = 'chat' | 'files' | 'settings' | 'processing';
+import { useAuth } from '../auth/auth-context';
+import { View } from '@/app/page';
 
 interface AppSidebarProps {
-  userId: string | undefined;
   onViewChange: (view: View) => void;
   currentView: View;
 }
 
-export function AppSidebar({ userId, onViewChange, currentView }: AppSidebarProps) {
+export function AppSidebar({ onViewChange, currentView }: AppSidebarProps) {
   const { setOpenMobile } = useSidebar();
-
+  
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">
       <SidebarHeader>
@@ -87,7 +86,7 @@ export function AppSidebar({ userId, onViewChange, currentView }: AppSidebarProp
       <div className="h-[1px] bg-border my-2 mx-2" />
       
       <SidebarContent>
-        <SidebarHistory userId={userId} setCurrentView={onViewChange} />
+        <SidebarHistory setCurrentView={onViewChange} />
       </SidebarContent>
 
       <SidebarFooter>

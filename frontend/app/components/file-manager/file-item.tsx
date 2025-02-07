@@ -14,7 +14,6 @@ import { Button } from "@/app/components/ui/button";
 import { encodePathSafe } from "@/app/components/file-manager/utils/path-encoding";
 import { useDeletionToast } from "@/app/components/file-manager/hooks/use-deletion-toast";
 import { useApiClient } from '@/app/lib/api-client';
-import { useUser } from "@/app/contexts/user-context";
 import { useProcessingStacks } from '@/app/components/processing/hooks/use-processing-stacks';
 import { useProcessing } from '@/app/components/file-manager/hooks/use-processing';
 import {
@@ -25,6 +24,7 @@ import {
   // renameFileRouteApiFileManagerFilePathRenamePost,
   // renameFolderRouteApiFileManagerFolderPathRenamePost
 } from '@/app/client';
+import { useAuth } from "../auth/auth-context";
 
 interface FileItemProps {
   id: number;
@@ -68,8 +68,8 @@ export function FileItem({
   const [showDetails, setShowDetails] = useState(false);
   const { startDeletion, completeDeletion, failDeletion } = useDeletionToast();
   const client = useApiClient();
-  const { userId } = useUser();
-
+  const { token } = useAuth();
+  
   const handleClick = (e: React.MouseEvent) => {
     // Check if the click came from the dropdown menu or its children
     if (e.target instanceof Element && (
@@ -88,10 +88,14 @@ export function FileItem({
       
       // Use fetch directly to get the raw response // TODO: Use API client
       const url = type === 'folder' 
-        ? `/api/datasources/file-manager/folder/${encodedPath}/download?user_id=${userId}`
-        : `/api/datasources/file-manager/file/${encodedPath}/download?user_id=${userId}`;
+        ? `/api/datasources/file-manager/folder/${encodedPath}/download`
+        : `/api/datasources/file-manager/file/${encodedPath}/download`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
   
       if (!response.ok) {
         throw new Error('Download failed');
@@ -130,10 +134,7 @@ export function FileItem({
         const encodedPath = encodePathSafe(path);
         const response = await deleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDelete({
           client,
-          path: { encoded_original_path: encodedPath, datasource_name: datasourceName },
-          query: {
-            user_id: userId
-          }
+          path: { encoded_original_path: encodedPath, datasource_name: datasourceName }
         });
         if (!response.response.ok) {
           const error = await response.response.json();
@@ -193,10 +194,7 @@ export function FileItem({
         const encodedPath = encodePathSafe(path);
         const response = await deleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDelete({
           client,
-          path: { encoded_original_path: encodedPath, datasource_name: datasourceName },
-          query: {
-            user_id: userId
-          }
+          path: { encoded_original_path: encodedPath, datasource_name: datasourceName }
         });
 
         if (!response.response.ok) {

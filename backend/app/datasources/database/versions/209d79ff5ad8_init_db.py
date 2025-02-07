@@ -26,6 +26,7 @@ def upgrade() -> None:
     sa.Column('type', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('settings_json', sa.JSON(), nullable=True),
+    sa.Column('dek', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
     sa.Column('embedding_setting_identifier', sa.String(), nullable=False),

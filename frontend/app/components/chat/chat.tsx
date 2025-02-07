@@ -13,10 +13,10 @@ import { Messages } from './messages';
 //import { VisibilityType } from './visibility-selector';
 import { useBlockSelector } from '@/app/hooks/use-block';
 import { useClientConfig } from '../../hooks/use-config';
-import { useUser } from "@/app/contexts/user-context";
 import { convertToUIMessages } from '@/app/lib/utils';
 import { useChatResponse } from '@/app/contexts/chat-response-context';
 import { Block } from './block';
+import { useAuth } from '@/app/components/auth/auth-context';
 
 export function Chat({
   //id,
@@ -32,7 +32,7 @@ export function Chat({
   isReadonly: boolean;
 }) {
   const { backend } = useClientConfig();
-  const { userId } = useUser();
+  const { token } = useAuth();
   const { currentChatId, currentChat, refreshChats, tryToSetCurrentChat } = useChatResponse();
 
   const {
@@ -46,9 +46,9 @@ export function Chat({
     stop,
     reload,
   } = useChat({
-    api: `${backend}/api/chat?user_id=${userId}&datasource_name=Chats`,
+    api: `${backend}/api/chat?datasource_name=Chats`,
     headers: {
-      "X-User-Id": userId
+      Authorization: `Bearer ${token}` 
     },
     id: currentChatId,
     body: { 
@@ -110,7 +110,7 @@ export function Chat({
       <div className="flex flex-col min-w-0 h-dvh bg-background">
         <ChatHeader
           //chatId={id}
-          //userId={userId}
+          //userUuid={userUuid}
           //backend_url={backend_url}
           //selectedModelId={selectedModelId}
           //selectedVisibilityType={selectedVisibilityType}

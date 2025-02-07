@@ -1,26 +1,16 @@
-/*import Form from 'next/form';
-
-import { signOut } from '@/app/(auth)/auth';
+import { Button } from '@/app/components/ui/button';
+import { useAuth } from '@/app/components/auth/auth-context';
 
 export const SignOutForm = () => {
-  return (
-    <Form
-      className="w-full"
-      action={async () => {
-        'use server';
+  const { logout } = useAuth();
 
-        await signOut({
-          redirectTo: '/',
-        });
-      }}
+  return (
+    <Button 
+      onClick={logout}
+      variant="ghost"
+      className="text-red-500 hover:text-red-600"
     >
-      <button
-        type="submit"
-        className="w-full text-left px-1 py-0.5 text-red-500"
-      >
-        Sign out
-      </button>
-    </Form>
+      Sign Out
+    </Button>
   );
 };
-*/

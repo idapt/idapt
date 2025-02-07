@@ -77,11 +77,11 @@ async def delete_folder_filesystem(fs_path: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete folder: {str(e)}")
 
-def get_fs_path_from_path(path: str, user_id: str) -> str:
+def get_fs_path_from_path(path: str, user_uuid: str) -> str:
     """Convert a relative path to a full path including user directory"""
     try:
         
-        data_dir = Path(get_user_data_dir(user_id))
+        data_dir = Path(get_user_data_dir(user_uuid))
         
         if path == "" or path is None:
             return str(data_dir)
@@ -92,13 +92,13 @@ def get_fs_path_from_path(path: str, user_id: str) -> str:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get full path from path: {str(e)}")
 
-def get_path_from_fs_path(fs_path: str, user_id: str) -> str:
+def get_path_from_fs_path(fs_path: str, user_uuid: str) -> str:
     """Convert a full filesystem path to a database path."""
     try:
         if fs_path is None or fs_path == "":
             return ""
         # Remove the user data directory from the full path
-        user_data_dir = get_user_data_dir(user_id) + '/'
+        user_data_dir = get_user_data_dir(user_uuid) + '/'
         path = fs_path.replace(user_data_dir, '')
         return path
     except Exception as e:

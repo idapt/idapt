@@ -4,55 +4,54 @@ import { Settings } from "@/app/components/settings";
 import { Chat } from '@/app/components/chat/chat';
 import { DataStreamHandler } from '@/app/components/chat/data-stream-handler';
 import { AppSidebar } from '@/app/components/chat/app-sidebar';
-import { useUser } from "@/app/contexts/user-context";
 import { FileManager } from "@/app/components/file-manager/file-manager";
 import { ProcessingStacks } from "@/app/components/processing/processing-stacks";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SidebarToggle } from "./components/chat/sidebar-toggle";
+import { AuthForm } from "@/app/components/auth/auth-form";
+import { useAuth } from "@/app/components/auth/auth-context";
 
 export type View = 'chat' | 'files' | 'settings' | 'processing';
 
 export default function App() {
-  const { userId } = useUser();
+  const { isAuthenticated } = useAuth();
   const [currentView, setCurrentView] = useState<View>('chat');
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setCurrentView('chat');
+    }
+  }, [isAuthenticated]);
 
   const renderContent = () => {
     switch (currentView) {
       case 'files':
-        return (
-          <div className="flex-1 h-full w-full overflow-auto">
-            <FileManager />
-          </div>
-        );
+        return <FileManager />;
       case 'settings':
-        return (
-          <div className="flex-1 h-full w-full p-6 overflow-auto">
-            <Settings />
-          </div>
-        );
+        return <Settings />;
       case 'processing':
-        return (
-          <div className="flex-1 h-full w-full p-6 overflow-auto">
-            <ProcessingStacks />
-          </div>
-        );
+        return <ProcessingStacks />;
       default:
         return (
           <div className="flex-1 h-full w-full">
-            <div className="pl-0 h-full">
-              <Chat
-                isReadonly={false}
-              />
-              <DataStreamHandler />
-            </div>
+            <Chat isReadonly={false} />
+            <DataStreamHandler />
           </div>
         );
     }
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <AuthForm mode="login" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-screen overflow-hidden">
-      <AppSidebar userId={userId} onViewChange={setCurrentView} currentView={currentView} />
+      <AppSidebar onViewChange={setCurrentView} currentView={currentView} />
       <div className="flex justify-between pt-1.5 pl-1.5">
         <SidebarToggle />
       </div>
@@ -60,5 +59,6 @@ export default function App() {
         {renderContent()}
       </main>
     </div>
-  );
+  );  
 }
+

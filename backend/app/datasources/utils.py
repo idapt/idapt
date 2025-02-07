@@ -51,9 +51,9 @@ def validate_name(name: str) -> str:
     except Exception as e:
         raise ValueError(f"Invalid name: {name}")
     
-def get_datasource_folder_path(user_id: str, identifier: str) -> str:
+def get_datasource_folder_path(user_uuid: str, identifier: str) -> str:
     """Get the folder path of a datasource"""
-    return str(Path(get_user_data_dir(user_id), identifier))
+    return str(Path(get_user_data_dir(user_uuid), identifier))
 
 from app.datasources.database.models import Datasource
 from app.datasources.database.models import DatasourceType

@@ -1,6 +1,5 @@
 import { useApiClient } from '@/app/lib/api-client';
 import { DatasourceCreate, DatasourceUpdate } from '@/app/client';
-import { useUser } from '@/app/contexts/user-context';
 import { 
   getAllDatasourcesRouteApiDatasourcesGet,
   getDatasourceRouteApiDatasourcesDatasourceNameGet,
@@ -11,12 +10,10 @@ import {
 
 export const useDatasources = () => {
   const client = useApiClient();
-  const { userId } = useUser();
 
   const getAllDatasources = async () => {
     const response = await getAllDatasourcesRouteApiDatasourcesGet({
-      client,
-      query: { user_id: userId }
+      client
     });
     return response;
   };
@@ -24,8 +21,7 @@ export const useDatasources = () => {
   const getDatasource = async (datasource_name: string) => {
     const response = await getDatasourceRouteApiDatasourcesDatasourceNameGet({
       client,
-      path: { datasource_name },
-      query: { user_id: userId }
+      path: { datasource_name }
     });
     return response;
   };
@@ -34,8 +30,7 @@ export const useDatasources = () => {
     try {
       await deleteDatasourceRouteApiDatasourcesDatasourceNameDelete({
         client,
-        path: { datasource_name },
-        query: { user_id: userId }
+        path: { datasource_name }
       });
     } catch (error) {
       console.error('Delete failed:', error);
@@ -47,7 +42,6 @@ export const useDatasources = () => {
     await createDatasourceRouteApiDatasourcesDatasourceNamePost({
       client,
       path: { datasource_name },
-      query: { user_id: userId },
       body: datasourceCreate
     });
   };
@@ -56,7 +50,6 @@ export const useDatasources = () => {
     await updateDatasourceRouteApiDatasourcesDatasourceNamePatch({
       client,
       path: { datasource_name },
-      query: { user_id: userId },
       body: datasourceUpdate
     });
   };

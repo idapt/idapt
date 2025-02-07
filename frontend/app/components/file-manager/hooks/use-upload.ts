@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { useApiClient } from '@/app/lib/api-client';
 import { FileUploadItem, uploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePost } from '@/app/client';
-import { useUser } from '@/app/contexts/user-context';
 
 export function useFiles() {
   const client = useApiClient();
-  const { userId } = useUser();
   const [isUploading, setIsUploading] = useState(false);
 
   const uploadFileApi = async (uploadItem: FileUploadItem) => {
@@ -16,8 +14,7 @@ export function useFiles() {
       await uploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePost({
         client,
         path: { datasource_name: datasourceName },
-        body: uploadItem,
-        query: { user_id: userId }
+        body: uploadItem
       });
     } catch (error) {
       console.error('Upload error:', error);

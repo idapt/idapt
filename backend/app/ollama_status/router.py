@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, WebSocket
-from app.api.utils import get_user_id
 from app.settings.database.session import get_settings_db_session
+from app.auth.service import get_keyring_with_access_sk_token
 from sqlalchemy.orm import Session
 import logging
 from app.api.websocket import StatusWebSocket
@@ -16,12 +16,11 @@ ollama_status_router = r = APIRouter()
 @r.get("", response_model=OllamaStatusResponse)
 async def get_ollama_status_route(
     background_tasks: BackgroundTasks,
-    user_id: Annotated[str, Depends(get_user_id)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ):
     """Get the current status of Ollama model downloads"""
     try:
-        #logger.info(f"Getting Ollama status for user {user_id}")
+        #logger.info(f"Getting Ollama status")
         if not await can_process(settings_db_session, True): # Don't download models, it will be done on file processing
             return {"is_downloading": True}
         else:
@@ -35,12 +34,14 @@ async def get_ollama_status_route(
 @r.websocket("/ws")
 async def ollama_status_websocket_route(
     websocket: WebSocket,
-    user_id: Annotated[str, Depends(get_user_id)],
-    settings_db_session: Annotated[Session, Depends(get_settings_db_session)]
+    token: str
 ):
     """WebSocket endpoint for Ollama status updates"""
     async def get_status():
-        is_downloading = not await can_process(settings_db_session, False)
+        #keyring = get_keyring_with_access_sk_token(token)
+        #with get_settings_db_session(keyring) as settings_db_session:
+        is_downloading = False #not await can_process(settings_db_session, False)
+        # TODO !
         return {"is_downloading": is_downloading}
     
     status_ws = StatusWebSocket(websocket, get_status)

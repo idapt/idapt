@@ -76,6 +76,24 @@ export type ArtifactAnnotation = {
     };
 };
 
+export type BodyLoginForAccessSkTokenApiAuthTokenPost = {
+    grant_type?: string | null;
+    username: string;
+    password: string;
+    scope?: string;
+    client_id?: string | null;
+    client_secret?: string | null;
+};
+
+export type BodyRegisterApiAuthRegisterPost = {
+    grant_type?: string | null;
+    username: string;
+    password: string;
+    scope?: string;
+    client_id?: string | null;
+    client_secret?: string | null;
+};
+
 /**
  * Chat received from the vercel ai sdk from the frontend
  * Follows openai chat format + vercel ai sdk format
@@ -207,6 +225,14 @@ export type ItemProcessingStatusResponse = {
     name: string;
     queued_stacks: Array<string>;
     status: 'pending' | 'processing' | 'queued' | 'completed' | 'error';
+};
+
+export type Keyring = {
+    user_uuid: string;
+    kek_datasources?: (Blob | File) | null;
+    kek_processing?: (Blob | File) | null;
+    kek_processing_stacks?: (Blob | File) | null;
+    kek_settings?: (Blob | File) | null;
 };
 
 /**
@@ -347,6 +373,11 @@ export type SettingResponse = {
     value_json: string;
 };
 
+export type Token = {
+    access_token: string;
+    token_type: string;
+};
+
 export type UpdateSettingRequest = {
     values_to_update_json: string;
 };
@@ -357,14 +388,90 @@ export type ValidationError = {
     type: string;
 };
 
+export type LoginForAccessSkTokenApiAuthTokenPostData = {
+    body: BodyLoginForAccessSkTokenApiAuthTokenPost;
+    path?: never;
+    query?: never;
+    url: '/api/auth/token';
+};
+
+export type LoginForAccessSkTokenApiAuthTokenPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type LoginForAccessSkTokenApiAuthTokenPostError = LoginForAccessSkTokenApiAuthTokenPostErrors[keyof LoginForAccessSkTokenApiAuthTokenPostErrors];
+
+export type LoginForAccessSkTokenApiAuthTokenPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: Token;
+};
+
+export type LoginForAccessSkTokenApiAuthTokenPostResponse = LoginForAccessSkTokenApiAuthTokenPostResponses[keyof LoginForAccessSkTokenApiAuthTokenPostResponses];
+
+export type RegisterApiAuthRegisterPostData = {
+    body: BodyRegisterApiAuthRegisterPost;
+    path?: never;
+    query?: never;
+    url: '/api/auth/register';
+};
+
+export type RegisterApiAuthRegisterPostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RegisterApiAuthRegisterPostError = RegisterApiAuthRegisterPostErrors[keyof RegisterApiAuthRegisterPostErrors];
+
+export type RegisterApiAuthRegisterPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: Token;
+};
+
+export type RegisterApiAuthRegisterPostResponse = RegisterApiAuthRegisterPostResponses[keyof RegisterApiAuthRegisterPostResponses];
+
+export type ReadKeyringApiAuthKeyringGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/keyring';
+};
+
+export type ReadKeyringApiAuthKeyringGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: Keyring;
+};
+
+export type ReadKeyringApiAuthKeyringGetResponse = ReadKeyringApiAuthKeyringGetResponses[keyof ReadKeyringApiAuthKeyringGetResponses];
+
+export type ReadKeyringDatasourcesApiAuthKeyringDatasourcesGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/keyring/datasources';
+};
+
+export type ReadKeyringDatasourcesApiAuthKeyringDatasourcesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type ChatStreamingRouteApiChatPostData = {
     body: ChatDataInput;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
     query: {
-        user_id: string;
         datasource_name: string;
     };
     url: '/api/chat';
@@ -388,12 +495,8 @@ export type ChatStreamingRouteApiChatPostResponses = {
 
 export type ChatRequestRouteApiChatRequestPostData = {
     body: ChatDataInput;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
     query: {
-        user_id: string;
         datasource_name: string;
     };
     url: '/api/chat/request';
@@ -419,15 +522,10 @@ export type ChatRequestRouteApiChatRequestPostResponse = ChatRequestRouteApiChat
 
 export type DeleteSettingRouteApiSettingsIdentifierDeleteData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         identifier: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/settings/{identifier}';
 };
 
@@ -449,15 +547,10 @@ export type DeleteSettingRouteApiSettingsIdentifierDeleteResponses = {
 
 export type GetSettingRouteApiSettingsIdentifierGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         identifier: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/settings/{identifier}';
 };
 
@@ -481,15 +574,10 @@ export type GetSettingRouteApiSettingsIdentifierGetResponse = GetSettingRouteApi
 
 export type UpdateSettingRouteApiSettingsIdentifierPatchData = {
     body: UpdateSettingRequest;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         identifier: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/settings/{identifier}';
 };
 
@@ -511,15 +599,10 @@ export type UpdateSettingRouteApiSettingsIdentifierPatchResponses = {
 
 export type CreateSettingRouteApiSettingsIdentifierPostData = {
     body: CreateSettingRequest;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         identifier: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/settings/{identifier}';
 };
 
@@ -541,24 +624,10 @@ export type CreateSettingRouteApiSettingsIdentifierPostResponses = {
 
 export type GetAllSettingsRouteApiSettingsGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/settings';
 };
-
-export type GetAllSettingsRouteApiSettingsGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetAllSettingsRouteApiSettingsGetError = GetAllSettingsRouteApiSettingsGetErrors[keyof GetAllSettingsRouteApiSettingsGetErrors];
 
 export type GetAllSettingsRouteApiSettingsGetResponses = {
     /**
@@ -571,15 +640,10 @@ export type GetAllSettingsRouteApiSettingsGetResponse = GetAllSettingsRouteApiSe
 
 export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdentifierGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         schema_identifier: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/settings/schema/{schema_identifier}';
 };
 
@@ -603,15 +667,10 @@ export type GetAllSettingsWithSchemaIdentifierRouteApiSettingsSchemaSchemaIdenti
 
 export type UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePostData = {
     body: FileUploadItem;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}/file-manager/upload-file';
 };
 
@@ -635,16 +694,11 @@ export type UploadFileRouteApiDatasourcesDatasourceNameFileManagerUploadFilePost
 
 export type DeleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPathDeleteData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
-        encoded_original_path: string;
         datasource_name: string;
+        encoded_original_path: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}/file-manager/{encoded_original_path}';
 };
 
@@ -666,16 +720,12 @@ export type DeleteRouteApiDatasourcesDatasourceNameFileManagerEncodedOriginalPat
 
 export type GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
-        encoded_original_path: string;
         datasource_name: string;
+        encoded_original_path: string;
     };
-    query: {
+    query?: {
         include_child_folders_files_recursively?: boolean;
-        user_id: string;
     };
     url: '/api/datasources/{datasource_name}/file-manager/folder/{encoded_original_path}';
 };
@@ -700,16 +750,12 @@ export type GetFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncod
 
 export type GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         encoded_original_path: string;
         datasource_name: string;
     };
-    query: {
+    query?: {
         include_content?: boolean;
-        user_id: string;
     };
     url: '/api/datasources/{datasource_name}/file-manager/file/{encoded_original_path}';
 };
@@ -734,16 +780,11 @@ export type GetFileInfoRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOr
 
 export type DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
         encoded_original_path: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}/file-manager/file/{encoded_original_path}/download';
 };
 
@@ -765,16 +806,11 @@ export type DownloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedO
 
 export type DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
         encoded_original_path: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}/file-manager/folder/{encoded_original_path}/download';
 };
 
@@ -796,16 +832,11 @@ export type DownloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEnco
 
 export type DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProcessedDataEncodedOriginalPathDeleteData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
         encoded_original_path: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}/file-manager/processed-data/{encoded_original_path}';
 };
 
@@ -827,15 +858,11 @@ export type DeleteProcessedDataRouteApiDatasourcesDatasourceNameFileManagerProce
 
 export type GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
     };
-    query: {
+    query?: {
         include_messages?: boolean;
-        user_id: string;
     };
     url: '/api/datasources/{datasource_name}/chats';
 };
@@ -860,15 +887,11 @@ export type GetAllChatsRouteApiDatasourcesDatasourceNameChatsGetResponse = GetAl
 
 export type CreateChatRouteApiDatasourcesDatasourceNameChatsPostData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
     };
-    query: {
+    query?: {
         chat_uuid?: string;
-        user_id: string;
     };
     url: '/api/datasources/{datasource_name}/chats';
 };
@@ -893,16 +916,11 @@ export type CreateChatRouteApiDatasourcesDatasourceNameChatsPostResponse = Creat
 
 export type DeleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDeleteData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         chat_uuid: string;
         datasource_name: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}/chats/{chat_uuid}';
 };
 
@@ -924,18 +942,14 @@ export type DeleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDeleteRespon
 
 export type GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         chat_uuid: string;
         datasource_name: string;
     };
-    query: {
+    query?: {
         include_messages?: boolean;
         create_if_not_found?: boolean;
         update_last_opened_at?: boolean;
-        user_id: string;
     };
     url: '/api/datasources/{datasource_name}/chats/{chat_uuid}';
 };
@@ -960,16 +974,12 @@ export type GetChatRouteApiDatasourcesDatasourceNameChatsChatUuidGetResponse = G
 
 export type UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         chat_uuid: string;
         datasource_name: string;
     };
     query: {
         title: string;
-        user_id: string;
     };
     url: '/api/datasources/{datasource_name}/chats/{chat_uuid}';
 };
@@ -992,16 +1002,11 @@ export type UpdateChatTitleRouteApiDatasourcesDatasourceNameChatsChatUuidPutResp
 
 export type AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessagesPostData = {
     body: MessageCreate;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         chat_uuid: string;
         datasource_name: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}/chats/{chat_uuid}/messages';
 };
 
@@ -1023,24 +1028,10 @@ export type AddMessageToChatRouteApiDatasourcesDatasourceNameChatsChatUuidMessag
 
 export type GetAllDatasourcesRouteApiDatasourcesGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources';
 };
-
-export type GetAllDatasourcesRouteApiDatasourcesGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetAllDatasourcesRouteApiDatasourcesGetError = GetAllDatasourcesRouteApiDatasourcesGetErrors[keyof GetAllDatasourcesRouteApiDatasourcesGetErrors];
 
 export type GetAllDatasourcesRouteApiDatasourcesGetResponses = {
     /**
@@ -1053,15 +1044,10 @@ export type GetAllDatasourcesRouteApiDatasourcesGetResponse = GetAllDatasourcesR
 
 export type DeleteDatasourceRouteApiDatasourcesDatasourceNameDeleteData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}';
 };
 
@@ -1083,15 +1069,10 @@ export type DeleteDatasourceRouteApiDatasourcesDatasourceNameDeleteResponses = {
 
 export type GetDatasourceRouteApiDatasourcesDatasourceNameGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}';
 };
 
@@ -1115,15 +1096,10 @@ export type GetDatasourceRouteApiDatasourcesDatasourceNameGetResponse = GetDatas
 
 export type UpdateDatasourceRouteApiDatasourcesDatasourceNamePatchData = {
     body: DatasourceUpdate;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}';
 };
 
@@ -1145,15 +1121,10 @@ export type UpdateDatasourceRouteApiDatasourcesDatasourceNamePatchResponses = {
 
 export type CreateDatasourceRouteApiDatasourcesDatasourceNamePostData = {
     body: DatasourceCreate;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         datasource_name: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/datasources/{datasource_name}';
 };
 
@@ -1175,13 +1146,8 @@ export type CreateDatasourceRouteApiDatasourcesDatasourceNamePostResponses = {
 
 export type ProcessingRouteApiProcessingPostData = {
     body: ProcessingRequest;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/processing';
 };
 
@@ -1205,24 +1171,10 @@ export type ProcessingRouteApiProcessingPostResponse = ProcessingRouteApiProcess
 
 export type GetProcessingStatusRouteApiProcessingStatusGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
-    query?: {
-        user_id?: string | null;
-    };
+    query?: never;
     url: '/api/processing/status';
 };
-
-export type GetProcessingStatusRouteApiProcessingStatusGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetProcessingStatusRouteApiProcessingStatusGetError = GetProcessingStatusRouteApiProcessingStatusGetErrors[keyof GetProcessingStatusRouteApiProcessingStatusGetErrors];
 
 export type GetProcessingStatusRouteApiProcessingStatusGetResponses = {
     /**
@@ -1235,24 +1187,10 @@ export type GetProcessingStatusRouteApiProcessingStatusGetResponse = GetProcessi
 
 export type GetProcessingStepsRouteApiStacksStepsGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/stacks/steps';
 };
-
-export type GetProcessingStepsRouteApiStacksStepsGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetProcessingStepsRouteApiStacksStepsGetError = GetProcessingStepsRouteApiStacksStepsGetErrors[keyof GetProcessingStepsRouteApiStacksStepsGetErrors];
 
 export type GetProcessingStepsRouteApiStacksStepsGetResponses = {
     /**
@@ -1265,24 +1203,10 @@ export type GetProcessingStepsRouteApiStacksStepsGetResponse = GetProcessingStep
 
 export type GetProcessingStacksRouteApiStacksStacksGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/stacks/stacks';
 };
-
-export type GetProcessingStacksRouteApiStacksStacksGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetProcessingStacksRouteApiStacksStacksGetError = GetProcessingStacksRouteApiStacksStacksGetErrors[keyof GetProcessingStacksRouteApiStacksStacksGetErrors];
 
 export type GetProcessingStacksRouteApiStacksStacksGetResponses = {
     /**
@@ -1295,13 +1219,8 @@ export type GetProcessingStacksRouteApiStacksStacksGetResponse = GetProcessingSt
 
 export type CreateProcessingStackRouteApiStacksStacksPostData = {
     body: ProcessingStackCreate;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/stacks/stacks';
 };
 
@@ -1325,15 +1244,10 @@ export type CreateProcessingStackRouteApiStacksStacksPostResponse = CreateProces
 
 export type DeleteProcessingStackRouteApiStacksStacksStackIdentifierDeleteData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         stack_identifier: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/stacks/stacks/{stack_identifier}';
 };
 
@@ -1355,15 +1269,10 @@ export type DeleteProcessingStackRouteApiStacksStacksStackIdentifierDeleteRespon
 
 export type GetProcessingStackRouteApiStacksStacksStackIdentifierGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         stack_identifier: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/stacks/stacks/{stack_identifier}';
 };
 
@@ -1387,15 +1296,10 @@ export type GetProcessingStackRouteApiStacksStacksStackIdentifierGetResponse = G
 
 export type UpdateProcessingStackRouteApiStacksStacksStackIdentifierPutData = {
     body: ProcessingStackUpdate;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path: {
         stack_identifier: string;
     };
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/stacks/stacks/{stack_identifier}';
 };
 
@@ -1419,24 +1323,10 @@ export type UpdateProcessingStackRouteApiStacksStacksStackIdentifierPutResponse 
 
 export type GetOllamaStatusRouteApiOllamaStatusGetData = {
     body?: never;
-    headers?: {
-        'x-user-id'?: string | null;
-    };
     path?: never;
-    query: {
-        user_id: string;
-    };
+    query?: never;
     url: '/api/ollama-status';
 };
-
-export type GetOllamaStatusRouteApiOllamaStatusGetErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetOllamaStatusRouteApiOllamaStatusGetError = GetOllamaStatusRouteApiOllamaStatusGetErrors[keyof GetOllamaStatusRouteApiOllamaStatusGetErrors];
 
 export type GetOllamaStatusRouteApiOllamaStatusGetResponses = {
     /**

@@ -4,11 +4,9 @@ import {
   ProcessingRequest,
   ProcessingItem
 } from '@/app/client';
-import { useUser } from '@/app/contexts/user-context';
 
 export function useProcessing() {
   const client = useApiClient();
-  const { userId } = useUser();
 
   const processWithStack = async (files: string[], stackIdentifier: string) => {
     try {
@@ -30,7 +28,7 @@ export function useProcessing() {
         const response = await processingRouteApiProcessingPost({
           client,
           body: { items: processFiles[datasourceName] },
-          query: { user_id: userId, datasource_name: datasourceName }
+          //query: { datasource_name: datasourceName }
         });
         if (response.error) {
           throw new Error(response.error.detail?.[0]?.msg || 'Unknown error');

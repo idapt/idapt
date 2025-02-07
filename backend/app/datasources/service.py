@@ -9,11 +9,11 @@ from app.datasources.utils import validate_name, get_datasource_folder_path
 from app.datasources.database.models import Datasource, DatasourceType
 from app.settings.schemas import SettingResponse
 from app.settings.service import get_all_settings, get_setting
-from app.settings.database.session import get_settings_db_session
+from app.api.aes_gcm_file_encryption import generate_aes_gcm_key
 
 logger = logging.getLogger("uvicorn")
 
-def init_default_datasources_if_needed(datasources_db_session: Session, settings_db_session: Session, user_id: str):
+def init_default_datasources_if_needed(datasources_db_session: Session, settings_db_session: Session, user_uuid: str):
     """Initialize default datasources if they don't exist"""
     try:
         # If there is no existing datasource create one, otherwise dont as the user explicitly deleted it, it will be recreated only if there are no other datasources
@@ -32,7 +32,7 @@ def init_default_datasources_if_needed(datasources_db_session: Session, settings
         create_datasource(
             datasources_db_session=datasources_db_session,
             settings_db_session=settings_db_session,
-            user_id=user_id,
+            user_uuid=user_uuid,
             datasource_name="Files",
             datasource_create=DatasourceCreate(
                 type=DatasourceType.FILES.name,
@@ -46,7 +46,7 @@ def init_default_datasources_if_needed(datasources_db_session: Session, settings
         create_datasource(
             datasources_db_session=datasources_db_session,
             settings_db_session=settings_db_session,
-            user_id=user_id,
+            user_uuid=user_uuid,
             datasource_name="Chats",
             datasource_create=DatasourceCreate(
                 type=DatasourceType.CHATS.name,
@@ -65,7 +65,7 @@ def init_default_datasources_if_needed(datasources_db_session: Session, settings
 def create_datasource(
     datasources_db_session: Session, 
     settings_db_session: Session,
-    user_id: str,
+    user_uuid: str,
     datasource_create: DatasourceCreate,
     datasource_name: str
 ) -> None:
@@ -101,6 +101,9 @@ def create_datasource(
         #datasource_folder = datasources_db_session.query(Folder).filter(Folder.path == fs_datasource_path).first()
         # Extract the folder fs_name from its fs path last element and use it as datasource identifier
         datasource_identifier = datasource_name #fs_datasource_path.split("/")[-1] # TODO Use dedicated generate identifier
+
+        # Generate a new dek for the datasource
+        datasource_dek = generate_aes_gcm_key()
         
         # Create datasource
         datasource = Datasource(
@@ -111,6 +114,7 @@ def create_datasource(
             description=datasource_create.description,
             settings_json=datasource_create.settings_json,
             embedding_setting_identifier=embedding_setting_identifier,
+            dek=datasource_dek
         )
         datasources_db_session.add(datasource)
         datasources_db_session.commit()
@@ -120,7 +124,7 @@ def create_datasource(
         logger.error(f"Error creating datasource: {str(e)}")
         raise
 
-async def delete_datasource(datasources_db_session: Session, user_id: str, datasource_name: str) -> None:
+async def delete_datasource(datasources_db_session: Session, user_uuid: str, datasource_name: str) -> None:
     """Delete a datasource and all its components"""
     # TODO Make more robust to avoid partial deletion by implementing a trash folder and moving the files to it and restoring them in case of an error
     try:
@@ -138,12 +142,12 @@ async def delete_datasource(datasources_db_session: Session, user_id: str, datas
             #datasources_db_session.flush()
             
             # Then try to delete all files and folders using the stored path
-            #await delete_folder(datasources_db_session, user_id, folder.path)
+            #await delete_folder(datasources_db_session, user_uuid, folder.path)
         #else:
         #    logger.warning("Datasource has no root folder, still deleting it but this should not happen")
 
         # Delete the llama index components for this datasource
-        delete_datasource_llama_index_components(datasource.identifier, user_id)
+        delete_datasource_llama_index_components(datasource.identifier, user_uuid)
 
         # If file deletion succeeded, delete database entry
         datasources_db_session.delete(datasource)
@@ -193,7 +197,7 @@ def get_all_datasources(datasources_db_session: Session) -> List[DatasourceRespo
         logger.error(f"Error getting all datasources: {str(e)}")
         raise
 
-async def update_datasource(datasources_db_session: Session, settings_db_session: Session, user_id: str, identifier: str, datasource_update: DatasourceUpdate):
+async def update_datasource(datasources_db_session: Session, settings_db_session: Session, user_uuid: str, identifier: str, datasource_update: DatasourceUpdate):
     """Update a datasource's description and its associated query tool"""
     try:
         # Get the datasource to update
@@ -224,11 +228,11 @@ async def update_datasource(datasources_db_session: Session, settings_db_session
                 #folder = datasources_db_session.query(Folder).filter(Folder.id == datasource.folder_id).first()
                 #if not folder:
                 #    raise Exception("Datasource has no root folder, try to delete and recreate it")
-                datasource_folder_path = get_datasource_folder_path(user_id, identifier)
+                datasource_folder_path = get_datasource_folder_path(user_uuid, identifier)
                 # Delete the files in the folder from llama index
-                delete_files_in_folder_recursive_from_llama_index(datasources_db_session, user_id, datasource_folder_path)
+                delete_files_in_folder_recursive_from_llama_index(datasources_db_session, user_uuid, datasource_folder_path)
                 # Delete the datasource llama index components
-                delete_datasource_llama_index_components(datasource.identifier, user_id)
+                delete_datasource_llama_index_components(datasource.identifier, user_uuid)
                 logger.info(f"Deleted processed llama index data for datasource {datasource.identifier} and embedding model {old_embedding_model}")
             # New one will be created when first files are processed with it
             datasource.embedding_setting_identifier = datasource_update.embedding_setting_identifier

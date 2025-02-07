@@ -18,6 +18,7 @@ class Datasource(Base):
     type = Column(String, nullable=False)
     description = Column(String, nullable=True)
     settings_json = Column(JSON, nullable=True)
+    dek = Column(String, nullable=False)
     
     # System tracking
     created_at = Column(DateTime, server_default=func.now())

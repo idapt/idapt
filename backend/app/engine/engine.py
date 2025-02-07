@@ -20,7 +20,7 @@ logger = logging.getLogger("uvicorn")
 
 def get_chat_engine(datasources_db_session: Session,
                     settings_db_session: Session,
-                    user_id: str,
+                    user_uuid: str,
                     llm: LLM,
                     max_iterations: int,
                     system_prompt: str,
@@ -40,8 +40,8 @@ def get_chat_engine(datasources_db_session: Session,
             # Get the corresponding datasource
             datasource = datasources_db_session.query(Datasource).filter(Datasource.identifier == datasource_identifier).first()
             # Get the vector store and doc store from the datasource identifier
-            vector_store = create_vector_store(datasource.identifier, user_id)
-            doc_store = create_doc_store(datasource.identifier, user_id)
+            vector_store = create_vector_store(datasource.identifier, user_uuid)
+            doc_store = create_doc_store(datasource.identifier, user_uuid)
             # Get the embedding model setting for the datasource
             embedding_model_setting = get_setting(settings_db_session=settings_db_session, identifier=datasource.embedding_setting_identifier)
             # Init the embedding model from the app settings
@@ -61,8 +61,8 @@ def get_chat_engine(datasources_db_session: Session,
             datasources = datasources_db_session.query(Datasource).all()
             for datasource in datasources:
                 # Get the vector store and doc store from the datasource identifier
-                vector_store = create_vector_store(datasource.identifier, user_id)
-                doc_store = create_doc_store(datasource.identifier, user_id)
+                vector_store = create_vector_store(datasource.identifier, user_uuid)
+                doc_store = create_doc_store(datasource.identifier, user_uuid)
                 # Get the embedding model setting for the datasource
                 embedding_model_setting = get_setting(settings_db_session=settings_db_session, identifier=datasource.embedding_setting_identifier)
                 # Init the embedding model from the app settings

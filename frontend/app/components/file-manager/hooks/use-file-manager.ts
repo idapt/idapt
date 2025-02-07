@@ -8,12 +8,10 @@ import {
 } from '@/app/client';
 import { useCallback, useEffect, useState } from 'react';
 import { useApiClient } from '@/app/lib/api-client';
-import { useUser } from '@/app/contexts/user-context';
 import { encodePathSafe } from '../utils/path-encoding';
 
 export function useFileManager() {
   const client = useApiClient();
-  const { userId } = useUser();
   const [currentPath, setCurrentPath] = useState<string>('');
   const [files, setFiles] = useState<FileInfoResponse[]>([]);
   const [folders, setFolders] = useState<FolderInfoResponse[]>([]);
@@ -29,7 +27,7 @@ export function useFileManager() {
       const pathParts = path?.split('/').filter(Boolean);
       if ( !path || !pathParts || pathParts.length === 0) {
         // Only fetch datasources for root view
-        const datasources = await getAllDatasourcesRouteApiDatasourcesGet({ client, query: { user_id: userId } });
+        const datasources = await getAllDatasourcesRouteApiDatasourcesGet({ client });
         setFiles([]);
         setFolders([]);
         setDatasources(datasources.data || []);
@@ -42,7 +40,6 @@ export function useFileManager() {
           {
             client,
             path: { datasource_name: datasourceName },
-            query: { user_id: userId }
           });
         setCurrentDatasource(datasource.data);
         
@@ -51,7 +48,7 @@ export function useFileManager() {
         const folderData = await getFolderInfoRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathGet({
           client,
           path: { encoded_original_path: encodedPath, datasource_name: datasourceName },
-          query: { include_child_folders_files_recursively: false, user_id: userId }
+          query: { include_child_folders_files_recursively: false }
         });
 
         setFiles(folderData.data?.child_files || []);

@@ -21,7 +21,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X, Save, Trash2, Settings2 } from 'lucide-react';
-import { useUser } from '@/app/contexts/user-context';
 import { useApiClient } from '@/app/lib/api-client';
 import { ProcessingStepSelect } from './processing-step-select';
 import { ParameterEditor } from './parameter-editor';
@@ -109,7 +108,6 @@ function SortableStep({
 export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }: ProcessingStackEditProps) {
   const [steps, setSteps] = useState<ProcessingStackStepResponse[]>(stack.steps);
   const [extensions, setExtensions] = useState<string[]>(stack.supported_extensions || []);
-  const { userId } = useUser();
   const client = useApiClient();
 
   const handleSave = async () => {
@@ -117,7 +115,6 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
       await updateProcessingStackRouteApiStacksStacksStackIdentifierPut({
         client,
         path: { stack_identifier: stack.identifier },
-        query: { user_id: userId },
         body: {
           steps: steps.map((step, index) => ({
             ...step,
@@ -275,8 +272,7 @@ export function ProcessingStackEdit({ stack, availableSteps, onSave, onDelete }:
     try {
       await deleteProcessingStackRouteApiStacksStacksStackIdentifierDelete({
         client,
-        path: { stack_identifier: stack.identifier },
-        query: { user_id: userId }
+        path: { stack_identifier: stack.identifier }
       });
       onDelete();
     } catch (error) {

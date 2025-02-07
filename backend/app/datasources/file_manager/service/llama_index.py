@@ -31,10 +31,10 @@ from llama_index.core.base.embeddings.base import BaseEmbedding
 logger = logging.getLogger("uvicorn")
 
 # Private methods for creating components
-def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVectorStore:
+def create_vector_store(datasource_identifier: str, user_uuid: str) -> ChromaVectorStore:
     try:
         # Create the embeddings directory if it doesn't exist
-        datasource_embeddings_dir = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "embeddings"
+        datasource_embeddings_dir = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_uuid)) / "embeddings"
 
         # Create the parent directory if it doesn't exist
         datasource_embeddings_dir.mkdir(parents=True, exist_ok=True)
@@ -59,13 +59,13 @@ def create_vector_store(datasource_identifier: str, user_id: str) -> ChromaVecto
         logger.error(f"Error creating vector store: {str(e)}")
         raise
 
-def get_llama_index_datasource_folder_path(datasource_identifier: str, user_id: str) -> str:
-    return f"{get_user_app_data_dir(user_id)}/processed/{datasource_identifier}"
+def get_llama_index_datasource_folder_path(datasource_identifier: str, user_uuid: str) -> str:
+    return f"{get_user_app_data_dir(user_uuid)}/processed/{datasource_identifier}"
 
-def create_doc_store(datasource_identifier: str, user_id: str) -> SimpleDocumentStore:
+def create_doc_store(datasource_identifier: str, user_uuid: str) -> SimpleDocumentStore:
     try:
         # Create the docstore directory if it doesn't exist
-        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "docstores" / f"docstore.json"
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_uuid)) / "docstores" / f"docstore.json"
         docstore_file.parent.mkdir(parents=True, exist_ok=True)
 
         docstore = None
@@ -154,7 +154,7 @@ def create_query_tool(
         raise
 
 # ? Move to file manager ?
-async def delete_item_from_llama_index(file_manager_session: Session, user_id: str, original_path: str):
+async def delete_item_from_llama_index(file_manager_session: Session, user_uuid: str, original_path: str):
     """
     Delete an item from the llama index
     If it is a file, delete the file from the llama index
@@ -168,13 +168,13 @@ async def delete_item_from_llama_index(file_manager_session: Session, user_id: s
         file = file_manager_session.query(File).filter(File.original_path == original_path).first()
         if file:
             # Delete llama index data
-            delete_file_llama_index(file_manager_session=file_manager_session, user_id=user_id, file=file)
+            delete_file_llama_index(file_manager_session=file_manager_session, user_uuid=user_uuid, file=file)
             return {"success": True}
             
         # If not a file, check if it's a folder
         folder = file_manager_session.query(Folder).filter(Folder.original_path == original_path).first()
         if folder:
-            delete_files_in_folder_recursive_from_llama_index(file_manager_session=file_manager_session, user_id=user_id, full_folder_path=folder.path)
+            delete_files_in_folder_recursive_from_llama_index(file_manager_session=file_manager_session, user_uuid=user_uuid, full_folder_path=folder.path)
             return {"success": True}
             
         raise HTTPException(status_code=404, detail="Item not found")
@@ -182,7 +182,7 @@ async def delete_item_from_llama_index(file_manager_session: Session, user_id: s
         logger.error(f"Error deleting item from LlamaIndex: {str(e)}")
         raise
 
-def delete_files_in_folder_recursive_from_llama_index(file_manager_session: Session, user_id: str, full_folder_path: str):
+def delete_files_in_folder_recursive_from_llama_index(file_manager_session: Session, user_uuid: str, full_folder_path: str):
     try:
         # Get the files in the folder recursively from the database
         files, _ = get_db_folder_files_recursive(file_manager_session, full_folder_path)
@@ -190,7 +190,7 @@ def delete_files_in_folder_recursive_from_llama_index(file_manager_session: Sess
         # Delete each file from the llama index
         for file in files:
             try:
-                delete_file_llama_index(file_manager_session, user_id, file)
+                delete_file_llama_index(file_manager_session, user_uuid, file)
             except Exception as e:
                 logger.warning(f"Failed to delete {file.path} from LlamaIndex: {str(e)}")
 
@@ -199,10 +199,10 @@ def delete_files_in_folder_recursive_from_llama_index(file_manager_session: Sess
         logger.error(f"Error deleting files in folder from LlamaIndex: {str(e)}")
         raise
 
-def delete_datasource_llama_index_components(datasource_identifier: str, user_id: str):
+def delete_datasource_llama_index_components(datasource_identifier: str, user_uuid: str):
     try:        
         # Get the paths
-        datasource_embeddings_dir = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "embeddings"
+        datasource_embeddings_dir = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_uuid)) / "embeddings"
         
         # First close any open ChromaDB connections
         try:
@@ -219,7 +219,7 @@ def delete_datasource_llama_index_components(datasource_identifier: str, user_id
             logger.warning(f"Error closing ChromaDB connection: {str(e)}")
 
         # Delete the datasource llama index directory
-        #llama_index_datasource_folder_path = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id))
+        #llama_index_datasource_folder_path = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_uuid))
         #if os.path.exists(llama_index_datasource_folder_path):
         #    try:
         #        shutil.rmtree(llama_index_datasource_folder_path, ignore_errors=True)
@@ -239,7 +239,7 @@ def delete_datasource_llama_index_components(datasource_identifier: str, user_id
         #        raise
 
 
-        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "docstores" / f"docstore.json"
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_uuid)) / "docstores" / f"docstore.json"
         # Delete the docstore file
         if os.path.exists(docstore_file):
             try:
@@ -253,7 +253,7 @@ def delete_datasource_llama_index_components(datasource_identifier: str, user_id
         logger.error(f"Error deleting datasource llama index components: {str(e)}")
         raise
 
-def delete_file_llama_index(file_manager_session: Session, user_id: str, file: File):
+def delete_file_llama_index(file_manager_session: Session, user_uuid: str, file: File):
     try:
         if file.status == FileStatus.PROCESSING:
             raise Exception(f"File {file.path} is currently being processed, please wait for it to finish or cancel the processing before deleting it")
@@ -261,8 +261,8 @@ def delete_file_llama_index(file_manager_session: Session, user_id: str, file: F
         from app.datasources.utils import get_datasource_identifier_from_path
         # Get the datasource vector store and docstore
         datasource_identifier = get_datasource_identifier_from_path(file.path)
-        vector_store = create_vector_store(datasource_identifier, user_id)
-        doc_store = create_doc_store(datasource_identifier, user_id)
+        vector_store = create_vector_store(datasource_identifier, user_uuid)
+        doc_store = create_doc_store(datasource_identifier, user_uuid)
 
         # Delete each ref_doc_id from the vector store and docstore
         # Parse the json ref_doc_ids as a list
@@ -299,7 +299,7 @@ def delete_file_llama_index(file_manager_session: Session, user_id: str, file: F
         file_manager_session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
-        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "docstores" / f"docstore.json"
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_uuid)) / "docstores" / f"docstore.json"
         doc_store.persist(persist_path= str(docstore_file))
 
     except Exception as e:
@@ -307,7 +307,7 @@ def delete_file_llama_index(file_manager_session: Session, user_id: str, file: F
         logger.error(f"Error deleting file from LlamaIndex: {str(e)}")
         raise e
 
-def delete_file_processing_stack_from_llama_index(file_manager_session: Session, user_id: str, fs_path: str, processing_stack_identifier: str):
+def delete_file_processing_stack_from_llama_index(file_manager_session: Session, user_uuid: str, fs_path: str, processing_stack_identifier: str):
     try:
         # Get the file's ref_doc_ids from the database
         file = file_manager_session.query(File).filter(File.path == fs_path).first()
@@ -321,8 +321,8 @@ def delete_file_processing_stack_from_llama_index(file_manager_session: Session,
 
 
         # Get the datasource vector store and docstore
-        vector_store = create_vector_store(datasource_identifier, user_id)
-        doc_store = create_doc_store(datasource_identifier, user_id)
+        vector_store = create_vector_store(datasource_identifier, user_uuid)
+        doc_store = create_doc_store(datasource_identifier, user_uuid)
 
         # Delete each ref_doc_id from the vector store and docstore
         # Parse the json ref_doc_ids as a list
@@ -352,7 +352,7 @@ def delete_file_processing_stack_from_llama_index(file_manager_session: Session,
                 file_manager_session.commit()
 
         # Needed for now as SimpleDocumentStore is not persistent
-        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_id)) / "docstores" / f"docstore.json"
+        docstore_file = Path(get_llama_index_datasource_folder_path(datasource_identifier, user_uuid)) / "docstores" / f"docstore.json"
         doc_store.persist(persist_path=str(docstore_file))
         
     except Exception as e:
@@ -367,8 +367,8 @@ def delete_file_processing_stack_from_llama_index(file_manager_session: Session,
 #        datasource_identifier = get_datasource_identifier_from_path(full_old_path)
 
         # Get the datasource vector store and docstore
-        #vector_store = create_vector_store(datasource_identifier, user_id)
-        #doc_store = create_doc_store(datasource_identifier, user_id)
+        #vector_store = create_vector_store(datasource_identifier, user_uuid)
+        #doc_store = create_doc_store(datasource_identifier, user_uuid)
 
         # For now simply delete the old file from the vector store and docstore
         #vector_store.delete(full_old_path)

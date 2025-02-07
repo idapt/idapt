@@ -7,7 +7,7 @@ from fastapi import WebSocketDisconnect
 from typing import Annotated
 from app.processing.service import get_queue_status, mark_items_as_queued, start_processing_thread
 from app.processing.schemas import ProcessingRequest, ProcessingStatusResponse
-from app.api.utils import get_user_id
+from app.auth.service import get_user_uuid_from_token
 from app.datasources.file_manager.database.session import get_datasources_file_manager_session
 from app.datasources.database.session import get_datasources_db_session
 from app.settings.database.session import get_settings_db_session
@@ -22,7 +22,7 @@ processing_router = r = APIRouter()
 async def processing_route(
     request: ProcessingRequest,
     background_tasks: BackgroundTasks,
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
     processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)],
@@ -37,7 +37,7 @@ async def processing_route(
             file_manager_db_session = None
             if datasource_name not in file_manager_db_sessions:
                 file_manager_db_session = get_datasources_file_manager_session(
-                    user_id=user_id,
+                    user_uuid=user_uuid,
                     datasource_name=datasource_name,
                     datasources_db_session=datasources_db_session
                 )
@@ -49,20 +49,20 @@ async def processing_route(
             mark_items_as_queued(
                 processing_stacks_db_session=processing_stacks_db_session,
                 file_manager_db_session=file_manager_db_session,
-                user_id=user_id,
+                user_uuid=user_uuid,
                 items=[item]
             )
 
         # Start processing thread if needed
         start_processing_thread(
-            user_id=user_id,
+            user_uuid=user_uuid,
             file_manager_db_sessions=file_manager_db_sessions,
             datasources_db_session=datasources_db_session,
             settings_db_session=settings_db_session,
             processing_stacks_db_session=processing_stacks_db_session
         )
 
-        return get_queue_status(user_id)
+        return get_queue_status(user_uuid)
     
     except HTTPException:
         raise
@@ -72,12 +72,12 @@ async def processing_route(
 
 @r.get("/status", response_model=ProcessingStatusResponse)
 async def get_processing_status_route(
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
 ) -> ProcessingStatusResponse:
     """Get the current status of the generation queue"""
     try:
         # Start processing thread if needed
-        return get_queue_status(user_id)
+        return get_queue_status(user_uuid)
     except Exception as e:
         logger.error(f"Error in get_processing_status_route: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -86,13 +86,13 @@ async def get_processing_status_route(
 @r.websocket("/status/ws")
 async def processing_status_websocket(
     websocket: WebSocket,
-    user_id: Annotated[str, Depends(get_user_id)],
+    token: str
 ):
     """WebSocket endpoint for processing status updates"""
-    # Convert ProcessingStatusResponse to dict before sending
+    user_uuid = get_user_uuid_from_token(token)
     status_ws = StatusWebSocket(
         websocket, 
-        lambda: get_queue_status(user_id)
+        lambda: get_queue_status(user_uuid)
     )
     await status_ws.accept()
     

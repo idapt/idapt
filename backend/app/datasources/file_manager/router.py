@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.datasources.file_manager.schemas import FileUploadItem, FileDownloadResponse, FolderDownloadResponse, FileInfoResponse, FolderInfoResponse, UpdateFileProcessingStatusRequest
 from app.datasources.file_manager.service.service import upload_file, download_file, delete_item, download_folder, get_folder_info, get_file_info, update_file_processing_status
-from app.api.utils import get_user_id
+from app.auth.service import get_user_uuid_from_token
 from app.datasources.file_manager.database.session import get_datasources_file_manager_db_session
 from app.datasources.database.session import get_datasources_db_session
 from app.datasources.file_manager.utils import decode_path_safe
@@ -27,14 +27,14 @@ file_manager_router = r = APIRouter()
 async def upload_file_route(
     datasource_name: str,
     item: FileUploadItem,
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
 ):
     try:
-        logger.info(f"Uploading file {item.name} for user {user_id} and datasource {datasource_name}")
+        logger.info(f"Uploading file {item.name} and datasource {datasource_name}")
 
-        file_info = await upload_file(item=item, file_manager_session=file_manager_session, user_id=user_id)
+        file_info = await upload_file(item=item, file_manager_session=file_manager_session, user_uuid=user_uuid)
     
         return file_info
     
@@ -44,16 +44,15 @@ async def upload_file_route(
 
 @r.delete("/{encoded_original_path}")
 async def delete_route(
-    encoded_original_path: str,
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
 ):
     try:
-        logger.info(f"Deleting item {original_path} for user {user_id}")
+        logger.info(f"Deleting item {original_path}")
 
-        await delete_item(file_manager_session=file_manager_session, user_id=user_id, original_path=original_path)
+        await delete_item(file_manager_session=file_manager_session, user_uuid=user_uuid, original_path=original_path)
 
         return {"success": True}
         
@@ -68,8 +67,7 @@ async def delete_route(
     summary="Get folder contents"
 )
 async def get_folder_info_route(
-    encoded_original_path: str,
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
@@ -78,7 +76,7 @@ async def get_folder_info_route(
     """Get contents of a folder"""
     try:
 
-        return get_folder_info(file_manager_session=file_manager_session, user_id=user_id, original_path=original_path, include_child_folders_files_recursively=include_child_folders_files_recursively)
+        return get_folder_info(file_manager_session=file_manager_session, user_uuid=user_uuid, original_path=original_path, include_child_folders_files_recursively=include_child_folders_files_recursively)
 
     except HTTPException:
         raise
@@ -93,14 +91,14 @@ async def get_folder_info_route(
     summary="Get file info"
 )
 async def get_file_info_route(
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     original_path: Annotated[str, Depends(decode_path_safe)],
     _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     include_content: bool = False,
 ):
     try:
-        return await get_file_info(file_manager_session=file_manager_session, user_id=user_id, original_path=original_path, include_content=include_content)
+        return await get_file_info(file_manager_session=file_manager_session, user_uuid=user_uuid, original_path=original_path, include_content=include_content)
     except HTTPException:
         raise
     except Exception as e:
@@ -113,15 +111,15 @@ async def get_file_info_route(
     summary="Download file"
 )
 async def download_file_route(
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
 ):
     try:
-        logger.info(f"Downloading file {original_path} for user {user_id}")
+        logger.info(f"Downloading file {original_path}")
 
-        result: FileDownloadResponse = await download_file(file_manager_session=file_manager_session, user_id=user_id, original_path=original_path)
+        result: FileDownloadResponse = await download_file(file_manager_session=file_manager_session, user_uuid=user_uuid, original_path=original_path)
         
         # Use starlette response to return the file as it is a file download and not json
         return Response(
@@ -143,15 +141,15 @@ async def download_file_route(
 
 @r.get("/folder/{encoded_original_path}/download")
 async def download_folder_route(
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
 ):
     try:
-        logger.info(f"Downloading folder {original_path} for user {user_id}")
+        logger.info(f"Downloading folder {original_path}")
 
-        result: FolderDownloadResponse = await download_folder(file_manager_session=file_manager_session, user_id=user_id, original_path=original_path)
+        result: FolderDownloadResponse = await download_folder(file_manager_session=file_manager_session, user_uuid=user_uuid, original_path=original_path)
         return Response(
             content=result.content,
             media_type=result.mime_type,
@@ -167,15 +165,15 @@ async def download_folder_route(
 
 @r.delete("/processed-data/{encoded_original_path}")
 async def delete_processed_data_route(
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     _: Annotated[str, Depends(validate_datasource_is_of_type_files)],
     file_manager_session: Annotated[Session, Depends(get_datasources_file_manager_db_session)],
     original_path: Annotated[str, Depends(decode_path_safe)],
 ):
     try:
-        logger.info(f"Deleting processed data for user {user_id} and path {original_path}")
+        logger.info(f"Deleting processed data and path {original_path}")
 
-        await delete_item_from_llama_index(file_manager_session=file_manager_session, user_id=user_id, original_path=original_path)
+        await delete_item_from_llama_index(file_manager_session=file_manager_session, user_uuid=user_uuid, original_path=original_path)
 
         return {"success": True}
         
@@ -187,11 +185,11 @@ async def delete_processed_data_route(
 #@r.post("/file/process-callback")
 #async def process_callback_route(
 #    request: UpdateFileProcessingStatusRequest,
-#    user_id: Annotated[str, Depends(get_user_id)],
+#    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
 #    session: Annotated[Session, Depends(get_file_manager_db_session)],
 #):
 #    try:
-#        logger.info(f"Processing callback for file {request.fs_path} for user {user_id} with status {request.status}")
+#        logger.info(f"Processing callback for file {request.fs_path} with status {request.status}")
 #
 #        update_file_processing_status(
 #            session=session,
@@ -206,5 +204,5 @@ async def delete_processed_data_route(
 #
 #        return {"success": True}
 #    except Exception as e:
-#        logger.error(f"Error processing callback for file {request.fs_path} for user {user_id}: {str(e)}")
+#        logger.error(f"Error processing callback for file {request.fs_path}: {str(e)}")
 #        raise HTTPException(status_code=500, detail="Failed to process callback")

@@ -3,7 +3,6 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { useApiClient } from '@/app/lib/api-client';
 import { createProcessingStackRouteApiStacksStacksPost } from '@/app/client';
-import { useUser } from '@/app/contexts/user-context';
 
 interface ProcessingStackCreateProps {
   isOpen: boolean;
@@ -15,8 +14,7 @@ export function ProcessingStackCreate({ isOpen, onClose, onCreated }: Processing
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const client = useApiClient();
-  const { userId } = useUser();
-  
+
   if (!isOpen) return null;
 
   const handleSubmit = async () => {
@@ -27,9 +25,6 @@ export function ProcessingStackCreate({ isOpen, onClose, onCreated }: Processing
         client,
         body: {
           display_name: name
-        },
-        query: {
-          user_id: userId
         }
       });
   

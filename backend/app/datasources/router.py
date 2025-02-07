@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Annotated
 
-from app.api.utils import get_user_id
+from app.auth.service import get_user_uuid_from_token
 from app.datasources.database.session import get_datasources_db_session
 from app.settings.database.session import get_settings_db_session
+from app.datasources.database.models import Datasource
 from app.datasources.schemas import DatasourceCreate, DatasourceResponse, DatasourceUpdate
 from app.datasources.service import (
     get_datasource,
@@ -13,7 +14,7 @@ from app.datasources.service import (
     update_datasource,
     get_all_datasources
 )
-from app.datasources.dependencies import validate_datasource_and_get_identifier
+from app.datasources.dependencies import validate_datasource_and_get_db_item
 import logging
 
 
@@ -51,7 +52,7 @@ async def get_all_datasources_route(
 @datasources_router.get("/{datasource_name}", response_model=DatasourceResponse)
 async def get_datasource_route(
     datasource_name: str,
-    datasource_identifier: Annotated[str, Depends(validate_datasource_and_get_identifier)],
+    datasource_db_item: Annotated[Datasource, Depends(validate_datasource_and_get_db_item)],
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ):
     try:
@@ -65,9 +66,9 @@ async def get_datasource_route(
 async def create_datasource_route(
     datasource: DatasourceCreate,
     datasource_name: str,
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_and_get_identifier)],
+    _: Annotated[Datasource, Depends(validate_datasource_and_get_db_item)],
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ) -> None:
     try:
@@ -76,7 +77,7 @@ async def create_datasource_route(
         create_datasource(
             datasources_db_session=datasources_db_session,
             settings_db_session=settings_db_session,
-            user_id=user_id,
+            user_uuid=user_uuid,
             datasource_create=datasource,
             datasource_name=datasource_name
         )
@@ -88,13 +89,13 @@ async def create_datasource_route(
 @datasources_router.delete("/{datasource_name}")
 async def delete_datasource_route(
     datasource_name: str,
-    user_id: Annotated[str, Depends(get_user_id)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_and_get_identifier)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
+    _: Annotated[Datasource, Depends(validate_datasource_and_get_db_item)],
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
 ) -> None:
     try:
-        logger.info(f"Deleting datasource {datasource_name} for user {user_id}")
-        await delete_datasource(datasources_db_session, user_id, datasource_name)
+        logger.info(f"Deleting datasource {datasource_name}")
+        await delete_datasource(datasources_db_session, user_uuid, datasource_name)
         return {"message": "Datasource deleted successfully"}
     except Exception as e:
         logger.error(f"Error in delete_datasource_route: {str(e)}")
@@ -104,18 +105,18 @@ async def delete_datasource_route(
 async def update_datasource_route(
     datasource_name: str,
     update: DatasourceUpdate,
-    user_id: Annotated[str, Depends(get_user_id)],
+    user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
-    datasource_identifier: Annotated[str, Depends(validate_datasource_and_get_identifier)],
+    _: Annotated[Datasource, Depends(validate_datasource_and_get_db_item)],
 ) -> None:
     try:
-        logger.info(f"Updating datasource {datasource_name} for user {user_id}")
+        logger.info(f"Updating datasource {datasource_name}")
         
         await update_datasource(
             datasources_db_session=datasources_db_session,
             settings_db_session=settings_db_session,
-            user_id=user_id,
+            user_uuid=user_uuid,
             identifier=datasource_name,
             datasource_update=update
         )

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List
-from app.api.utils import get_user_id
+from app.auth.service import get_user_uuid_from_token
 from app.settings.service import get_setting, update_setting, create_setting, delete_setting, get_all_settings, get_all_settings_with_schema_identifier
 from app.settings.schemas import CreateSettingRequest, UpdateSettingRequest, SettingResponse
 from app.settings.database.session import get_settings_db_session
@@ -16,7 +16,6 @@ settings_router = r = APIRouter()
 async def create_setting_route(
     identifier: str,
     create_setting_request: CreateSettingRequest,
-    user_id: Annotated[str, Depends(get_user_id)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> None:
     try:
@@ -27,7 +26,6 @@ async def create_setting_route(
 
 @r.get("", response_model=List[SettingResponse])
 async def get_all_settings_route(
-    user_id: Annotated[str, Depends(get_user_id)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> List[SettingResponse]:
     try:
@@ -39,7 +37,6 @@ async def get_all_settings_route(
 @r.get("/schema/{schema_identifier}", response_model=List[SettingResponse])
 async def get_all_settings_with_schema_identifier_route(
     schema_identifier: str,
-    user_id: Annotated[str, Depends(get_user_id)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> List[SettingResponse]:
     try:
@@ -51,7 +48,6 @@ async def get_all_settings_with_schema_identifier_route(
 @r.get("/{identifier}", response_model=SettingResponse)
 async def get_setting_route(
     identifier: str,
-    user_id: Annotated[str, Depends(get_user_id)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> SettingResponse:
     try:
@@ -65,7 +61,6 @@ async def get_setting_route(
 async def update_setting_route(
     identifier: str,
     update_setting_request: UpdateSettingRequest,
-    user_id: Annotated[str, Depends(get_user_id)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> None:
     try:
@@ -81,7 +76,6 @@ async def update_setting_route(
 @r.delete("/{identifier}")
 async def delete_setting_route(
     identifier: str,
-    user_id: Annotated[str, Depends(get_user_id)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
 ) -> None:
     try:

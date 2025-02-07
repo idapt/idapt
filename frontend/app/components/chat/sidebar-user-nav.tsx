@@ -10,18 +10,17 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/app/components/ui/dropdown-menu';
-import { useUser } from '@/app/contexts/user-context';
+import { useAuth } from '../auth/auth-context';
 
 export function SidebarUserNav() {
   const { theme, setTheme } = useTheme();
-  const { userId } = useUser();
-
+  const { email, logout } = useAuth();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="w-full justify-start gap-2">
           <UserIcon className="h-5 w-5" />
-          <span className="truncate">{userId}</span>
+          <span className="truncate">{email}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -38,11 +37,11 @@ export function SidebarUserNav() {
             </>
           )}
         </DropdownMenuItem>
-        {/* <DropdownMenuSeparator /> */}
-        {/* <DropdownMenuItem onClick={logout}>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout}>
           <LogOut className="h-4 w-4 mr-2" />
           Logout
-        </DropdownMenuItem> */}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

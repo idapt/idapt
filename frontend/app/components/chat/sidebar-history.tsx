@@ -155,7 +155,7 @@ export const ChatItem = memo(PureChatItem, (prevProps, nextProps) => {
   return true;
 });
 
-export function SidebarHistory({ userId, setCurrentView }: { userId: string | undefined, setCurrentView: (view: View) => void }) {
+export function SidebarHistory({ setCurrentView }: { setCurrentView: (view: View) => void }) {
   const { setOpenMobile } = useSidebar();
   const { deleteChat, currentChatId, chats, isChatsLoading, tryToSetCurrentChat } = useChatResponse();
 
@@ -182,18 +182,6 @@ export function SidebarHistory({ userId, setCurrentView }: { userId: string | un
     setOpenMobile(false);
     setCurrentView('chat');
   };
-
-  if (!userId) {
-    return (
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2">
-            Login to save and revisit previous chats!
-          </div>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    );
-  }
 
   if (isChatsLoading) {
     return (
