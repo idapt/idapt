@@ -1,13 +1,10 @@
 'use client';
 
 import { isToday, isYesterday, subMonths, subWeeks } from 'date-fns';
-import Link from 'next/link';
-import { useParams, usePathname, useRouter } from 'next/navigation';
-import { memo, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { memo, useState } from 'react';
 import { toast } from 'sonner';
-import useSWR from 'swr';
 
-import { View } from '@/app/page';
 import {
   CheckCircleFillIcon,
   GlobeIcon,
@@ -155,8 +152,9 @@ export const ChatItem = memo(PureChatItem, (prevProps, nextProps) => {
   return true;
 });
 
-export function SidebarHistory({ setCurrentView }: { setCurrentView: (view: View) => void }) {
+export function SidebarHistory() {
   const { setOpenMobile } = useSidebar();
+  const router = useRouter();
   const { deleteChat, currentChatId, chats, isChatsLoading, tryToSetCurrentChat } = useChatResponse();
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -180,7 +178,7 @@ export function SidebarHistory({ setCurrentView }: { setCurrentView: (view: View
   const handleChatClick = (chat: ChatResponse) => {
     tryToSetCurrentChat(chat.uuid);
     setOpenMobile(false);
-    setCurrentView('chat');
+    router.push('/app/chat');
   };
 
   if (isChatsLoading) {

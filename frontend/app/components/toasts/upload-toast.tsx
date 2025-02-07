@@ -7,7 +7,7 @@ import { useToastContext } from "@/app/contexts/toast-context";
 import { BaseToast } from "@/app/components/file-manager/base-toast";
 
 export function UploadToast() {
-  const { items, totalItems, removeItem, cancelAll, resetAll } = useToastContext();
+  const { items, removeItem, resetAll } = useToastContext();
   const [isMinimized, setIsMinimized] = useState(false);
   
   const uploadItems = items.filter((item): item is UploadToastItem => 
@@ -49,7 +49,6 @@ export function UploadToast() {
       completed={completedUploads.length}
       isMinimized={isMinimized}
       onMinimize={() => setIsMinimized(!isMinimized)}
-      onCancel={cancelAll}
     >
       <div className="max-h-[240px] overflow-y-auto">
         {activeUploads.map((item) => (

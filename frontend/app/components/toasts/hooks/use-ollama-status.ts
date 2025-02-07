@@ -20,7 +20,7 @@ export function useOllamaStatus() {
     const data = response.data as { is_downloading: boolean };
     setIsDownloading(data.is_downloading);
     return data;
-  }, [backend, client]);
+  }, [backend, client, token]);
 
   const connect = useCallback(async () => {
     if (!backend || isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
@@ -57,7 +57,7 @@ export function useOllamaStatus() {
     } catch (error) {
       isConnectingRef.current = false;
     }
-  }, [backend, fetchInitialStatus]);
+  }, [backend, fetchInitialStatus, token]);
 
   useEffect(() => {
     connect();

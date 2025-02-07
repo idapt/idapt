@@ -22,7 +22,7 @@ export function ToastContextProvider({ children }: { children: React.ReactNode }
 
   const updateItem = useCallback((id: string, updates: Partial<ToastItem>) => {
     setItems(prev => prev.map(item => 
-      item.id === id ? { ...item, ...updates } : item
+      item.id === id ? { ...item, ...updates } as ToastItem : item
     ));
   }, []);
 

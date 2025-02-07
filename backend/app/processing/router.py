@@ -8,7 +8,9 @@ from typing import Annotated
 from app.processing.service import get_queue_status, mark_items_as_queued, start_processing_thread
 from app.processing.schemas import ProcessingRequest, ProcessingStatusResponse
 from app.auth.service import get_user_uuid_from_token
-from app.datasources.file_manager.database.session import get_datasources_file_manager_session
+from app.auth.schemas import Keyring
+from app.auth.service import get_keyring_with_access_sk_token_from_auth_header
+from app.datasources.file_manager.database.session import get_datasources_file_manager_db_session
 from app.datasources.database.session import get_datasources_db_session
 from app.settings.database.session import get_settings_db_session
 from app.processing_stacks.database.session import get_processing_stacks_db_session
@@ -23,6 +25,7 @@ async def processing_route(
     request: ProcessingRequest,
     background_tasks: BackgroundTasks,
     user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
+    keyring: Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
     processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)],
@@ -36,9 +39,10 @@ async def processing_route(
             datasource_name = item.original_path.split("/")[0]
             file_manager_db_session = None
             if datasource_name not in file_manager_db_sessions:
-                file_manager_db_session = get_datasources_file_manager_session(
-                    user_uuid=user_uuid,
+                # TODO
+                file_manager_db_session = await get_datasources_file_manager_db_session(
                     datasource_name=datasource_name,
+                    keyring=keyring,
                     datasources_db_session=datasources_db_session
                 )
                 file_manager_db_sessions[datasource_name] = file_manager_db_session

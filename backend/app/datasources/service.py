@@ -132,6 +132,10 @@ async def delete_datasource(datasources_db_session: Session, user_uuid: str, dat
         if not datasource:
             raise Exception("Datasource not found")
         
+        # Prevent deletion of the default datasources
+        if datasource.name in ["Files", "Chats"]:
+            raise Exception("Default datasources cannot be deleted")
+        
         # TODO Add datasource module deletion here
 
         # Store root folder reference before nullifying it

@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from app.api.fernet_stored_encryption_key import FernetStoredEncryptionKey
 import uuid
+import shutil
 from cachetools.func import ttl_cache
 
 logger = logging.getLogger("uvicorn")
@@ -35,6 +36,7 @@ SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60 # 30 days
 
+DATA_FOLDER_PATH = "/data"
 USER_DATA_FOLDER_PATH = "/data/{user_uuid}"
 USER_UUID_TEST_FILE_PATH = "/data/{user_uuid}/keys/user_uuid_test.txt"
 KEK_P_MK_PATH = "/data/{user_uuid}/keys/kek_p_mk.txt"
@@ -49,8 +51,59 @@ KEK_PROCESSING_KEK_P_PATH = "/data/{user_uuid}/keys/kek_processing.txt"
 KEK_PROCESSING_STACKS_KEK_P_PATH = "/data/{user_uuid}/keys/kek_processing_stacks.txt"
 KEK_SETTINGS_KEK_P_PATH = "/data/{user_uuid}/keys/kek_settings.txt"
 
+def register_new_user(user_uuid: str, hashed_password: str) -> AccessSKTokenData:
+    """
+    Register a new user
+    """
+    try:
+        # TODO Implement a register flow with admin token for the hosted version so that we can control user registration
+        # Check if the maximum number of public users for this host is reached
+        number_of_users = len(os.listdir(DATA_FOLDER_PATH))
+        if number_of_users >= int(os.environ.get("MAX_PUBLIC_USERS_FOR_THIS_HOST")):
+            raise Exception("Maximum number of public users reached for this host")
 
-def get_new_access_sk_token_with_password(user_uuid: str, password: str) -> AccessSKTokenData:
+        # Check if the user already exists by checking if the kek_p_mk file exists
+        if os.path.exists(KEK_P_MK_PATH.format(user_uuid=user_uuid)):
+            raise Exception("User already exists")
+
+        logger.info(f"Creating new kek_p for user {user_uuid}")
+
+        # Get the master key from the password
+        mk = get_mk_from_password(user_uuid, hashed_password)  
+
+        # Create the user data folder
+        os.makedirs(USER_DATA_FOLDER_PATH.format(user_uuid=user_uuid), exist_ok=True)
+        # TODO Move this to separate flow with stripe validation for hosted
+        # Create a new kek_p stored encrypted with the master key
+        initial_kek_p = FernetStoredEncryptionKey.create_new_random_key_and_store_it(
+            stored_key_path=KEK_P_MK_PATH.format(user_uuid=user_uuid),
+            kek=mk
+        )
+        # Create the user_uuid_test_file with the initial kek_p
+        FernetStoredEncryptionKey.store_encrypted_key_at_path(
+            key=user_uuid.encode(),
+            kek=initial_kek_p,
+            stored_key_path=USER_UUID_TEST_FILE_PATH.format(user_uuid=user_uuid),
+            overwrite_safely=True
+        )
+
+        # Get a new session key with the password
+        token_data = get_new_access_sk_token_with_password(user_uuid, hashed_password)
+
+        # Return the token data
+        return token_data
+    
+    except Exception as e:
+        logger.error(f"Error registering new user: {e}")
+        if "Maximum number of public users reached for this host" in str(e):
+            raise HTTPException(status_code=429, detail="Maximum number of public users reached for this host, delete existing users first or increase the MAX_PUBLIC_USERS_FOR_THIS_HOST environment variable")
+        elif "User already exists" in str(e):
+            raise HTTPException(status_code=400, detail="User already exists")
+        else:
+            # There has been an error, delete the newly created user data folder ? Can be a security risk TODO
+            raise HTTPException(status_code=500, detail="Error registering new user")
+
+def get_new_access_sk_token_with_password(user_uuid: str, hashed_password: str) -> AccessSKTokenData:
     """
     Get a new session key with the password.
     Each time this is called the kek_p is rotated with all other keys encrypted with it (sk_*, keyring_json) and that decrypt it (kek_p_mk, kek_p_kek_s_*)
@@ -58,25 +111,12 @@ def get_new_access_sk_token_with_password(user_uuid: str, password: str) -> Acce
     try:
         logger.info(f"Getting new access sk token with password for user {user_uuid}")
         # Get the master key from the password
-        mk = get_mk_from_password(user_uuid, password)  
+        mk = get_mk_from_password(user_uuid, hashed_password)  
 
         # Check if the kek_p_mk file exists
         kek_p_mk_path = KEK_P_MK_PATH.format(user_uuid=user_uuid)
         if not os.path.exists(kek_p_mk_path):
-            logger.info(f"Creating new kek_p for user {user_uuid}")
-            # TODO Move this to separate flow with stripe validation for hosted
-            # Create a new kek_p stored encrypted with the master key
-            initial_kek_p = FernetStoredEncryptionKey.create_new_random_key_and_store_it(
-                stored_key_path=kek_p_mk_path,
-                kek=mk
-            )
-            # Create the user_uuid_test_file with the initial kek_p
-            FernetStoredEncryptionKey.store_encrypted_key_at_path(
-                key=user_uuid.encode(),
-                kek=initial_kek_p,
-                stored_key_path=USER_UUID_TEST_FILE_PATH.format(user_uuid=user_uuid),
-                overwrite_safely=True
-            )
+            raise Exception("Unknown user")
         
         # Decrypt the kek_p_mk using the mk
         old_kek_p = FernetStoredEncryptionKey.load_decrypted_stored_key(
@@ -105,7 +145,7 @@ def get_new_access_sk_token_with_password(user_uuid: str, password: str) -> Acce
     
     except Exception as e:
         logger.error(f"Error getting new access sk token with password: {e}")
-        if "Invalid kek_p" in str(e):
+        if "Invalid kek_p" in str(e) or "Unknown user" in str(e):
             raise HTTPException(status_code=401, detail="Invalid credentials", headers={"WWW-Authenticate": "Bearer"})
         else:
             raise HTTPException(status_code=500, detail="Error getting new access sk token with password")
@@ -513,6 +553,20 @@ def test_kek_p_with_user_uuid_test_file(user_uuid: str, kek_p: bytes) -> None:
     except Exception as e:
         logger.error(f"Error testing kek_p with user_uuid_test_file: {e}")
         raise e
+
+
+def delete_user(user_uuid: str) -> None:
+    """
+    Deletes the user from the database.
+    """
+    try:
+        # The keyring is valid and user is authenticated so we can delete the user data
+        if os.path.exists(USER_DATA_FOLDER_PATH.format(user_uuid=user_uuid)):
+            shutil.rmtree(USER_DATA_FOLDER_PATH.format(user_uuid=user_uuid))
+    except Exception as e:
+        logger.error(f"Error deleting user: {e}")
+        raise HTTPException(status_code=500, detail="Error deleting user, user is probably partially deleted")
+
 
 
 def create_jwt_access_token(data: dict, expires_delta: timedelta):

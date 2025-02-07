@@ -47,9 +47,11 @@ services:
       - "${API_PORT}:${API_PORT}"
     environment:
       ENVIRONMENT: prod
+      DEPLOYMENT_TYPE: self-hosted
       HOST_DOMAIN: ${HOST_DOMAIN}
       API_PORT: ${API_PORT}
       ANONYMIZED_TELEMETRY: False # For chromadb
+      MAX_PUBLIC_USERS_FOR_THIS_HOST: ${MAX_PUBLIC_USERS_FOR_THIS_HOST}
     networks:
       idapt-network: {}
     # Expose the host.docker.internal so that we can access ollama runnning on the localost from the container.

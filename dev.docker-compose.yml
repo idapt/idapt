@@ -25,6 +25,7 @@ services:
       DEPLOYMENT_TYPE: self-hosted
       HOST_DOMAIN: ${HOST_DOMAIN}
       API_PORT: ${API_PORT}
+      MAX_PUBLIC_USERS_FOR_THIS_HOST: ${MAX_PUBLIC_USERS_FOR_THIS_HOST}
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - ./user-data:/data # The volume where the data is stored. Use data mount name to make it shorter.

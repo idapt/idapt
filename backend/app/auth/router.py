@@ -3,20 +3,38 @@ from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.routing import APIRouter
 from fastapi import Depends, HTTPException, status
+import re
 
-from app.auth.service import get_new_access_sk_token_with_password, get_keyring_with_access_sk_token_from_auth_header, create_jwt_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from app.auth.schemas import Token, Keyring
+from app.auth.service import register_new_user, get_new_access_sk_token_with_password, get_keyring_with_access_sk_token_from_auth_header, create_jwt_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, delete_user
+from app.auth.schemas import Token, Keyring, RegisterRequest
 
 auth_router = r = APIRouter()
 
 @r.post("/token", response_model=Token)
-async def login_for_access_sk_token(
+async def login_for_access_sk_token_route(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
     """
     Login with user password to get an access token
     """
-    token_data = get_new_access_sk_token_with_password(form_data.username, form_data.password)
+    # Verify the hashed email and password are valid sha256 hashes
+    # User uuid is the hashed email
+    user_uuid = form_data.username
+    if not re.match(r'^[a-fA-F0-9]{64}$', user_uuid):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid hashed email",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    hashed_password = form_data.password
+    if not re.match(r'^[a-fA-F0-9]{64}$', hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid hashed password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    # Get the token data
+    token_data = get_new_access_sk_token_with_password(user_uuid, hashed_password)
     if not token_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -34,30 +52,59 @@ async def login_for_access_sk_token(
     )
     return Token(access_token=access_token, token_type="bearer")
 
-@r.post("/register", response_model=Token)
-async def register(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+@r.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+async def register_route(
+    register_request: RegisterRequest,
 ) -> Token:
     """
     Register a new user
     """
-    token_data = None#init_new_keyring(form_data.username, form_data.password)
+    token_data = register_new_user(register_request.user_uuid, register_request.hashed_password)
     if not token_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Error registering new user",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_jwt_access_token(
+        data={
+            "user_uuid": token_data.user_uuid,
+            "sk_uuid": token_data.sk_uuid,
+            "sk_str": token_data.sk_str,
+        }, 
+        expires_delta=access_token_expires
+    )
+    return Token(access_token=access_token, token_type="bearer")
     
+@r.delete("/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_route(
+    user_uuid: str,
+    keyring: Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
+):
+    """
+    Delete a registered user
+    Will not ask for confirmation, be careful with this endpoint
+    """
+    try:
+        delete_user(user_uuid, keyring)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
 @r.get("/keyring", response_model=Keyring)
-async def read_keyring(
+async def read_keyring_route(
     keyring: Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
-):
-    return keyring
-
-
-@r.get("/keyring/datasources")
-async def read_keyring_datasources(
-    keyring: Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
-):
-    return keyring.kek_datasources
+) -> Keyring:
+    """
+    Read the keyring of the authenticated user directly
+    """
+    try:
+        return keyring
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )

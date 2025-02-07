@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { Message } from 'ai';
 import { ChatResponse } from '@/app/client/types.gen';
 import useSWR, { mutate } from 'swr';
@@ -8,7 +8,7 @@ import { fetcher, generateUUID } from '@/app/lib/utils';
 import { createChatRouteApiDatasourcesDatasourceNameChatsPost, deleteChatRouteApiDatasourcesDatasourceNameChatsChatUuidDelete } from '@/app/client/sdk.gen';
 import { getChatRouteApiDatasourcesDatasourceNameChatsChatUuidGet, getAllChatsRouteApiDatasourcesDatasourceNameChatsGet } from '@/app/client/sdk.gen';
 import { error } from 'console';
-
+import { useApiClient  } from '@/app/lib/api-client';
 interface ChatContextType {
   currentChatId: string;
   tryToSetCurrentChat: (id: string | undefined) => Promise<void>;
@@ -26,6 +26,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [currentChat, setCurrentChat] = useState<ChatResponse | undefined>(undefined);
   const [chats, setChats] = useState<ChatResponse[] | undefined>();
   const [isChatsLoading, setIsChatsLoading] = useState<boolean>(false);
+  const client = useApiClient();
   //const { data: chats, isLoading: isChatsLoading } = useSWR<ChatResponse[]>(
   //  userUuid ? `/api/datasources/chats?user_uuid=${userUuid}` : null,
   //  fetcher
@@ -35,11 +36,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     currentChatId ? `/api/datasources/chats/${currentChatId}?user_uuid=${userUuid}&include_messages=true` : null,
     fetcher
   );*/
-
-    
-  useEffect(() => {
-    refreshChats();
-  }, []);
 
   const tryToSetCurrentChat = async (uuid: string | undefined) => {
     try {
@@ -56,7 +52,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           include_messages: true,
           create_if_not_found: true,
           update_last_opened_at: true
-        }
+        },
+        client: client
       });
       if (chat.data) {
         setCurrentChatId(uuid);
@@ -72,22 +69,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const refreshChats = async () => {
+  const refreshChats = useCallback(async () => {
     try {
       setIsChatsLoading(true);
-      //await mutate(`/api/datasources/chats?user_uuid=${userUuid}`);
       const response = await getAllChatsRouteApiDatasourcesDatasourceNameChatsGet({
-        path: {
-          datasource_name: "Chats"
-        },
+        path: { datasource_name: "Chats" },
+        client: client
       });
       setChats(response.data);
-      setIsChatsLoading(false);
     } catch (error) {
       alert('Failed to refresh chats');
       console.error('Failed to refresh chats:', error);
+    } finally {
+      setIsChatsLoading(false);
     }
-  }
+  }, [client]);
 
   const deleteChat = async (uuid: string) => {
     try {
@@ -101,7 +97,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         path: {
           chat_uuid: uuid,
           datasource_name: "Chats"
-      },
+        },
+        client: client
       });
       await refreshChats();
     } catch (error) {
@@ -109,6 +106,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       console.error('Failed to delete chat:', error);
     }
   }
+
+  useEffect(() => {
+    refreshChats();
+  }, [refreshChats]);
+
 
   return (
     <ChatContext.Provider

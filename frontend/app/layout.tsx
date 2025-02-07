@@ -3,18 +3,11 @@
 import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
 
-import { SettingsProvider } from "@/app/components/settings/settings-provider";
-import { ProcessingStacksProvider } from "@/app/components/processing/processing-stacks-provider";
-import { ThemeProvider } from '@/app/components/theme/theme-provider';
-import { ToastContextProvider } from './contexts/toast-context';
-import { SidebarProvider } from './components/ui/sidebar';
-import { OllamaProvider } from '@/app/contexts/ollama-context';
-import { ProcessingProvider } from '@/app/contexts/processing-context';
 import { AuthProvider } from '@/app/components/auth/auth-context';
+import { ThemeProvider } from '@/app/components/theme/theme-provider';
 
 import "@/app/globals.css";
 import "@/app/markdown.css";
-import { ChatProvider } from './contexts/chat-response-context';
 
 const metadata: Metadata = {
   metadataBase: new URL('https://idapt.ai'),
@@ -75,24 +68,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <ToastContextProvider>
-              <OllamaProvider>
-                <ProcessingProvider>
-                  <ChatProvider>
-                    <SidebarProvider>
-                      <SettingsProvider>
-                        <ProcessingStacksProvider>
-                          <div className="flex h-screen">
-                            {children}
-                          </div>
-                          <Toaster position="top-center" />
-                        </ProcessingStacksProvider>
-                      </SettingsProvider>
-                    </SidebarProvider>
-                  </ChatProvider>
-                </ProcessingProvider>
-              </OllamaProvider>
-            </ToastContextProvider>
+              {children}
+              <Toaster position="top-center" />
           </AuthProvider>
         </ThemeProvider>
       </body>

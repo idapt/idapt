@@ -76,16 +76,7 @@ export type ArtifactAnnotation = {
     };
 };
 
-export type BodyLoginForAccessSkTokenApiAuthTokenPost = {
-    grant_type?: string | null;
-    username: string;
-    password: string;
-    scope?: string;
-    client_id?: string | null;
-    client_secret?: string | null;
-};
-
-export type BodyRegisterApiAuthRegisterPost = {
+export type BodyLoginForAccessSkTokenRouteApiAuthTokenPost = {
     grant_type?: string | null;
     username: string;
     password: string;
@@ -366,6 +357,11 @@ export type ProcessingStepResponse = {
     };
 };
 
+export type RegisterRequest = {
+    user_uuid: string;
+    hashed_password: string;
+};
+
 export type SettingResponse = {
     identifier: string;
     schema_identifier: string;
@@ -388,85 +384,98 @@ export type ValidationError = {
     type: string;
 };
 
-export type LoginForAccessSkTokenApiAuthTokenPostData = {
-    body: BodyLoginForAccessSkTokenApiAuthTokenPost;
+export type LoginForAccessSkTokenRouteApiAuthTokenPostData = {
+    body: BodyLoginForAccessSkTokenRouteApiAuthTokenPost;
     path?: never;
     query?: never;
     url: '/api/auth/token';
 };
 
-export type LoginForAccessSkTokenApiAuthTokenPostErrors = {
+export type LoginForAccessSkTokenRouteApiAuthTokenPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type LoginForAccessSkTokenApiAuthTokenPostError = LoginForAccessSkTokenApiAuthTokenPostErrors[keyof LoginForAccessSkTokenApiAuthTokenPostErrors];
+export type LoginForAccessSkTokenRouteApiAuthTokenPostError = LoginForAccessSkTokenRouteApiAuthTokenPostErrors[keyof LoginForAccessSkTokenRouteApiAuthTokenPostErrors];
 
-export type LoginForAccessSkTokenApiAuthTokenPostResponses = {
+export type LoginForAccessSkTokenRouteApiAuthTokenPostResponses = {
     /**
      * Successful Response
      */
     200: Token;
 };
 
-export type LoginForAccessSkTokenApiAuthTokenPostResponse = LoginForAccessSkTokenApiAuthTokenPostResponses[keyof LoginForAccessSkTokenApiAuthTokenPostResponses];
+export type LoginForAccessSkTokenRouteApiAuthTokenPostResponse = LoginForAccessSkTokenRouteApiAuthTokenPostResponses[keyof LoginForAccessSkTokenRouteApiAuthTokenPostResponses];
 
-export type RegisterApiAuthRegisterPostData = {
-    body: BodyRegisterApiAuthRegisterPost;
+export type RegisterRouteApiAuthRegisterPostData = {
+    body: RegisterRequest;
     path?: never;
     query?: never;
     url: '/api/auth/register';
 };
 
-export type RegisterApiAuthRegisterPostErrors = {
+export type RegisterRouteApiAuthRegisterPostErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type RegisterApiAuthRegisterPostError = RegisterApiAuthRegisterPostErrors[keyof RegisterApiAuthRegisterPostErrors];
+export type RegisterRouteApiAuthRegisterPostError = RegisterRouteApiAuthRegisterPostErrors[keyof RegisterRouteApiAuthRegisterPostErrors];
 
-export type RegisterApiAuthRegisterPostResponses = {
+export type RegisterRouteApiAuthRegisterPostResponses = {
     /**
      * Successful Response
      */
-    200: Token;
+    201: Token;
 };
 
-export type RegisterApiAuthRegisterPostResponse = RegisterApiAuthRegisterPostResponses[keyof RegisterApiAuthRegisterPostResponses];
+export type RegisterRouteApiAuthRegisterPostResponse = RegisterRouteApiAuthRegisterPostResponses[keyof RegisterRouteApiAuthRegisterPostResponses];
 
-export type ReadKeyringApiAuthKeyringGetData = {
+export type DeleteUserRouteApiAuthDeleteDeleteData = {
+    body?: never;
+    path?: never;
+    query: {
+        user_uuid: string;
+    };
+    url: '/api/auth/delete';
+};
+
+export type DeleteUserRouteApiAuthDeleteDeleteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteUserRouteApiAuthDeleteDeleteError = DeleteUserRouteApiAuthDeleteDeleteErrors[keyof DeleteUserRouteApiAuthDeleteDeleteErrors];
+
+export type DeleteUserRouteApiAuthDeleteDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteUserRouteApiAuthDeleteDeleteResponse = DeleteUserRouteApiAuthDeleteDeleteResponses[keyof DeleteUserRouteApiAuthDeleteDeleteResponses];
+
+export type ReadKeyringRouteApiAuthKeyringGetData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/api/auth/keyring';
 };
 
-export type ReadKeyringApiAuthKeyringGetResponses = {
+export type ReadKeyringRouteApiAuthKeyringGetResponses = {
     /**
      * Successful Response
      */
     200: Keyring;
 };
 
-export type ReadKeyringApiAuthKeyringGetResponse = ReadKeyringApiAuthKeyringGetResponses[keyof ReadKeyringApiAuthKeyringGetResponses];
-
-export type ReadKeyringDatasourcesApiAuthKeyringDatasourcesGetData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/auth/keyring/datasources';
-};
-
-export type ReadKeyringDatasourcesApiAuthKeyringDatasourcesGetResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
+export type ReadKeyringRouteApiAuthKeyringGetResponse = ReadKeyringRouteApiAuthKeyringGetResponses[keyof ReadKeyringRouteApiAuthKeyringGetResponses];
 
 export type ChatStreamingRouteApiChatPostData = {
     body: ChatDataInput;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -24,14 +24,14 @@ export function Settings() {
   const [selectedSchemaId, setSelectedSchemaId] = useState<string>("");
   const { getAllSettings, createSetting, updateSetting, deleteSetting } = useSettingsContext();
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     const settings = await getAllSettings();
     setSettings(settings);
-  };
+  }, [getAllSettings]);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const handleCreateSetting = async () => {
     try {

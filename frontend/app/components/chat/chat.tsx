@@ -93,7 +93,7 @@ export function Chat({
       setMessages([]);
       setInput('');
     }
-  }, [currentChat, setMessages]);
+  }, [currentChat, setMessages, setInput, currentChatId]);
 
 
 

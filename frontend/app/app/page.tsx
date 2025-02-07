@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { useAuth } from '@/app/components/auth/auth-context';
 
-export default function Home() {
+export default function AppPage() {
   const { isAuthenticated } = useAuth();
   if (isAuthenticated) {
     return redirect('/app/chat');

@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { loginForAccessSkTokenApiAuthTokenPost } from '@/app/client/sdk.gen';
+import { loginForAccessSkTokenRouteApiAuthTokenPost, registerRouteApiAuthRegisterPost } from '@/app/client/sdk.gen';
 import { parseJwt } from '@/app/lib/utils';
+import { sha256Hash } from '@/app/lib/hash';
+import { useRouter } from 'next/navigation';
 
 type AuthContextType = {
   token: string | null;
@@ -9,6 +11,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   userUuid: string | null;
   email: string | null;
+  register: (email: string, password: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>(null!);
@@ -18,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [userUuid, setUserUuid] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const initializeAuth = () => {
@@ -34,10 +38,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await loginForAccessSkTokenApiAuthTokenPost({
+    const hashedEmail = await sha256Hash(email);
+    const hashedPassword = await sha256Hash(password);
+    
+    const response = await loginForAccessSkTokenRouteApiAuthTokenPost({
       body: {
-        username: email,
-        password: password,
+        username: hashedEmail,
+        password: hashedPassword,
         grant_type: 'password'
       }
     });
@@ -51,6 +58,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const decodedToken = parseJwt(response.data.access_token);
       localStorage.setItem('userUuid', decodedToken.sub);
       setUserUuid(decodedToken.sub);
+      router.push('/app/chat');
+    }
+  };
+
+  const register = async (email: string, password: string) => {
+    const hashedEmail = await sha256Hash(email);
+    const hashedPassword = await sha256Hash(password);
+    
+    const response = await registerRouteApiAuthRegisterPost({
+      body: {
+        user_uuid: hashedEmail,
+        hashed_password: hashedPassword
+      }
+    });
+    
+    if (response.data) {
+      localStorage.setItem('authToken', response.data.access_token);
+      setToken(response.data.access_token);
+      localStorage.setItem('email', email);
+      setEmail(email);
+      const decodedToken = parseJwt(response.data.access_token);
+      localStorage.setItem('userUuid', decodedToken.sub);
+      setUserUuid(decodedToken.sub);
+      router.push('/app/chat');
     }
   };
 
@@ -69,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       token,
       login,
+      register,
       logout,
       isAuthenticated: !!token,
       userUuid,

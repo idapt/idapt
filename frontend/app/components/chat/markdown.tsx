@@ -5,15 +5,14 @@ import remarkGfm from 'remark-gfm';
 import { CodeBlock } from '@/app/components/chat/code-block';
 
 const components: Partial<Components> = {
-  // Modify the code handling to ensure it's not wrapped in a paragraph
+  // @ts-expect-error
   code: CodeBlock,
-  // Add a specific handler for code blocks within paragraphs
   p: ({ node, children, ...props }) => {
     // Check if the paragraph only contains a code block
     const hasOnlyCodeBlock = 
-      node.children.length === 1 && 
-      node.children[0].type === 'element' && 
-      node.children[0].tagName === 'code';
+      node?.children.length === 1 && 
+      node?.children[0].type === 'element' && 
+      node?.children[0].tagName === 'code';
 
     // If it only contains a code block, don't wrap in paragraph
     if (hasOnlyCodeBlock) {
