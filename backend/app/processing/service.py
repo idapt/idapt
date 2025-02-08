@@ -352,7 +352,7 @@ async def _process_single_file(file_manager_db_session: Session, datasources_db_
     """Process a single file through the ingestion pipeline"""
     try:
         # Get file response
-        file_response = await get_file_info(file_manager_db_session, user_uuid, file.original_path, include_content=False)
+        file_response = await get_file_info(file_manager_db_session, user_uuid, file.original_path, include_content=True)
 
         # Update status to processing
         file.error_message = None
@@ -406,12 +406,19 @@ async def _process_single_file(file_manager_db_session: Session, datasources_db_
 
                 # Use SimpleDirectoryReader from llama index
                 # It try to use existing apropriate readers based on the file type to get the most metadata from it
+                # TODO Make this better
+                # Write the file content to a temp file
+                temp_file_path = f"/data/{user_uuid}/processing/tmp/{file.name}"
+                os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
+                with open(temp_file_path, "wb") as f:
+                    f.write(file_response.content.encode('utf-8'))
                 reader = SimpleDirectoryReader(
-                    input_files=[file.path],
+                    input_files=[temp_file_path],
                     filename_as_id=True,
                     raise_on_error=True,
                 )
                 documents = reader.load_data()
+                os.unlink(temp_file_path)
 
                 # Remove the unwanted metadata from the documents
                 # In case multiple documents are created from the same file ?

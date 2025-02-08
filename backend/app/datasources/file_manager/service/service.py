@@ -17,6 +17,7 @@ from app.datasources.file_manager.schemas import FileUploadItem, FileDownloadRes
 from app.datasources.file_manager.database.models import FileStatus, File, Folder
 from app.datasources.file_manager.utils import validate_path, preprocess_base64_file 
 from app.api.user_path import get_user_data_dir
+from app.api.aes_gcm_file_encryption import generate_aes_gcm_key
 
 import logging
 
@@ -106,12 +107,16 @@ async def upload_file(file_manager_session: Session, item: FileUploadItem, user_
             
         # Process file content and write to filesystem
         decoded_file_data, mime_type = preprocess_base64_file(item.base64_content)       
+
+        # Generate a new dek for the file
+        dek = generate_aes_gcm_key()
             
         await write_file_filesystem(
             fs_path=fs_path,
             content=decoded_file_data,
             created_at_unix_timestamp=item.file_created_at or time.time(),
-            modified_at_unix_timestamp=item.file_modified_at or time.time()
+            modified_at_unix_timestamp=item.file_modified_at or time.time(),
+            dek=dek
         )
 
         # Create database entry with error handling
@@ -131,7 +136,8 @@ async def upload_file(file_manager_session: Session, item: FileUploadItem, user_
                 mime_type=mime_type,
                 folder_id=parent_folder.id,
                 file_created_at=datetime.fromtimestamp(item.file_created_at) if item.file_created_at else datetime.now(),
-                file_modified_at=datetime.fromtimestamp(item.file_modified_at) if item.file_modified_at else datetime.now()
+                file_modified_at=datetime.fromtimestamp(item.file_modified_at) if item.file_modified_at else datetime.now(),
+                dek=dek
             )
             file_manager_session.add(file)
             file_manager_session.commit()
@@ -144,9 +150,6 @@ async def upload_file(file_manager_session: Session, item: FileUploadItem, user_
                 status_code=500, 
                 detail="Failed to create database entry for file"
             )
-
-        # Get file content
-        file_content = await read_file_filesystem(fs_path)
 
         return FileInfoResponse(
             id=file.id,
@@ -184,7 +187,8 @@ async def get_file_info(file_manager_session: Session, user_uuid: str, original_
             raise HTTPException(status_code=404, detail="File not found")
         
         if include_content:
-            file_content = await read_file_filesystem(file.path)
+            # Generate a new dek for the file
+            file_content = await read_file_filesystem(file.path, file.dek)
         else:
             file_content = None
 
@@ -289,7 +293,7 @@ async def download_file(file_manager_session: Session, user_uuid: str, original_
             raise HTTPException(status_code=404, detail="File not found")
 
         # Read file content
-        content = await read_file_filesystem(file.path)
+        content = await read_file_filesystem(file.path, file.dek)
         
         # Get file stats
         file_stats = os.stat(file.path)
@@ -477,7 +481,7 @@ async def download_folder(file_manager_session: Session, user_uuid: str, origina
                 relative_path = os.path.relpath(file.path, folder.path)
                 
                 # Read file content
-                file_content = await read_file_filesystem(file.path)
+                file_content = await read_file_filesystem(file.path, file.dek)
 
                 # Write file content to zip
                 if file_content:

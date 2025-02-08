@@ -37,6 +37,7 @@ class File(Base):
     original_path = Column(String, nullable=False, unique=True)
     mime_type = Column(String, nullable=True)
     size = Column(Integer, nullable=True)
+    dek = Column(String, nullable=False)
     
     # Processing status
     status = Column(Enum(FileStatus), default=FileStatus.PENDING, nullable=False)
@@ -61,3 +62,4 @@ class File(Base):
     # Relationships
     folder_id = Column(Integer, ForeignKey('folders.id'))
     folder = relationship("Folder", back_populates="files")
+

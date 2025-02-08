@@ -68,7 +68,6 @@ export function FileItem({
   const [showDetails, setShowDetails] = useState(false);
   const { startDeletion, completeDeletion, failDeletion } = useDeletionToast();
   const client = useApiClient();
-  const { token } = useAuth();
   
   const handleClick = (e: React.MouseEvent) => {
     // Check if the click came from the dropdown menu or its children
@@ -85,23 +84,27 @@ export function FileItem({
   const handleDownload = async () => {
     try {
       const encodedPath = encodePathSafe(path);
-      
+      const datasourceName = path.split('/')[0];
+
       // Use fetch directly to get the raw response // TODO: Use API client
-      const url = type === 'folder' 
-        ? `/api/datasources/file-manager/folder/${encodedPath}/download`
-        : `/api/datasources/file-manager/file/${encodedPath}/download`;
-      
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      let response;
+      if (type === 'folder') {
+        response = await downloadFolderRouteApiDatasourcesDatasourceNameFileManagerFolderEncodedOriginalPathDownloadGet({
+          client: client,
+          path: { encoded_original_path: encodedPath, datasource_name: datasourceName }
+        });
+      } else {
+        response = await downloadFileRouteApiDatasourcesDatasourceNameFileManagerFileEncodedOriginalPathDownloadGet({
+          client: client,
+          path: { encoded_original_path: encodedPath, datasource_name: datasourceName }
+        });
+      }
   
-      if (!response.ok) {
+      if (!response.response.ok) {
         throw new Error('Download failed');
       }
   
-      const blob = await response.blob();
+      const blob = await response.response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;

@@ -39,6 +39,7 @@ def upgrade() -> None:
     sa.Column('path', sa.String(), nullable=False),
     sa.Column('original_path', sa.String(), nullable=False),
     sa.Column('mime_type', sa.String(), nullable=True),
+    sa.Column('dek', sa.String(), nullable=False),
     sa.Column('size', sa.Integer(), nullable=True),
     sa.Column('status', sa.Enum('PENDING', 'QUEUED', 'PROCESSING', 'COMPLETED', 'ERROR', name='filestatus'), nullable=False),
     sa.Column('error_message', sa.String(), nullable=True),
