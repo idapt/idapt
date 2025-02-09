@@ -1,8 +1,7 @@
 import os
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import logging
-import hmac
-from hashlib import sha256
+from cryptography.exceptions import InvalidTag
 
 logger = logging.getLogger("uvicorn")
 
@@ -59,15 +58,14 @@ def decrypt_file_aes_gcm(input_file_path: str, output_file_path: str, encryption
     try:
         # Open the encrypted file
         with open(input_file_path, 'rb') as infile, open(output_file_path, 'wb') as outfile:
-
-                
             # Initialize AES-GCM
             aesgcm = AESGCM(encryption_key)
             
-            # Read the file in chunks
             while True:
                 # Read the nonce from the beginning of the chunk
                 nonce = infile.read(12)
+                if not nonce:  # Check if we've reached the end of the file
+                    break
 
                 chunk = infile.read(8192 + 16)  # 8192 data + 16 GCM tag
                 if len(chunk) == 0:
@@ -75,16 +73,16 @@ def decrypt_file_aes_gcm(input_file_path: str, output_file_path: str, encryption
                 # Decrypt each chunk and write it to the output file
                 plaintext = aesgcm.decrypt(nonce, chunk, None)
                 outfile.write(plaintext)
+            
             # Set the decrypted file to be readable and writable by the user
             os.chmod(output_file_path, 0o600)
 
+    except InvalidTag:
+        logger.error("Decryption failed due to invalid key or corrupted file")
+        raise Exception("Decryption failed: Either the key is incorrect or the file is corrupted/modified")
     except Exception as e:
-        if "HMAC tag verification failed" in str(e):
-            logger.error(f"Error decrypting file, the key is invalid: {e}")
-            raise Exception("Invalid key")
-        else:
-            logger.error(f"Unexpected error decrypting file: {e}")
-            raise e
+        logger.error(f"Unexpected error decrypting file: {e}")
+        raise e
 
 # Example usage:
 #if __name__ == "__main__":

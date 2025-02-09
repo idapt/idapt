@@ -57,6 +57,9 @@ class FernetStoredEncryptionKey:
 
             # If there is already a file at the stored key path, move it to a .prev file
             if os.path.exists(stored_key_path) and overwrite_safely:
+                # If there is already a .prev file, delete it but this should happen only in case of crash during the previous encryption
+                if os.path.exists(stored_key_path + ".prev"):
+                    os.remove(stored_key_path + ".prev")
                 # Move the old file to a .prev file for recovery in case of failure
                 os.rename(stored_key_path, stored_key_path + ".prev")
             elif os.path.exists(stored_key_path) and not overwrite_safely:
