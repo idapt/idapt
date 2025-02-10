@@ -2,8 +2,6 @@
 import logging
 import os
 from contextlib import asynccontextmanager
-import time
-from typing import Tuple
 # Set up logging configuration
 from app.api.logging import configure_app_logging
 configure_app_logging()
@@ -15,8 +13,8 @@ from fastapi import FastAPI
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI application"""
-     
-    yield  # Application runs here
+    logger.info("Starting application with environment: %s", os.getenv("ENVIRONMENT"))
+    yield
     
 
 def create_app() -> FastAPI:
@@ -72,13 +70,13 @@ if __name__ == "__main__":
     import uvicorn
 
     host_domain = "0.0.0.0" #os.getenv("HOST_DOMAIN", "0.0.0.0") # TODO Use the host domain
-    api_port = int(os.getenv("API_PORT", 8000))
+    api_port = int(os.getenv("API_PORT", 9004))
     environment = os.getenv("ENVIRONMENT", "prod")  # Default to 'prod' if not set so that we dont risk set dev env in prod
     deployment_type = os.getenv("DEPLOYMENT_TYPE", "self-hosted")
 
-    # Setup the backend certs
-    from app.api.certs import setup_backend_certs
-    ssl_keyfile_path, ssl_certfile_path = setup_backend_certs(host_domain, deployment_type)
+    # Backend certs
+    from app.api.certs import create_and_start_regenerate_task_for_backend_certs
+    ssl_keyfile_path, ssl_certfile_path = create_and_start_regenerate_task_for_backend_certs(host_domain)
 
     if environment == "dev":
         logger.info("Starting in development mode with hot reload")

@@ -29,7 +29,6 @@ services:
     volumes:
       - ./backend:/backend # Use a bind mount to sync the backend code with the container and allow code changes to be synced.
       - ./user-data:/data # The volume where the data is stored. Use data mount name to make it shorter.
-      - ./backend-certs:/certs # Used for ssl termination.
     restart: unless-stopped
     # Container security hardening
     security_opt:
