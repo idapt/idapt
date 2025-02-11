@@ -23,4 +23,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
       
     - name: Build the Docker image
-      run: docker build backend --tag idapt-backend:main && docker run ghcr.io/idapt/idapt-backend:main && docker push ghcr.io/idapt/idapt-backend:main
+      run: docker build backend --tag ghcr.io/idapt/idapt:backend-main && docker push ghcr.io/idapt/idapt:backend-main
