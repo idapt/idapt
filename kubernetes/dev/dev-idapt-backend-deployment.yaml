@@ -27,8 +27,8 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: idapt-backend
-          image: idapt-idapt-backend # For build with docker compose
-          imagePullPolicy: Never
+          image: ghcr.io/idapt/idapt:backend-main
+          imagePullPolicy: Always
           ports:
             - containerPort: 9004
           env:
