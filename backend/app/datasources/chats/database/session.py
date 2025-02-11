@@ -1,10 +1,9 @@
 from app.api.user_path import get_user_data_dir
-from app.auth.dependencies import get_user_uuid_from_token
+from app.auth.dependencies import get_keyring_with_user_data_mounting_dependency
 from app.api.db_sessions import get_session
 from app.datasources.database.models import Datasource, DatasourceType
 from app.datasources.database.session import get_datasources_db_session
 from app.auth.schemas import Keyring
-from app.auth.dependencies import get_keyring_with_user_data_mounting_dependency
 from pathlib import Path
 from fastapi import Depends
 from sqlalchemy.orm import Session
@@ -35,7 +34,7 @@ async def get_datasources_chats_db_session(
         script_location = Path(__file__).parent
         from app.datasources.chats.database.models import Base
         models_declarative_base_class = Base
-        async with get_session(str(db_path), str(script_location), models_declarative_base_class) as session:
+        with get_session(str(db_path), str(script_location), models_declarative_base_class) as session:
             return session
     except Exception as e:
         logger.error(f"Error in get_datasources_file_manager_db_session: {str(e)}")
