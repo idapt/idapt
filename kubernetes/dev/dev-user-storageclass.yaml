@@ -6,5 +6,3 @@ provisioner: kubernetes.io/no-provisioner
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 allowVolumeExpansion: true 
-accessModes:
-  - ReadWriteOnce
