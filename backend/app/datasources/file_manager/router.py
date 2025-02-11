@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.datasources.file_manager.schemas import FileUploadItem, FileDownloadResponse, FolderDownloadResponse, FileInfoResponse, FolderInfoResponse, UpdateFileProcessingStatusRequest
 from app.datasources.file_manager.service.service import upload_file, download_file, delete_item, download_folder, get_folder_info, get_file_info, update_file_processing_status
-from app.auth.service import get_user_uuid_from_token
+from app.auth.dependencies import get_user_uuid_from_token
 from app.datasources.file_manager.database.session import get_datasources_file_manager_db_session
 from app.datasources.database.session import get_datasources_db_session
 from app.datasources.file_manager.utils import decode_path_safe

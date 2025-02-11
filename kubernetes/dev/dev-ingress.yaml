@@ -3,8 +3,14 @@ kind: Ingress
 metadata:
   name: idapt-ingress
   annotations:
-    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS" # Use HTTPS for communication between ingress and backend service and pods
+    nginx.ingress.kubernetes.io/proxy-ssl-secret: "cert-manager/idapt-ca-key-pair"
+    nginx.ingress.kubernetes.io/proxy-ssl-verify: "on"
+    cert-manager.io/cluster-issuer: "idapt-ca-issuer"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "idapt-session"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
 spec:
   ingressClassName: nginx
   tls:
@@ -21,4 +27,4 @@ spec:
           service:
             name: idapt-backend
             port:
-              number: 8000
+              number: 9004

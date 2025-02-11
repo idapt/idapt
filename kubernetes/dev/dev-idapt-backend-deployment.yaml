@@ -1,9 +1,10 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: idapt-backend
 spec:
-  replicas: 1
+  serviceName: idapt-backend
+  replicas: 3
   selector:
     matchLabels:
       app-name: idapt-backend
@@ -12,42 +13,49 @@ spec:
       labels:
         app-name: idapt-backend
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app-name
+                  operator: In
+                  values:
+                  - idapt-backend
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: idapt-backend
-          image: idapt-backend:latest
+          image: idapt-idapt-backend # For build with docker compose
           imagePullPolicy: Never
           ports:
-            - containerPort: 8000
+            - containerPort: 9004
           env:
             - name: ENVIRONMENT
-              value: "prod"
+              value: "dev"
             - name: DEPLOYMENT_TYPE
               value: "hosted"
             - name: HOST_DOMAIN
               value: "localhost"
+            - name: API_PORT
+              value: "9004"
             - name: ANONYMIZED_TELEMETRY
               value: "False"
+            - name: MAX_PUBLIC_USERS_FOR_THIS_HOST
+              value: "100"
           livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - "curl -k -f https://localhost:8000/api/health"
+            httpGet:
+              #httpHeaders:
+              #  - name: Host
+              #    value: localhost
+              #insecureSkipVerify: true  # Bypass cert validation for self-signed dev cert
+              path: /api/health
+              port: 9004
+              scheme: HTTPS
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
             failureThreshold: 3
-            initialDelaySeconds: 60
-            periodSeconds: 20
-            timeoutSeconds: 10
-          volumeMounts:
-            - mountPath: /data
-              name: user-data
-            - mountPath: /etc/certs
-              name: certs
-              readOnly: true
       restartPolicy: Always
-      volumes:
-        - name: user-data
-          persistentVolumeClaim:
-            claimName: user-data
-        - name: certs
-          secret:
-            secretName: idapt-tls 
+      volumes: [] # User data volumes will be mounted by the pod itself

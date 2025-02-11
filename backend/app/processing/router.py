@@ -7,9 +7,9 @@ from fastapi import WebSocketDisconnect
 from typing import Annotated
 from app.processing.service import get_queue_status, mark_items_as_queued, start_processing_thread
 from app.processing.schemas import ProcessingRequest, ProcessingStatusResponse
-from app.auth.service import get_user_uuid_from_token
+from app.auth.dependencies import get_user_uuid_from_token
 from app.auth.schemas import Keyring
-from app.auth.service import get_keyring_with_access_sk_token_from_auth_header
+from app.auth.dependencies import get_keyring_with_user_data_mounting_dependency
 from app.datasources.file_manager.database.session import get_datasources_file_manager_db_session
 from app.datasources.database.session import get_datasources_db_session
 from app.settings.database.session import get_settings_db_session
@@ -25,7 +25,7 @@ async def processing_route(
     request: ProcessingRequest,
     background_tasks: BackgroundTasks,
     user_uuid: Annotated[str, Depends(get_user_uuid_from_token)],
-    keyring: Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
+    keyring: Annotated[Keyring, Depends(get_keyring_with_user_data_mounting_dependency)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)],
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)],
     processing_stacks_db_session: Annotated[Session, Depends(get_processing_stacks_db_session)],

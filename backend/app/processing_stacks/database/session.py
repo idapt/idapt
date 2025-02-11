@@ -1,4 +1,4 @@
-from app.api.db_sessions import get_session_from_cached_database_engine
+from app.api.db_sessions import get_session
 from app.processing_stacks.service import create_default_processing_stacks_if_needed
 from sqlalchemy.orm import Session
 from pathlib import Path
@@ -6,7 +6,7 @@ import os
 import logging
 from app.auth.schemas import Keyring
 from fastapi import Depends, HTTPException
-from app.auth.service import get_keyring_with_access_sk_token_from_auth_header
+from app.auth.dependencies import get_keyring_with_user_data_mounting_dependency
 from app.api.fernet_stored_encryption_key import FernetStoredEncryptionKey
 from typing import Annotated
 from app.api.aes_gcm_file_encryption import generate_aes_gcm_key
@@ -17,8 +17,8 @@ logger = logging.getLogger("uvicorn")
 PROCESSING_STACKS_DB_PATH = "/data/{user_uuid}/processing_stacks/processing_stacks.db"
 PROCESSING_STACKS_DEK_PATH = "/data/{user_uuid}/processing_stacks/processing_stacks_dek.txt"
 
-async def get_processing_stacks_db_session(
-    keyring : Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)]
+def get_processing_stacks_db_session(
+    keyring : Annotated[Keyring, Depends(get_keyring_with_user_data_mounting_dependency)]
 ) -> Generator[Session, None, None]:
     """
     Get a session for the processing stacks database
@@ -46,11 +46,10 @@ async def get_processing_stacks_db_session(
             kek=keyring.kek_processing_stacks
         )
 
-        async with get_session_from_cached_database_engine(
+        with get_session(
             db_path=str(db_path),
             script_location=str(script_location),
-            models_declarative_base_class=models_declarative_base_class,
-            dek=processing_stacks_dek
+            models_declarative_base_class=models_declarative_base_class
         ) as processing_stacks_db_session:
             try:
                 # Initialize default settings if they don't exist

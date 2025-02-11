@@ -1,6 +1,4 @@
-from app.auth.schemas import AccessSKTokenData, Keyring
-from fastapi import Depends, HTTPException
-from typing import Annotated
+from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from datetime import datetime, timedelta, timezone
 import jwt
@@ -11,10 +9,12 @@ import os
 import base64
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from app.api.fernet_stored_encryption_key import FernetStoredEncryptionKey
 import uuid
 import shutil
 from cachetools.func import ttl_cache
+
+from app.api.fernet_stored_encryption_key import FernetStoredEncryptionKey
+from app.auth.schemas import AccessSKTokenData, Keyring
 
 logger = logging.getLogger("uvicorn")
 
@@ -50,6 +50,17 @@ KEK_DATASOURCES_KEK_P_PATH = "/data/{user_uuid}/keys/kek_datasources.txt"
 KEK_PROCESSING_KEK_P_PATH = "/data/{user_uuid}/keys/kek_processing.txt"
 KEK_PROCESSING_STACKS_KEK_P_PATH = "/data/{user_uuid}/keys/kek_processing_stacks.txt"
 KEK_SETTINGS_KEK_P_PATH = "/data/{user_uuid}/keys/kek_settings.txt"
+
+def create_jwt_access_token(data: dict, expires_delta: timedelta):
+    try:
+        to_encode = data.copy()
+        expire = datetime.now(timezone.utc) + expires_delta
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        return encoded_jwt
+    except Exception as e:
+        logger.error(f"Error creating JWT access token: {e}")
+        raise HTTPException(status_code=500, detail="Error creating JWT access token")
 
 def register_new_user(user_uuid: str, hashed_password: str) -> AccessSKTokenData:
     """
@@ -149,12 +160,6 @@ def get_new_access_sk_token_with_password(user_uuid: str, hashed_password: str) 
             raise HTTPException(status_code=401, detail="Invalid credentials", headers={"WWW-Authenticate": "Bearer"})
         else:
             raise HTTPException(status_code=500, detail="Error getting new access sk token with password")
-
-def get_keyring_with_access_sk_token_from_auth_header(token: Annotated[str, Depends(oauth2_scheme)]) -> Keyring:
-    """
-    Get the keyring with the token from the auth header
-    """
-    return get_keyring_with_access_sk_token(token)
 
 @ttl_cache(maxsize=512, ttl=30)
 def get_keyring_with_access_sk_token(token: str) -> Keyring:
@@ -569,28 +574,3 @@ def delete_user(user_uuid: str) -> None:
 
 
 
-def create_jwt_access_token(data: dict, expires_delta: timedelta):
-    try:
-        to_encode = data.copy()
-        expire = datetime.now(timezone.utc) + expires_delta
-        to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-        return encoded_jwt
-    except Exception as e:
-        logger.error(f"Error creating JWT access token: {e}")
-        raise HTTPException(status_code=500, detail="Error creating JWT access token")
-
-
-def get_user_uuid_from_token(token: Annotated[str, Depends(oauth2_scheme)]) -> str:
-    """
-    Get the user UUID from the token
-    """
-    try:
-        # Decode the token to get the keyring key
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        # Get the keyring key from the payload
-        user_uuid: str = payload.get("user_uuid")
-        return user_uuid
-    except Exception as e:
-        logger.error(f"Error getting user UUID from token: {e}")
-        raise HTTPException(status_code=500, detail="Error getting user UUID from token")

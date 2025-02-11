@@ -1595,14 +1595,14 @@ files = [
 
 [[package]]
 name = "kubernetes"
-version = "31.0.0"
+version = "32.0.0"
 description = "Kubernetes python client"
 optional = false
 python-versions = ">=3.6"
 groups = ["main"]
 files = [
-    {file = "kubernetes-31.0.0-py2.py3-none-any.whl", hash = "sha256:bf141e2d380c8520eada8b351f4e319ffee9636328c137aa432bc486ca1200e1"},
-    {file = "kubernetes-31.0.0.tar.gz", hash = "sha256:28945de906c8c259c1ebe62703b56a03b714049372196f854105afe4e6d014c0"},
+    {file = "kubernetes-32.0.0-py2.py3-none-any.whl", hash = "sha256:60fd8c29e8e43d9c553ca4811895a687426717deba9c0a66fb2dcc3f5ef96692"},
+    {file = "kubernetes-32.0.0.tar.gz", hash = "sha256:319fa840345a482001ac5d6062222daeb66ec4d1bcb3087402aed685adf0aecb"},
 ]
 
 [package.dependencies]
@@ -5125,4 +5125,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12,<3.13"
-content-hash = "b8eae3c84f8904236ff2da9d5cb78064ff95a698b530d8f6821df872ceab71eb"
+content-hash = "c2d1172e3b91533981c773401a8ff6185023a610e372bd79380dda4f177273d9"

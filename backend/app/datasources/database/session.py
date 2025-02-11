@@ -7,10 +7,10 @@ from typing import Annotated, Generator
 
 from app.datasources.service import init_default_datasources_if_needed
 from app.settings.database.session import get_settings_db_session
-from app.api.db_sessions import get_session_from_cached_database_engine
+from app.api.db_sessions import get_session
 from app.api.aes_gcm_file_encryption import generate_aes_gcm_key
 from app.auth.schemas import Keyring
-from app.auth.service import get_keyring_with_access_sk_token_from_auth_header
+from app.auth.dependencies import get_keyring_with_user_data_mounting_dependency
 from app.api.fernet_stored_encryption_key import FernetStoredEncryptionKey
 
 logger = logging.getLogger("uvicorn")        
@@ -18,8 +18,8 @@ logger = logging.getLogger("uvicorn")
 DATASOURCES_DB_PATH = "/data/{user_uuid}/datasources/datasources.db"
 DATASOURCES_DEK_PATH = "/data/{user_uuid}/datasources/datasources_dek.txt"
 
-async def get_datasources_db_session(
-    keyring : Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
+def get_datasources_db_session(
+    keyring : Annotated[Keyring, Depends(get_keyring_with_user_data_mounting_dependency)],
     settings_db_session: Annotated[Session, Depends(get_settings_db_session)]
 ) -> Session:
     """
@@ -48,11 +48,10 @@ async def get_datasources_db_session(
             kek=keyring.kek_datasources
         )
 
-        async with get_session_from_cached_database_engine(
+        with get_session(
             db_path=str(db_path),
             script_location=str(script_location),
-            models_declarative_base_class=models_declarative_base_class,
-            dek=datasources_dek
+            models_declarative_base_class=models_declarative_base_class
         ) as datasources_db_session:
             try:
                 # Initialize default datasources if they don't exist

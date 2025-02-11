@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Annotated
 
-from app.auth.service import get_user_uuid_from_token
+from app.auth.dependencies import get_user_uuid_from_token
 from app.datasources.chats.service import get_all_chats, get_chat, add_message_to_chat, create_chat, update_chat_title, delete_chat
 from app.datasources.chats.database.session import get_datasources_chats_db_session
 from app.datasources.chats.dependencies import validate_datasource_is_of_type_chats

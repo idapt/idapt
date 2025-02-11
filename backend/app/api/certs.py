@@ -41,11 +41,11 @@ def create_and_start_regenerate_task_for_backend_certs(host_domain: str) -> Tupl
         else:
             logger.info("Certs are still valid")
             # Create a daemon thread to run the async task
-            def run_async_in_thread():
+            def run_async_in_thread(logger: logging.Logger):
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 try:
-                    loop.run_until_complete(check_regenerate_certs_task_loop(host_domain, ssl_keyfile_path, ssl_certfile_path))
+                    loop.run_until_complete(check_regenerate_certs_task_loop(logger, host_domain, ssl_keyfile_path, ssl_certfile_path))
                 except Exception as e:
                     logger.error(f"Certificate regeneration task failed: {e}")
                 finally:
@@ -55,7 +55,8 @@ def create_and_start_regenerate_task_for_backend_certs(host_domain: str) -> Tupl
             regeneration_thread = threading.Thread(
                 target=run_async_in_thread,
                 daemon=True,  # Will terminate when main thread exits
-                name="cert-regeneration"
+                name="cert-regeneration",
+                args=(logger,)
             )
             regeneration_thread.start()
             
@@ -82,7 +83,7 @@ def check_end_date_of_x509_cert(ssl_certfile_path: str, max_days_of_validity_bef
     else:
         return False
     
-async def check_regenerate_certs_task_loop(host_domain: str, ssl_keyfile_path: str, ssl_certfile_path: str, max_days_of_validity_before_regeneration: int = 30, check_interval: int = 5) -> None:
+async def check_regenerate_certs_task_loop(logger: logging.Logger, host_domain: str, ssl_keyfile_path: str, ssl_certfile_path: str, max_days_of_validity_before_regeneration: int = 30, check_interval: int = 5) -> None:
     """
     Check if the certs are expired or expire in less than max_days_of_validity_before_regeneration days and regenerate them
     Check every check_interval days

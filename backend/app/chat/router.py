@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.chat.schemas import (
     ChatData
 )
-from app.auth.service import get_user_uuid_from_token
+from app.auth.dependencies import get_user_uuid_from_token
 from app.chat.service import chat_streaming_response, chat_request_response
 from app.settings.database.session import get_settings_db_session
 from app.datasources.database.session import get_datasources_db_session

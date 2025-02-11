@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Annotated
 
-from app.auth.service import get_user_uuid_from_token
+from app.auth.dependencies import get_user_uuid_from_token
 from app.datasources.database.session import get_datasources_db_session
 from app.settings.database.session import get_settings_db_session
 from app.datasources.database.models import Datasource

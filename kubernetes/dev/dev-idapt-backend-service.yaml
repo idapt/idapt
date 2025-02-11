@@ -4,10 +4,14 @@ metadata:
   name: idapt-backend
 spec:
   type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
   ports:
     - name: idapt-backend
       protocol: TCP
-      port: 8000
-      targetPort: 8000
+      port: 9004
+      targetPort: 9004
   selector:
     app-name: idapt-backend

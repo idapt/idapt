@@ -14,6 +14,11 @@ from fastapi import FastAPI
 async def lifespan(app: FastAPI):
     """Lifespan context manager for FastAPI application"""
     logger.info("Starting application with environment: %s", os.getenv("ENVIRONMENT"))
+
+    # Setup the unmounted user data directory cleanup loop
+    from app.api.mount_user_data_dir import setup_mounted_user_data_dir_cleanup_loop
+    setup_mounted_user_data_dir_cleanup_loop()
+
     yield
     
 

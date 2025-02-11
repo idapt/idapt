@@ -1,12 +1,12 @@
 import os
-from app.api.db_sessions import get_session_from_cached_database_engine
+from app.api.db_sessions import get_session
 import logging
 from pathlib import Path
 from app.settings.service import init_default_settings_if_needed
 from app.auth.schemas import Keyring
 from fastapi import Depends, HTTPException
 from typing import Annotated
-from app.auth.service import get_keyring_with_access_sk_token_from_auth_header
+from app.auth.dependencies import get_keyring_with_user_data_mounting_dependency
 from app.api.fernet_stored_encryption_key import FernetStoredEncryptionKey
 from app.api.aes_gcm_file_encryption import generate_aes_gcm_key
 from sqlalchemy.orm import Session
@@ -16,7 +16,7 @@ logger = logging.getLogger("uvicorn")
 SETTINGS_DB_PATH = "/data/{user_uuid}/settings/settings.db"
 SETTINGS_DEK_PATH = "/data/{user_uuid}/settings/settings_dek.txt"
 
-async def get_settings_db_session(keyring : Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)]) -> Session:
+def get_settings_db_session(keyring : Annotated[Keyring, Depends(get_keyring_with_user_data_mounting_dependency)]) -> Session:
     """
     Get a session for the settings database
     The session is cached for 30 seconds to avoid re-reading and decrypting the database file from the disk and reuse the same session
@@ -46,7 +46,7 @@ async def get_settings_db_session(keyring : Annotated[Keyring, Depends(get_keyri
         )
 
         # Get the session from the cached database engine
-        async with get_session_from_cached_database_engine(str(db_path), str(script_location), models_declarative_base_class, settings_dek) as settings_db_session:
+        with get_session(str(db_path), str(script_location), models_declarative_base_class) as settings_db_session:
             try:
                 # Initialize default settings if they don't exist
                 init_default_settings_if_needed(settings_db_session=settings_db_session)

@@ -1,11 +1,11 @@
 
-from app.api.db_sessions import get_session_from_cached_database_engine
+from app.api.db_sessions import get_session
 from app.api.user_path import get_user_data_dir
 from app.datasources.file_manager.service.service import initialize_file_manager_db
 from app.datasources.database.models import Datasource, DatasourceType
 from app.datasources.database.session import get_datasources_db_session
 from app.auth.schemas import Keyring
-from app.auth.service import get_keyring_with_access_sk_token_from_auth_header
+from app.auth.dependencies import get_keyring_with_user_data_mounting_dependency
 
 from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException
@@ -18,9 +18,9 @@ from typing import Generator
 logger = logging.getLogger("uvicorn")
 
 # Get a session for the file manager database
-async def get_datasources_file_manager_db_session(
+def get_datasources_file_manager_db_session(
     datasource_name: str,
-    keyring : Annotated[Keyring, Depends(get_keyring_with_access_sk_token_from_auth_header)],
+    keyring : Annotated[Keyring, Depends(get_keyring_with_user_data_mounting_dependency)],
     datasources_db_session: Annotated[Session, Depends(get_datasources_db_session)]
 ) -> Session:
     """
@@ -38,7 +38,7 @@ async def get_datasources_file_manager_db_session(
         script_location = Path(__file__).parent
         from app.datasources.file_manager.database.models import Base
         models_declarative_base_class = Base
-        async with get_session_from_cached_database_engine(str(db_path), str(script_location), models_declarative_base_class, datasource.dek) as session:
+        with get_session(str(db_path), str(script_location), models_declarative_base_class) as session:
             # Always initialize default data if needed before yielding the session
             initialize_file_manager_db(session, keyring.user_uuid, datasource_name)
             return session
