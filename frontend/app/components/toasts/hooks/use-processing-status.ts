@@ -21,7 +21,7 @@ export function useProcessingStatus() {
     const data = response.data;
     setStatus(data ?? null);
     return data;
-  }, [backend, client]);
+  }, [backend, client, token]);
 
   const connect = useCallback(async () => {
     if (!backend || isConnectingRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
@@ -58,7 +58,7 @@ export function useProcessingStatus() {
     } catch (error) {
       isConnectingRef.current = false;
     }
-  }, [backend, fetchInitialStatus]);
+  }, [backend, token, fetchInitialStatus]);
 
   useEffect(() => {
     connect();
